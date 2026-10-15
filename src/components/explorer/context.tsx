@@ -60,6 +60,10 @@ export interface ExplorerApi {
   imageQuery: ImageQuery | null;
   setImageQuery: (q: ImageQuery | null) => void;
   imageScores: Map<string, number> | null;
+  /** an uploaded image is being analysed */
+  imageBusy: boolean;
+  /** validate + analyse an image and search by its colors (newest file wins) */
+  searchByImage: (file: File) => Promise<void>;
   shuffleSeed: number | null;
   setShuffleSeed: (s: number | null) => void;
   view: View;

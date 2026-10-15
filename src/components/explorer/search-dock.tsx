@@ -1,7 +1,6 @@
 "use client";
 import { useId, useMemo, useRef, useState, type RefObject } from "react";
-import { ImagePlusIcon, SearchIcon, XIcon } from "lucide-react";
-import { toast } from "sonner";
+import { ImagePlusIcon, LoaderCircleIcon, SearchIcon, XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   completeQuery,
@@ -9,28 +8,10 @@ import {
   facetLabel,
   type Suggestion,
 } from "@/lib/query";
-import { paletteFromFile } from "@/lib/image-search";
 import { cn } from "@/lib/utils";
 import { useExplorer } from "./context";
 import { ActiveChips } from "./chips";
 import { FilterBar } from "./filter-bar";
-
-export async function runImageSearch(
-  file: File,
-  setImageQuery: ReturnType<typeof useExplorer>["setImageQuery"],
-) {
-  if (!file.type.startsWith("image/")) {
-    toast.error("Please drop an image file");
-    return;
-  }
-  try {
-    const { url, palette } = await paletteFromFile(file);
-    setImageQuery({ url, palette, name: file.name });
-    toast.success("Searching by image colors");
-  } catch {
-    toast.error("Couldn't read that image");
-  }
-}
 
 function SearchBox({
   inputRef,
@@ -45,10 +26,25 @@ function SearchBox({
     addFacet,
     imageQuery,
     setImageQuery,
+    imageBusy,
+    searchByImage,
   } = useExplorer();
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
+  // Rapid clicks would otherwise queue one file picker per click.
+  const pickerOpen = useRef(false);
+  const openPicker = () => {
+    if (pickerOpen.current || imageBusy) return;
+    pickerOpen.current = true;
+    const reset = () => {
+      window.setTimeout(() => (pickerOpen.current = false), 400);
+    };
+    // the window regains focus when the picker closes, whether a file was chosen or not
+    window.addEventListener("focus", reset, { once: true });
+    fileRef.current?.addEventListener("cancel", reset, { once: true });
+    fileRef.current?.click();
+  };
   const listId = useId();
   const suggestions = useMemo(
     () => (open ? suggest(query, vocab, tagCounts, 8) : []),
@@ -83,12 +79,14 @@ function SearchBox({
         />
         {imageQuery && (
           <span className="flex shrink-0 items-center gap-1.5 rounded-lg bg-muted py-0.5 pr-1 pl-0.5 text-xs">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={imageQuery.url}
-              alt=""
-              className="size-6 rounded object-cover"
-            />
+            {imageQuery.url && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={imageQuery.url}
+                alt=""
+                className="size-6 rounded object-cover"
+              />
+            )}
             <span className="flex gap-0.5">
               {imageQuery.palette.map((c) => (
                 <span
@@ -161,11 +159,13 @@ function SearchBox({
         <Button
           variant="outline"
           size="icon-sm"
-          aria-label="Search by image"
-          title="Search by image (or drop an image anywhere)"
-          onClick={() => fileRef.current?.click()}
+          aria-label={imageBusy ? "Reading image colors" : "Search by image"}
+          aria-busy={imageBusy}
+          disabled={imageBusy}
+          title="Search by image (or drop an image anywhere). Max 10 MB."
+          onClick={openPicker}
         >
-          <ImagePlusIcon />
+          {imageBusy ? <LoaderCircleIcon className="animate-spin" /> : <ImagePlusIcon />}
         </Button>
         <kbd className="hidden h-6 min-w-6 items-center justify-center rounded-md bg-muted px-1.5 font-mono text-[11px] text-muted-foreground sm:flex">
           /
@@ -177,8 +177,9 @@ function SearchBox({
           className="hidden"
           data-testid="image-upload"
           onChange={(e) => {
+            pickerOpen.current = false;
             const f = e.target.files?.[0];
-            if (f) void runImageSearch(f, setImageQuery);
+            if (f) void searchByImage(f);
             e.target.value = "";
           }}
         />

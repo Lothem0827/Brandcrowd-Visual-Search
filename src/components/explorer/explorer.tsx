@@ -7,6 +7,8 @@ import { createSearchClient, type SearchClient } from "@/lib/search-client";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { findAllSimilar, rankByPalette } from "@/lib/similarity";
 import { rng } from "@/lib/color";
+import { paletteFromFile } from "@/lib/image-search";
+import { toast } from "sonner";
 import { ExplorerContext, type ExplorerApi, type HoverState, type ImageQuery, type SearchStep, type View } from "./context";
 import { TopBar } from "./top-bar";
 import { SearchDock } from "./search-dock";
@@ -187,6 +189,56 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
     setSearchPath([]);
   }, []);
 
+  // Image search: one analysis at a time from the UI's point of view; a newer file always
+  // wins over a slower, older one (token), and leftover text/filters are cleared so results
+  // aren't silently narrowed (with a Restore action).
+  const [imageBusy, setImageBusy] = useState(false);
+  const imageToken = useRef(0);
+  const latest = useRef({ query, filters });
+  useEffect(() => {
+    latest.current = { query, filters };
+  }, [query, filters]);
+  const searchByImage = useCallback(async (file: File) => {
+    const token = ++imageToken.current;
+    setImageBusy(true);
+    const toastId = "image-search";
+    toast.loading("Reading image colors…", { id: toastId, description: undefined, action: undefined });
+    try {
+      const res = await paletteFromFile(file);
+      if (token !== imageToken.current) return; // a newer image was dropped meanwhile
+      if (!res.ok) {
+        toast.error(res.message, { id: toastId, description: undefined, action: undefined });
+        return;
+      }
+      const prev = latest.current;
+      const hadSearch =
+        !!prev.query.trim() || !!prev.filters.color || Object.values(prev.filters.facets).some((v) => v?.length);
+      setQuery("");
+      setFilters(EMPTY_FILTERS);
+      setSearchPath([]);
+      setImageQuery({ url: res.thumbUrl, palette: res.palette, name: file.name });
+      toast.success("Searching by image colors", {
+        id: toastId,
+        description: hadSearch ? "Your previous search and filters were cleared." : undefined,
+        action: hadSearch
+          ? {
+              label: "Restore",
+              onClick: () => {
+                setQuery(prev.query);
+                setFilters(prev.filters);
+              },
+            }
+          : undefined,
+      });
+    } catch {
+      if (token === imageToken.current) {
+        toast.error("Couldn't read that image.", { id: toastId, description: undefined, action: undefined });
+      }
+    } finally {
+      if (token === imageToken.current) setImageBusy(false);
+    }
+  }, []);
+
   const openTemplate = useCallback((id: string) => {
     setHover(null);
     setDetailOpen(true);
@@ -241,7 +293,7 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
     all, base, results, byId, vocab, tagCounts, category,
     query, setQuery, parsed, searching, filters, setFilters, effective, toggleFacet, addFacet, clearAll,
     searchPath, searchWithin, backOneStep, jumpToStep,
-    imageQuery, setImageQuery, imageScores, shuffleSeed, setShuffleSeed,
+    imageQuery, setImageQuery, imageScores, imageBusy, searchByImage, shuffleSeed, setShuffleSeed,
     view, setView, openTemplate, simScope, setSimScope, similar, center,
     detailsReady, detailsError, loadDetails,
     detailOpen, setDetailOpen, hover, setHover, boardsOpen, setBoardsOpen, boardGroup, setBoardGroup, focusSearch,

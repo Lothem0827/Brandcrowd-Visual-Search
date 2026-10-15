@@ -2,11 +2,10 @@
 import { useEffect, useState } from "react";
 import { ImagePlusIcon } from "lucide-react";
 import { useExplorer } from "./context";
-import { runImageSearch } from "./search-dock";
 
 /** Drop an image anywhere on the page to search by its colors. */
 export function ImageDropOverlay() {
-  const { setImageQuery } = useExplorer();
+  const { searchByImage } = useExplorer();
   const [over, setOver] = useState(false);
   useEffect(() => {
     let depth = 0;
@@ -27,7 +26,7 @@ export function ImageDropOverlay() {
       depth = 0;
       setOver(false);
       const f = e.dataTransfer?.files?.[0];
-      if (f) void runImageSearch(f, setImageQuery);
+      if (f) void searchByImage(f);
     };
     window.addEventListener("dragenter", enter);
     window.addEventListener("dragleave", leave);
@@ -39,14 +38,14 @@ export function ImageDropOverlay() {
       window.removeEventListener("dragover", overFn);
       window.removeEventListener("drop", drop);
     };
-  }, [setImageQuery]);
+  }, [searchByImage]);
   if (!over) return null;
   return (
     <div className="pointer-events-none fixed inset-0 z-[60] grid place-items-center bg-background/70 backdrop-blur-sm">
       <div className="flex flex-col items-center gap-2 rounded-2xl bg-panel px-10 py-8 text-center ring-1 ring-foreground/10">
         <ImagePlusIcon className="size-8" />
         <div className="text-sm font-semibold">Drop an image to find templates with similar colors</div>
-        <div className="text-xs text-muted-foreground">Processed in your browser. Nothing is uploaded.</div>
+        <div className="text-xs text-muted-foreground">Processed in your browser. Nothing is uploaded. Max 10 MB.</div>
       </div>
     </div>
   );
