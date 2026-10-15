@@ -6,6 +6,7 @@ import { buildVocab, chipsToSelection, parseQuery, removeChipFromQuery } from "@
 import { buildSearchIndex } from "@/lib/search";
 import { findAllSimilar, rankByPalette } from "@/lib/similarity";
 import { rng } from "@/lib/color";
+import { useAiInterpretation } from "./use-ai-interpretation";
 import { ExplorerContext, type ExplorerApi, type HoverState, type ImageQuery, type SearchStep, type View } from "./context";
 import { TopBar } from "./top-bar";
 import { SearchDock } from "./search-dock";
@@ -53,9 +54,20 @@ export function Explorer() {
   const searchRef = useRef<HTMLInputElement>(null);
 
   const parsed = useMemo(() => parseQuery(query, vocab), [query, vocab]);
+  const { ai, status: aiStatus, enabled: aiEnabled, dismiss: dismissAi } = useAiInterpretation(
+    query,
+    category,
+    parsed,
+  );
   const effective = useMemo<FilterState>(
-    () => ({ facets: mergeSelections(filters.facets, chipsToSelection(parsed.chips)), color: filters.color }),
-    [filters, parsed],
+    () => ({
+      facets: mergeSelections(
+        mergeSelections(filters.facets, chipsToSelection(parsed.chips)),
+        ai?.facets ?? {},
+      ),
+      color: filters.color,
+    }),
+    [filters, parsed, ai],
   );
 
   const imageScores = useMemo(() => {
@@ -65,16 +77,26 @@ export function Explorer() {
 
   const results = useMemo(() => {
     let list = applyFilters(base, effective);
-    if (parsed.text) {
-      const scores = index.search(parsed.text);
-      list = list.filter((t) => scores.has(t.templateId)).sort((a, b) => scores.get(b.templateId)! - scores.get(a.templateId)!);
+    const aiText = ai?.text ?? "";
+    const combined = [parsed.text, aiText].filter(Boolean).join(" ").trim();
+    const rank = (text: string) => {
+      const scores = index.search(text);
+      return list
+        .filter((t) => scores.has(t.templateId))
+        .sort((a, b) => scores.get(b.templateId)! - scores.get(a.templateId)!);
+    };
+    if (combined) {
+      let next = rank(combined);
+      // AI keywords are a guess: never let them blank out an otherwise working set
+      if (!next.length && aiText) next = parsed.text ? rank(parsed.text) : list;
+      list = next;
     }
     if (imageScores) {
       list = [...list].sort((a, b) => imageScores.get(b.templateId)! - imageScores.get(a.templateId)!).slice(0, IMAGE_RESULTS);
     }
     if (shuffleSeed !== null) list = seededShuffle(list, shuffleSeed);
     return list;
-  }, [base, effective, parsed.text, index, imageScores, shuffleSeed]);
+  }, [base, effective, parsed.text, index, imageScores, shuffleSeed, ai]);
 
   const byId = useCallback((id: string) => templateRepository.byId(id), []);
   const center = view.kind === "similar" ? byId(view.trail[view.trail.length - 1]) ?? null : null;
@@ -194,6 +216,7 @@ export function Explorer() {
   const api: ExplorerApi = {
     all, base, results, byId, vocab, tagCounts, category,
     query, setQuery, parsed, filters, setFilters, effective, toggleFacet, addFacet, clearAll,
+    ai, aiStatus, aiEnabled, dismissAi,
     searchPath, searchWithin, backOneStep, jumpToStep,
     imageQuery, setImageQuery, imageScores, shuffleSeed, setShuffleSeed,
     view, setView, openTemplate, simScope, setSimScope, similar, center,

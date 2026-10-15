@@ -32,12 +32,34 @@ pnpm e2e            # headless Chrome smoke flow + screenshots (server must be r
 
 Works the same on Windows, macOS and Linux (no machine-specific paths).
 
+### Optional: LLM query understanding
+
+The vocabulary parser reads words literally, so vague phrasing ("make it pop", "cosy coffee
+shop vibes") falls through to plain keyword matching. With a key configured, the app also asks
+an LLM to translate those left-over words into the *same* facet vocabulary, and shows the result
+as removable **AI** chips with a one-line reason.
+
+Copy `.env.example` to `.env.local` and point it at any OpenAI-compatible endpoint:
+OpenAI, OpenRouter, Groq, DeepSeek, or a local Ollama (`http://localhost:11434/v1`) / LM Studio.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `LLM_BASE_URL` | `https://api.openai.com/v1` | Endpoint, no trailing slash |
+| `LLM_API_KEY` | *(empty)* | Leave empty to keep the feature off |
+| `LLM_MODEL` | `gpt-4o-mini` | A small, fast model is plenty |
+
+Without a key nothing changes — `/api/interpret` reports `disabled` and the app behaves exactly
+as before. The key stays server-side; the browser only ever calls `/api/interpret`.
+
 ## Using the app
 
 - **Search box** (`/` to focus). Words that match the vocabulary become chips automatically:
   `construction bold design` → *Industry: Construction*, *Style: Bold*. Remaining words are fuzzy-searched
   (weighted) across titles, tags, hashtags, description, template text, industry/topic and every
   style/layout/typography/imagery/element value. Autocomplete suggests real vocabulary and tags.
+  When the vocabulary cannot explain some of the words, the LLM reads them and adds removable
+  **AI** chips with a one-line reason. It only runs when the deterministic parse came up short,
+  so ordinary searches stay instant; results are debounced, abortable and cached per query.
 - **Quick filters**: Style, Color (swatches, hex, color names, *Background only* vs *Any of the 3 colors*,
   matched by OKLab distance), Layout (with diagrams), Image (photo / illustration / no image, placement, frame shape).
   **More filters** drawer: Industry & topic, Content type, Mood, Typography, Graphic elements, Contains, Tags.
@@ -107,12 +129,16 @@ GUID and `logoTemplateVersion`). Images load directly from `dynamic.design.com`.
 | `src/lib/data.ts` | `TemplateRepository` interface + static JSON implementation |
 | `src/lib/facets.ts` | Facet registry, filter state, filtering, option counts |
 | `src/lib/query.ts` | Query → chips parsing, synonyms, autocomplete |
+| `src/lib/llm.ts` | LLM interpreter: allowed-vocabulary payload, prompt, response sanitising |
+| `src/lib/llm-client.ts` | Browser fetch + per-query cache for the interpreter |
+| `src/app/api/interpret/route.ts` | `POST /api/interpret` — provider-agnostic OpenAI-compatible call |
 | `src/lib/search.ts` | Weighted fuzzy search (MiniSearch) |
 | `src/lib/similarity.ts` | Pure similarity scores (colors, layout, style, overall) |
 | `src/lib/color.ts` | OKLab, deltaE, palette similarity, k-means palette extraction |
 | `src/lib/tree.ts` | Mind-map layout for search/board trees and the similar view |
 | `src/lib/boards.ts` | `BoardStore` interface + localStorage implementation |
 | `src/components/explorer/*` | UI (top bar, filters, canvas, details, boards, image drop) |
+| `src/components/explorer/use-ai-interpretation.ts` | Debounced, abortable, cached AI interpretation hook |
 
 ### Swappable boundaries (for v2)
 

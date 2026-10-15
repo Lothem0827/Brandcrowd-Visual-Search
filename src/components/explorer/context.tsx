@@ -4,6 +4,7 @@ import type { Template } from "@/lib/schema";
 import type { FacetKey, FacetSelection, FilterState } from "@/lib/facets";
 import type { ParsedQuery, VocabTerm } from "@/lib/query";
 import type { SimilarHit, SimilarKind } from "@/lib/similarity";
+import type { AiInterpretation } from "@/lib/llm";
 import type { RoleColor } from "@/lib/color";
 
 export type View =
@@ -43,6 +44,11 @@ export interface ExplorerApi {
   query: string;
   setQuery: (q: string) => void;
   parsed: ParsedQuery;
+  /** LLM reading of the vague part of the query (null when not needed/available) */
+  ai: AiInterpretation | null;
+  aiStatus: "idle" | "loading" | "ready";
+  aiEnabled: boolean;
+  dismissAi: (facet?: FacetKey, value?: string) => void;
   filters: FilterState;
   setFilters: (f: FilterState | ((f: FilterState) => FilterState)) => void;
   effective: FilterState;
