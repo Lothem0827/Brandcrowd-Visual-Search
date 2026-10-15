@@ -44,6 +44,10 @@ export interface ExplorerApi {
   query: string;
   setQuery: (q: string) => void;
   parsed: ParsedQuery;
+  /** true while a typed query is debouncing or its text search is still running */
+  searching: boolean;
+  /** the query has text but nothing the search understands (emoji, non-Latin scripts) */
+  unsearchable: boolean;
   /** LLM reading of the vague part of the query (null when not needed/available) */
   ai: AiInterpretation | null;
   aiStatus: "idle" | "loading" | "ready";
@@ -64,6 +68,10 @@ export interface ExplorerApi {
   imageQuery: ImageQuery | null;
   setImageQuery: (q: ImageQuery | null) => void;
   imageScores: Map<string, number> | null;
+  /** an uploaded image is being analysed */
+  imageBusy: boolean;
+  /** validate + analyse an image and search by its colors (newest file wins) */
+  searchByImage: (file: File) => Promise<void>;
   shuffleSeed: number | null;
   setShuffleSeed: (s: number | null) => void;
   view: View;
@@ -73,6 +81,10 @@ export interface ExplorerApi {
   setSimScope: (s: "industry" | "all") => void;
   similar: Record<SimilarKind, SimilarHit[]> | null;
   center: Template | null;
+  /** long-text template details (description, copy lines…) have been loaded */
+  detailsReady: boolean;
+  detailsError: boolean;
+  loadDetails: () => void;
   detailOpen: boolean;
   setDetailOpen: (o: boolean) => void;
   hover: HoverState | null;

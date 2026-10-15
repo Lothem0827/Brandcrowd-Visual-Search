@@ -20,7 +20,10 @@ export function SaveButton({ templateId, className }: { templateId: string; clas
 
   const quickSave = () => {
     const nowSaved = store.toggle(SAVED_BOARD_ID, templateId);
-    toast(nowSaved ? "Saved" : "Removed from Saved", { description: nowSaved ? "Press and hold Save to pick a board." : undefined });
+    toast(nowSaved ? "Saved" : "Removed from Saved", {
+      description: nowSaved ? "Use the ▾ button next to Save to add it to other boards." : undefined,
+      action: nowSaved ? { label: "Choose boards", onClick: () => setOpen(true) } : undefined,
+    });
   };
   const create = () => {
     const name = newName.trim();

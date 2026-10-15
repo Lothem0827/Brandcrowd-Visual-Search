@@ -1,5 +1,5 @@
 "use client";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { CheckIcon, CopyIcon, ExternalLinkIcon, XIcon } from "lucide-react";
 import { toast } from "sonner";
 import type { Template } from "@/lib/schema";
@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { useExplorer } from "./context";
 import { SaveButton } from "./save-button";
 import { ImageIcon, LayoutIcon } from "./icons";
+import { ThumbImage } from "./thumb-image";
 
 function Label({ children, hint }: { children: ReactNode; hint?: string }) {
   return (
@@ -49,13 +50,19 @@ function Row({ k, children }: { k: string; children: ReactNode }) {
 }
 
 export function DetailPanel({ template: t }: { template: Template }) {
-  const { setDetailOpen } = useExplorer();
+  const { setDetailOpen, detailsReady, detailsError, loadDetails } = useExplorer();
+  useEffect(() => {
+    if (!detailsReady) loadDetails();
+  }, [detailsReady, loadDetails]);
   const [copied, setCopied] = useState<string | null>(null);
   const copy = async (hex: string) => {
     try {
+      if (!navigator.clipboard) throw new Error("clipboard unavailable");
       await navigator.clipboard.writeText(hex);
     } catch {
-      /* clipboard may be unavailable */
+      // e.g. insecure context or permission denied: say so instead of a false "Copied"
+      toast.error(`Couldn't copy ${hex}`, { description: `Your browser blocked clipboard access. The code is ${hex}.` });
+      return;
     }
     setCopied(hex);
     toast(`Copied ${hex}`);
@@ -72,7 +79,7 @@ export function DetailPanel({ template: t }: { template: Template }) {
 
   return (
     <aside
-      className="thin-scroll absolute top-20 right-4 bottom-4 z-20 w-[400px] max-w-[90vw] overflow-y-auto rounded-2xl bg-background"
+      className="thin-scroll absolute top-20 right-4 bottom-4 z-20 w-[400px] max-w-[90vw] overflow-y-auto rounded-2xl bg-background max-md:inset-x-0 max-md:top-14 max-md:bottom-0 max-md:w-auto max-md:max-w-none max-md:rounded-b-none max-md:shadow-[0_-8px_24px_rgb(0_0_0/0.12)]"
       aria-label="Design details"
       data-testid="detail-panel"
     >
@@ -83,32 +90,59 @@ export function DetailPanel({ template: t }: { template: Template }) {
             {t.category} › {t.industry} › {t.topic}
           </span>
         </div>
-        <button type="button" aria-label="Close details (Esc)" onClick={() => setDetailOpen(false)} className="grid size-7 place-items-center rounded-lg bg-panel hover:bg-muted">
+        <button type="button" aria-label="Close details (Esc)" onClick={() => setDetailOpen(false)} className="grid size-7 place-items-center rounded-lg bg-panel hover:bg-muted max-md:size-9">
           <XIcon className="size-3.5" />
         </button>
       </div>
       <div className="space-y-6 p-5">
         <div>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={t.previewImage}
-            alt={t.displayTitle}
-            className="aspect-square w-full rounded-xl bg-muted bg-cover object-cover ring-1 ring-black/5"
-            style={{ backgroundImage: `url("${t.thumbnailImage}")` }}
-          />
+          <div className="aspect-square w-full overflow-hidden rounded-xl ring-1 ring-black/5">
+            <ThumbImage
+              key={t.previewImage || t.thumbnailImage}
+              src={t.previewImage || t.thumbnailImage}
+              alt={t.displayTitle}
+              eager
+              retryButton
+              className="aspect-square w-full bg-muted bg-cover object-cover"
+              style={{ backgroundImage: `url("${t.thumbnailImage}")` }}
+            />
+          </div>
           <div className="mt-4 text-[10.5px] font-medium tracking-[0.12em] text-muted-foreground uppercase">{t.category}</div>
           <h2 className="mt-1 text-[19px] leading-tight font-semibold tracking-tight">{t.displayTitle}</h2>
           <div className="mt-1 text-[12.5px] text-muted-foreground">Template name · {t.name}</div>
-          {t.description && <p className="mt-2 text-[13px] leading-relaxed text-foreground/80">{t.description}</p>}
+          {detailsReady ? (
+            t.description && <p className="mt-2 text-[13px] leading-relaxed text-foreground/80">{t.description}</p>
+          ) : detailsError ? (
+            <p className="mt-2 text-[12.5px] text-muted-foreground" role="alert">
+              Couldn&apos;t load the description and copy ideas.{" "}
+              <button type="button" onClick={loadDetails} className="font-medium text-foreground underline underline-offset-2">
+                Retry
+              </button>
+            </p>
+          ) : (
+            <div className="mt-2 space-y-1.5" role="status" aria-label="Loading details">
+              <div className="h-3 w-full animate-pulse rounded bg-muted" />
+              <div className="h-3 w-4/5 animate-pulse rounded bg-muted" />
+            </div>
+          )}
           <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
-            <a
-              href={t.url}
-              target="_blank"
-              rel="noreferrer"
-              className="flex h-10 items-center justify-center gap-2 rounded-xl bg-foreground text-sm font-medium text-background hover:bg-foreground/85"
-            >
-              <ExternalLinkIcon className="size-4" /> Open on design.com
-            </a>
+            {t.url ? (
+              <a
+                href={t.url}
+                target="_blank"
+                rel="noreferrer"
+                className="flex h-10 items-center justify-center gap-2 rounded-xl bg-foreground text-sm font-medium text-background hover:bg-foreground/85"
+              >
+                <ExternalLinkIcon className="size-4" /> Open on design.com
+              </a>
+            ) : (
+              <span
+                aria-disabled="true"
+                className="flex h-10 items-center justify-center gap-2 rounded-xl bg-foreground/60 text-sm font-medium text-background"
+              >
+                <ExternalLinkIcon className="size-4" /> Open on design.com
+              </span>
+            )}
             <SaveButton templateId={t.templateId} className="w-[150px]" />
           </div>
         </div>
@@ -125,7 +159,7 @@ export function DetailPanel({ template: t }: { template: Template }) {
                 aria-label={`Copy ${c.hex} (${c.role}, ${c.name})`}
               >
                 <div className="relative h-14" style={{ background: c.hex }}>
-                  <span className="absolute top-1.5 right-1.5 grid size-5 place-items-center rounded-md bg-white/85 text-black opacity-0 transition-opacity group-hover:opacity-100">
+                  <span className="absolute top-1.5 right-1.5 grid size-5 place-items-center rounded-md bg-white/85 text-black transition-opacity [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:group-focus-visible:opacity-100">
                     {copied === c.hex ? <CheckIcon className="size-3" /> : <CopyIcon className="size-3" />}
                   </span>
                 </div>

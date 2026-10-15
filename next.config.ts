@@ -1,7 +1,23 @@
 import type { NextConfig } from "next";
+import { securityHeaders } from "./src/lib/security-headers";
+
+const dev = process.env.NODE_ENV !== "production";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  async headers() {
+    return [
+      { source: "/:path*", headers: securityHeaders(dev) },
+      {
+        // content-hashed dataset written by `pnpm data`
+        source: "/data/templates.:version.json",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      },
+      {
+        source: "/data/templates-details.:version.json",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      },
+    ];
+  },
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {

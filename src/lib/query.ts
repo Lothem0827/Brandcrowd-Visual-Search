@@ -69,6 +69,23 @@ const SYNONYMS: [FacetKey, string, string[]][] = [
 
 const norm = (s: string) => s.toLowerCase().replace(/[’']/g, "'").replace(/[^a-z0-9&'/\- ]+/g, " ").replace(/\s+/g, " ").trim();
 
+/**
+ * Parts of a query the search can't use: it matches English keywords (a-z, 0-9), so emoji,
+ * CJK and other scripts are dropped by `norm`. Returned so the UI can say so instead of
+ * silently ignoring them.
+ */
+export function ignoredQueryText(query: string): string {
+  return query
+    .split(/\s+/)
+    .filter((w) => w && !norm(w))
+    .join(" ");
+}
+
+/** True when the query is non-empty but contains nothing the search can use. */
+export function isUnsearchableQuery(query: string): boolean {
+  return query.trim() !== "" && norm(query) === "";
+}
+
 /** Build the vocabulary used for chip detection and autocomplete from the dataset. */
 export function buildVocab(templates: Template[]): VocabTerm[] {
   const terms = new Map<string, VocabTerm>();

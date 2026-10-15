@@ -84,7 +84,7 @@ await page.getByTestId("save-button").click(); // quick-save to "Saved" too
 await settle(400);
 
 step("open boards panel and the new board");
-await page.getByRole("button", { name: "Open boards" }).click();
+await page.getByRole("button", { name: /^Boards/ }).click();
 await page.getByTestId("boards-panel").waitFor();
 await settle(800);
 await shot("06-boards-panel");
@@ -122,7 +122,7 @@ await page.keyboard.press("Escape");
 
 step("branch focus");
 await settle(500);
-const branch = page.locator(".react-flow__node button[aria-label*='Focus branch']").first();
+const branch = page.locator(".react-flow__node button[data-testid=branch]").first();
 await branch.click();
 await settle(1200);
 await shot("12-branch-focus");

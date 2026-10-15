@@ -49,11 +49,42 @@ const FIT_SIM = {
   padding: { top: "134px", left: "40px", right: "40px", bottom: "170px" },
   maxZoom: 1.1,
 } as const;
+const ZOOM_PADDING = { top: "90px", left: "280px", right: "60px", bottom: "80px" } as const;
+// Phones: don't shrink the whole tree into 375px (6px labels, 20px tiles). Keep text
+// readable and tiles >= 44px, centred on the root; the rest is a swipe away.
+const FIT_TREE_MOBILE = {
+  padding: { top: "110px", left: "12px", right: "12px", bottom: "110px" },
+  maxZoom: 1,
+  minZoom: 0.6,
+} as const;
+const FIT_SIM_MOBILE = {
+  padding: { top: "150px", left: "12px", right: "12px", bottom: "100px" },
+  maxZoom: 1,
+  minZoom: 0.5,
+} as const;
+/**
+ * What to frame first on a phone: the root plus the right-hand column of branches (or the
+ * similar-view center plus its right-hand groups). Labels stay readable and every branch
+ * there is a tap target; the left half is one swipe away.
+ */
+function mobileFitNodes(nodes: Node[]): { id: string }[] {
+  const pick = nodes.filter((n) => {
+    const d = n.data as { kind?: string; side?: string };
+    if (d.kind === "root" || d.kind === "center") return true;
+    if (d.kind === "branch") return d.side === "right";
+    if (d.kind === "similar") return d.side === "right";
+    return false;
+  });
+  return (pick.length ? pick : nodes).map((n) => ({ id: n.id }));
+}
+const ZOOM_PADDING_MOBILE = { top: "150px", left: "12px", right: "12px", bottom: "120px" } as const;
 const structureLabel = (v: string) => STRUCTURE_LABEL[v] ?? cap(v);
 import { cn } from "@/lib/utils";
 import { useExplorer } from "./context";
 import { useBoards } from "./use-boards";
+import { useMediaQuery, useIsMobile, WIDE_QUERY } from "@/lib/use-media-query";
 import { LayoutIcon } from "./icons";
+import { ThumbImage } from "./thumb-image";
 
 /* ------------------------------------------------------------------ */
 /* Canvas context (callbacks used inside custom nodes)                 */
@@ -144,15 +175,7 @@ function Thumb({
       className="nodrag group relative shrink-0 overflow-hidden rounded-[7px] bg-muted ring-1 ring-black/5 transition-transform duration-150 hover:z-10 hover:scale-[1.08] hover:ring-2 hover:ring-foreground focus-visible:ring-2 focus-visible:ring-foreground focus-visible:outline-none"
       style={{ width: size, height: size }}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={t.thumbnailImage}
-        alt=""
-        loading="lazy"
-        decoding="async"
-        draggable={false}
-        className="size-full object-cover"
-      />
+      <ThumbImage key={t.thumbnailImage} src={t.thumbnailImage} alt="" className="size-full object-cover" />
       {badge && (
         <span className="absolute right-1 bottom-1 rounded bg-black/70 px-1 text-[9px] font-medium text-white tabular-nums">
           {badge}
@@ -174,7 +197,7 @@ const TreeNodeView = memo(function TreeNodeView({
     return (
       <div
         className="flex items-center gap-3 rounded-2xl bg-foreground px-4 text-background"
-        style={{ minWidth: SIZES.root.w, height: SIZES.root.h }}
+        style={{ minWidth: SIZES.root.w, maxWidth: 340, height: SIZES.root.h }}
         data-testid="tree-root"
       >
         {data.image && (
@@ -186,7 +209,9 @@ const TreeNodeView = memo(function TreeNodeView({
           />
         )}
         <div className="min-w-0 flex-1 text-center">
-          <div className="truncate text-[15px] font-semibold">{data.label}</div>
+          <div className="truncate text-[15px] font-semibold" title={data.label}>
+            {data.label}
+          </div>
           <div className="mt-0.5 font-mono text-[10.5px] tracking-tight text-background/65">
             {data.sub}
           </div>
@@ -212,6 +237,7 @@ const TreeNodeView = memo(function TreeNodeView({
       <button
         type="button"
         onClick={() => canvas.onBranch(data.branchId)}
+        data-testid="branch"
         className={cn(
           "flex items-center gap-2 rounded-xl bg-panel px-3 text-[13px] font-semibold transition-colors hover:bg-muted",
           active && "ring-4",
@@ -221,16 +247,19 @@ const TreeNodeView = memo(function TreeNodeView({
           height: SIZES.branch.h,
           ["--tw-ring-color" as string]: `${data.color}33`,
         }}
-        aria-label={`${data.label}, ${data.count} designs. Focus branch`}
+        aria-pressed={active}
         title={data.label}
       >
+        {/* accessible name = visible text first ("Holidays & Seasonal 922 designs, focus branch"),
+            so voice control ("click Holidays") works */}
         <span
           className="size-2.5 shrink-0 rounded-full"
           style={{ background: data.color }}
         />
-        <span className="truncate">{data.label}</span>
+        <span className="truncate">{data.label}</span>{" "}
         <span className="ml-auto text-xs font-normal text-muted-foreground tabular-nums">
           {data.count}
+          <span className="sr-only"> designs, focus branch</span>
         </span>
         <Handles />
       </button>
@@ -247,16 +276,17 @@ const TreeNodeView = memo(function TreeNodeView({
           active && "ring-2 ring-foreground",
         )}
         style={{ width: SIZES.sub.w, height: SIZES.sub.h }}
-        aria-label={`${data.label}, ${data.count} designs. Focus layout group`}
+        aria-pressed={active}
         title={data.label}
       >
         <LayoutIcon
           value={data.structure}
           className="size-[18px] shrink-0 text-muted-foreground"
         />
-        <span className="truncate">{data.label}</span>
+        <span className="truncate">{data.label}</span>{" "}
         <span className="ml-auto text-[11px] text-muted-foreground tabular-nums">
           {data.count}
+          <span className="sr-only"> designs, focus layout group</span>
         </span>
         <Handles />
       </button>
@@ -287,10 +317,10 @@ const TreeNodeView = memo(function TreeNodeView({
           onClick={() => canvas.onMore(data.branchId, data.subId)}
           className="nodrag grid place-items-center rounded-[7px] bg-panel text-xs font-medium transition-colors hover:bg-muted"
           style={{ width: thumb, height: thumb, color: data.color }}
-          aria-label={`Show ${data.more} more in this group`}
           title="Search within this group"
         >
           +{data.more}
+          <span className="sr-only"> more, search within this group</span>
         </button>
       )}
       <Handles />
@@ -315,13 +345,16 @@ const CenterNodeView = memo(function CenterNodeView({
         className="nodrag block w-full overflow-hidden rounded-lg"
         aria-label="Show details"
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={t.thumbnailImage}
-          alt={t.displayTitle}
-          className="aspect-square w-full bg-muted object-cover"
-          draggable={false}
-        />
+        <span className="block aspect-square w-full">
+          <ThumbImage
+            key={t.previewImage || t.thumbnailImage}
+            src={t.previewImage || t.thumbnailImage}
+            alt={t.displayTitle}
+            eager
+            className="aspect-square w-full bg-muted bg-cover object-cover"
+            style={{ backgroundImage: `url("${t.thumbnailImage}")` }}
+          />
+        </span>
       </button>
       <div className="mt-2.5 flex items-end justify-between gap-2">
         <div className="min-w-0">
@@ -603,6 +636,7 @@ function PathPanel({
   onReset: () => void;
 }) {
   const ex = useExplorer();
+  const canHover = useMediaQuery("(hover: hover)");
   const b = branches.find((x) => x.id === focus.branchId);
   const s = b?.subs.find((x) => x.id === focus.subId);
   const rows: { k: string; v: ReactNode; dot?: string }[] = [
@@ -637,7 +671,9 @@ function PathPanel({
       v: ex.hover ? (
         <span className="line-clamp-1">{ex.hover.template.name}</span>
       ) : (
-        <span className="text-muted-foreground">Hover to preview</span>
+        <span className="text-muted-foreground">
+          {canHover ? "Hover or focus a design" : "Tap a design to explore"}
+        </span>
       ),
     },
   ];
@@ -653,14 +689,14 @@ function PathPanel({
               <span>{String(i + 1).padStart(2, "0")}</span>
               <span>{r.k}</span>
             </div>
-            <div className="mt-0.5 flex items-center gap-1.5 pl-[22px] font-semibold">
+            <div className="mt-0.5 flex min-w-0 items-center gap-1.5 pl-[22px] font-semibold [&>span:last-child]:truncate">
               {r.dot && (
                 <span
                   className="size-2 shrink-0 rounded-full"
                   style={{ background: r.dot }}
                 />
               )}
-              {r.v}
+              <span className="min-w-0">{r.v}</span>
             </div>
           </li>
         ))}
@@ -902,6 +938,14 @@ function CanvasInner() {
   const { resolvedTheme } = useTheme();
   const graph = useGraph();
   const rf = useReactFlow();
+  const isMobile = useIsMobile();
+  const wide = useMediaQuery(WIDE_QUERY);
+  const fitTree = isMobile ? FIT_TREE_MOBILE : FIT_TREE;
+  const fitSim = isMobile ? FIT_SIM_MOBILE : FIT_SIM;
+  const fitRef = useRef({ fitTree, fitSim, mobile: isMobile });
+  useEffect(() => {
+    fitRef.current = { fitTree, fitSim, mobile: isMobile };
+  }, [fitTree, fitSim, isMobile]);
   const [focus, setFocus] = useState<Focus>({});
   const [ready, setReady] = useState(false);
   const lastKey = useRef("");
@@ -914,8 +958,10 @@ function CanvasInner() {
     const first = !readyRef.current;
     setTimeout(
       () => {
+        const sim = graph.key.startsWith("sim:");
         void rf.fitView({
-          ...(graph.key.startsWith("sim:") ? FIT_SIM : FIT_TREE),
+          ...(sim ? fitRef.current.fitSim : fitRef.current.fitTree),
+          ...(fitRef.current.mobile ? { nodes: mobileFitNodes(graph.nodes) } : {}),
           duration: first ? 0 : 450,
         });
         readyRef.current = true;
@@ -923,7 +969,7 @@ function CanvasInner() {
       },
       first ? 60 : 30,
     );
-  }, [graph.key, rf]);
+  }, [graph.key, graph.nodes, rf]);
 
   const { nodes, edges } = useMemo(() => {
     const inFocus = (n: Node) => {
@@ -954,7 +1000,7 @@ function CanvasInner() {
     requestAnimationFrame(() =>
       rf.fitView({
         nodes: ids.map((id) => ({ id })),
-        padding: { top: "90px", left: "280px", right: "60px", bottom: "80px" },
+        padding: isMobile ? ZOOM_PADDING_MOBILE : ZOOM_PADDING,
         duration: 500,
         maxZoom: 1.4,
       }),
@@ -965,7 +1011,7 @@ function CanvasInner() {
     onBranch: (branchId) => {
       if (focus.branchId === branchId && !focus.subId) {
         setFocus({});
-        void rf.fitView({ ...FIT_TREE, duration: 450 });
+        void rf.fitView({ ...fitTree, duration: 450 });
         return;
       }
       setFocus({ branchId });
@@ -1030,6 +1076,56 @@ function CanvasInner() {
   // a vague query can legitimately find nothing yet — the interpreter is on it
   const thinking = empty && ex.view.kind === "search" && ex.aiStatus === "loading";
 
+  const scopeControls = (
+    <>
+      {ex.view.kind === "similar" && ex.center && (
+        <>
+          <Segmented
+            className="p-0.5"
+            label="Similar scope"
+            value={ex.simScope}
+            onChange={ex.setSimScope}
+            options={[
+              {
+                value: "industry",
+                label: (
+                  <>
+                    In {ex.center.industry}{" "}
+                    <span className="font-mono text-[11px] opacity-60">{indCount}</span>
+                  </>
+                ),
+              },
+              {
+                value: "all",
+                label: (
+                  <>
+                    All categories{" "}
+                    <span className="font-mono text-[11px] opacity-60">{ex.base.length - 1}</span>
+                  </>
+                ),
+              },
+            ]}
+          />
+          <div className="text-xs text-muted-foreground max-md:hidden">
+            Exploring similar to <b className="text-foreground">{ex.center.name}</b>
+          </div>
+        </>
+      )}
+      {ex.view.kind === "board" && (
+        <Segmented
+          className="p-0.5"
+          label="Group board by"
+          value={ex.boardGroup}
+          onChange={ex.setBoardGroup}
+          options={[
+            { value: "layout", label: "By layout" },
+            { value: "style", label: "By style" },
+          ]}
+        />
+      )}
+    </>
+  );
+
   return (
     <CanvasCtx.Provider value={api}>
       <ReactFlow
@@ -1046,13 +1142,13 @@ function CanvasInner() {
         onPaneClick={() => {
           if (focus.branchId) {
             setFocus({});
-            void rf.fitView({ ...FIT_TREE, duration: 450 });
+            void rf.fitView({ ...fitTree, duration: 450 });
           }
         }}
         onMoveStart={() => ex.hover && ex.setHover(null)}
         proOptions={{ hideAttribution: true }}
         fitView
-        fitViewOptions={FIT_TREE}
+        fitViewOptions={fitTree}
         className={cn(
           "transition-opacity duration-300",
           ready ? "opacity-100" : "opacity-0",
@@ -1065,6 +1161,7 @@ function CanvasInner() {
           size={1.4}
           color="var(--canvas-dot)"
         />
+        {wide && (
         <MiniMap
           pannable
           zoomable
@@ -1080,19 +1177,26 @@ function CanvasInner() {
           // so its center sits 20 + 170 / 2 = 105px from the bottom => 105 - 96 / 2 = 57.
           style={{ width: 150, height: 96, marginBottom: 57 }}
         />
-        <Controls
-          position="bottom-right"
-          showInteractive={false}
-          // 66 = 57 (the map's own offset) + (96 - 78) / 2 so the 78px-tall control stack is
-          // centered vertically against the 96px-tall minimap instead of bottom-aligned to it.
-          style={{ marginRight: 175, marginBottom: 66 }}
-        />
+        )}
+        {wide ? (
+          <Controls
+            position="bottom-right"
+            showInteractive={false}
+            // 66 = 57 (the map's own offset) + (96 - 78) / 2 so the 78px-tall control stack is
+            // centered vertically against the 96px-tall minimap instead of bottom-aligned to it.
+            style={{ marginRight: 175, marginBottom: 66 }}
+          />
+        ) : (
+          // Below 1280px (incl. 125%+ browser zoom) the bottom-right corner collides with the
+          // centered search dock, so the controls move under the top bar and the minimap hides.
+          <Controls position="top-right" showInteractive={false} style={{ marginTop: 64 }} />
+        )}
       </ReactFlow>
 
       {/* overlays */}
       <div className="pointer-events-none absolute inset-0">
         <div
-          className="absolute top-4 left-4 flex flex-col items-start gap-2"
+          className="absolute top-4 left-4 flex flex-col items-start gap-2 max-md:top-16 max-md:right-14 max-md:left-3 max-md:!max-w-none"
           style={{ maxWidth: "calc(50% - 200px)" }}
         >
           {ex.view.kind === "similar" ? (
@@ -1100,13 +1204,16 @@ function CanvasInner() {
           ) : (
             <>
               <SearchBreadcrumb />
-              <PathPanel
-                branches={graph.branches}
-                focus={focus}
-                level1={graph.level1}
-                onSearchWithin={searchWithin}
-                onReset={() => api.onBranch(focus.branchId!)}
-              />
+              {/* on phones the path panel only appears once a branch is focused */}
+              {(!isMobile || focus.branchId) && (
+                <PathPanel
+                  branches={graph.branches}
+                  focus={focus}
+                  level1={graph.level1}
+                  onSearchWithin={searchWithin}
+                  onReset={() => api.onBranch(focus.branchId!)}
+                />
+              )}
             </>
           )}
           {ex.view.kind === "board" && (
@@ -1120,59 +1227,13 @@ function CanvasInner() {
               </button>
             </Panel>
           )}
+          {isMobile && scopeControls}
         </div>
-        <div className="absolute top-4 left-1/2 flex -translate-x-1/2 flex-col items-center gap-1.5">
-          {ex.view.kind === "similar" && ex.center && (
-            <>
-              <Segmented
-                className="p-0.5"
-                label="Similar scope"
-                value={ex.simScope}
-                onChange={ex.setSimScope}
-                options={[
-                  {
-                    value: "industry",
-                    label: (
-                      <>
-                        In {ex.center.industry}{" "}
-                        <span className="font-mono text-[11px] opacity-60">
-                          {indCount}
-                        </span>
-                      </>
-                    ),
-                  },
-                  {
-                    value: "all",
-                    label: (
-                      <>
-                        All categories{" "}
-                        <span className="font-mono text-[11px] opacity-60">
-                          {ex.base.length - 1}
-                        </span>
-                      </>
-                    ),
-                  },
-                ]}
-              />
-              <div className="text-xs text-muted-foreground">
-                Exploring similar to{" "}
-                <b className="text-foreground">{ex.center.name}</b>
-              </div>
-            </>
-          )}
-          {ex.view.kind === "board" && (
-            <Segmented
-              className="p-0.5"
-              label="Group board by"
-              value={ex.boardGroup}
-              onChange={ex.setBoardGroup}
-              options={[
-                { value: "layout", label: "By layout" },
-                { value: "style", label: "By style" },
-              ]}
-            />
-          )}
-        </div>
+        {!isMobile && (
+          <div className="absolute top-4 left-1/2 flex -translate-x-1/2 flex-col items-center gap-1.5">
+            {scopeControls}
+          </div>
+        )}
         {empty && (
           <div className="absolute inset-0 grid place-items-center pb-44">
             <Panel className="max-w-sm p-5 text-center">
@@ -1180,14 +1241,18 @@ function CanvasInner() {
                 {thinking
                   ? "Reading your query…"
                   : ex.view.kind === "board"
-                    ? "This board is empty"
+                  ? "This board is empty"
+                  : ex.unsearchable
+                    ? "We couldn't search for that"
                     : "No templates match"}
               </div>
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="mt-1 text-xs break-words text-muted-foreground">
                 {thinking
                   ? "Looking for designs that match what you meant, not just the words you used."
                   : ex.view.kind === "board"
-                    ? "Open any design and press Save to add it here."
+                  ? "Open any design and press Save to add it here."
+                  : ex.unsearchable
+                    ? "Search understands English keywords. Try words like “bold”, “coffee” or “minimalist”."
                     : "Remove a chip or clear the filters to widen the search."}
               </p>
               {ex.view.kind !== "board" && !thinking && (

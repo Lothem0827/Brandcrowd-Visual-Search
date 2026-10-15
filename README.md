@@ -79,12 +79,19 @@ as before. The key stays server-side; the browser only ever calls `/api/interpre
 - **Image search**: click the image button in the search box, or drop an image anywhere. Three dominant colors are
   extracted in the browser (k-means in OKLab on a 72×72 canvas, background = largest cluster) and templates are
   ranked by palette similarity. Nothing is uploaded.
+- **Shareable URLs**: the query, filters, colour filter, open design trail, board, scope and shuffle are kept in
+  the address bar (`?q=retro+serif&industry=Construction&design=<id>`), so Back/Forward step through searches and
+  designs, and links can be bookmarked or shared. A typing run is one history entry. Uploaded images stay local.
 - Light/dark toggle in the top bar. `Esc` closes panels.
 
 ## Data
 
-All template data comes from **`data/templates.json`** (an array of records), loaded and validated by
-`src/lib/data.ts` with the Zod schema in `src/lib/schema.ts`. Invalid records are skipped (a warning is logged in dev).
+All template data comes from **`data/templates.json`** (an array of records). It is validated **at build time**
+by `scripts/build-data.ts` (`pnpm data`, run automatically before `pnpm dev` and `pnpm build`) with the Zod schema in
+`src/lib/schema.ts`. Invalid records are skipped with a warning. The script writes a minified, content-hashed copy to
+`public/data/templates.<hash>.json` (plus `manifest.json`), swapping the 600px thumbnails for the 200px rendering.
+The browser downloads that file once (preloaded from the page head, compressed, cached for a year) and the text-search
+index is built in a Web Worker (`src/lib/search.worker.ts`), so neither the dataset nor Zod ship in the JS bundle.
 
 Record shape (see `../schema.md` for the full spec and controlled vocabularies):
 
@@ -116,17 +123,27 @@ GUID and `logoTemplateVersion`). Images load directly from `dynamic.design.com`.
 1. Overwrite `data/templates.json` with the new array (same schema).
 2. Run `pnpm test` — `src/lib/data.test.ts` checks it parses, has no logo templates, and prints any
    out-of-vocabulary values (those still work as filters, they just appear as extra options).
-3. `pnpm build`. Filters, autocomplete and chip detection are generated from the data, so new industries,
+3. `pnpm build` (runs `pnpm data` first). Filters, autocomplete and chip detection are generated from the data, so new industries,
    topics, tags and elements appear automatically. Categories in the top bar come from `category`.
 
 `tests/fixtures/templates.fixture.json` is a small fixed set used by the unit tests so they don't depend on the dataset.
+
+## Deployment notes
+
+- `NEXT_PUBLIC_SITE_URL` sets the canonical URL used for Open Graph/Twitter metadata, `robots.txt` and
+  `sitemap.xml` (defaults to `https://brandcrowd-visual-search.vercel.app`).
+- Security headers (CSP, `frame-ancestors 'none'`, Referrer-Policy, nosniff, Permissions-Policy, HSTS) are
+  defined in `src/lib/security-headers.ts` and applied from `next.config.ts`. If template images move
+  to another host, add it to `img-src` there.
 
 ## Code map
 
 | Path | What |
 | --- | --- |
 | `src/lib/schema.ts` | Zod schema, controlled vocabularies, `parseTemplates` |
-| `src/lib/data.ts` | `TemplateRepository` interface + static JSON implementation |
+| `scripts/build-data.ts` | Build-time validation + hashed static dataset in `public/data/` |
+| `src/lib/data.ts` | `TemplateRepository` interface + static JSON implementation (fetched in the browser) |
+| `src/lib/search-client.ts`, `search.worker.ts` | Text index in a Web Worker, with a main-thread fallback |
 | `src/lib/facets.ts` | Facet registry, filter state, filtering, option counts |
 | `src/lib/query.ts` | Query → chips parsing, synonyms, autocomplete |
 | `src/lib/llm.ts` | LLM interpreter: allowed-vocabulary payload, prompt, response sanitising |
@@ -136,13 +153,15 @@ GUID and `logoTemplateVersion`). Images load directly from `dynamic.design.com`.
 | `src/lib/similarity.ts` | Pure similarity scores (colors, layout, style, overall) |
 | `src/lib/color.ts` | OKLab, deltaE, palette similarity, k-means palette extraction |
 | `src/lib/tree.ts` | Mind-map layout for search/board trees and the similar view |
+| `src/lib/url-state.ts` | URL <-> explorer state, history push/replace policy |
 | `src/lib/boards.ts` | `BoardStore` interface + localStorage implementation |
 | `src/components/explorer/*` | UI (top bar, filters, canvas, details, boards, image drop) |
 | `src/components/explorer/use-ai-interpretation.ts` | Debounced, abortable, cached AI interpretation hook |
 
 ### Swappable boundaries (for v2)
 
-- **Data**: implement `TemplateRepository` (`all`, `byId`, `categories`) against Supabase and export it from `src/lib/data.ts`.
+- **Data**: implement `TemplateRepository` (`all`, `byId`, `categories`) against Supabase and create it in
+  `src/components/explorer/explorer-loader.tsx` instead of `fetchTemplateRepository`.
 - **Boards**: implement `BoardStore` (`list/create/rename/remove/add/removeItem/toggle/subscribe`) against Supabase
   tables (`boards`, `board_items`) and return it from `getBoardStore()`.
 

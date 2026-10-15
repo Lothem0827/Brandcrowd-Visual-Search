@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { templateRepository } from "@/lib/data";
+import { serverTemplateRepository } from "@/lib/data-server";
 import { buildVocab } from "@/lib/query";
 import {
   buildAiVocab,
@@ -102,7 +102,7 @@ export async function POST(request: Request) {
   if (!apiKey) return json({ status: "disabled" });
 
   const { query, category } = parsed.data;
-  const base = templateRepository.all().filter((t) => t.category === category);
+  const base = serverTemplateRepository().all().filter((t) => t.category === category);
   if (!base.length) return json({ status: "empty" });
 
   const allowed = buildAiVocab(buildVocab(base));

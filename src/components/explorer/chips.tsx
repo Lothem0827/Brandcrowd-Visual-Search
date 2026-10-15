@@ -1,6 +1,7 @@
 "use client";
 import { SparklesIcon, WandSparklesIcon, XIcon } from "lucide-react";
 import { displayValue, FACET_MAP, type FacetKey } from "@/lib/facets";
+import { ignoredQueryText } from "@/lib/query";
 import { cn } from "@/lib/utils";
 import { useExplorer } from "./context";
 
@@ -14,11 +15,13 @@ export function ActiveChips() {
     imageQuery,
     setImageQuery,
     query,
+    searching,
     ai,
     aiStatus,
     dismissAi,
   } = useExplorer();
   const detected = parsed.chips;
+  const ignored = ignoredQueryText(query);
   const committed = (
     Object.entries(filters.facets) as [FacetKey, string[]][]
   ).flatMap(([k, vs]) =>
@@ -125,8 +128,18 @@ export function ActiveChips() {
         />
       )}
       {parsed.text && (
-        <span className="text-xs text-muted-foreground">
+        <span className="max-w-[260px] truncate text-xs text-muted-foreground" title={parsed.text}>
           + text “{parsed.text}”
+        </span>
+      )}
+      {ignored && (
+        <span className="max-w-[260px] truncate text-xs text-muted-foreground" title={ignored}>
+          Ignored “{ignored}” (English keywords only)
+        </span>
+      )}
+      {searching && query.trim() && (
+        <span className="text-xs text-muted-foreground" role="status">
+          Searching…
         </span>
       )}
       {any ? (
@@ -186,7 +199,7 @@ function Chip({
         aria-label={`Remove ${label} ${value}`}
         onClick={onRemove}
         className={cn(
-          "grid size-5 place-items-center rounded-full",
+          "grid size-6 place-items-center rounded-full",
           dark ? "hover:bg-background/20" : "hover:bg-muted",
         )}
       >
