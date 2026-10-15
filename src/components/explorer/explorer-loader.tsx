@@ -35,9 +35,10 @@ export function ExplorerLoader({
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     const ac = new AbortController();
-    void import("./explorer"); // start the code download alongside the data
-    fetchTemplateRepository(dataUrl, detailsUrl, ac.signal).then(
-      (repo) => setState({ status: "ready", repo }),
+    // Download data and explorer code in parallel; keep the server-rendered fallback up until
+    // both are in so the page doesn't flash a second loading screen.
+    Promise.all([fetchTemplateRepository(dataUrl, detailsUrl, ac.signal), import("./explorer")]).then(
+      ([repo]) => setState({ status: "ready", repo }),
       (err: unknown) => {
         if (ac.signal.aborted) return;
         const offline = typeof navigator !== "undefined" && !navigator.onLine;

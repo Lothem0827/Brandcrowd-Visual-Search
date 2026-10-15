@@ -106,6 +106,14 @@ GUID and `logoTemplateVersion`). Images load directly from `dynamic.design.com`.
 
 `tests/fixtures/templates.fixture.json` is a small fixed set used by the unit tests so they don't depend on the dataset.
 
+## Deployment notes
+
+- `NEXT_PUBLIC_SITE_URL` sets the canonical URL used for Open Graph/Twitter metadata, `robots.txt` and
+  `sitemap.xml` (defaults to `https://brandcrowd-visual-search.vercel.app`).
+- Security headers (CSP, `frame-ancestors 'none'`, Referrer-Policy, nosniff, Permissions-Policy, HSTS) are
+  defined in `src/lib/security-headers.ts` and applied from `next.config.ts`. If template images move
+  to another host, add it to `img-src` there.
+
 ## Code map
 
 | Path | What |

@@ -1,8 +1,12 @@
 import type { NextConfig } from "next";
+import { securityHeaders } from "./src/lib/security-headers";
+
+const dev = process.env.NODE_ENV !== "production";
 
 const nextConfig: NextConfig = {
   async headers() {
     return [
+      { source: "/:path*", headers: securityHeaders(dev) },
       {
         // content-hashed dataset written by `pnpm data`
         source: "/data/templates.:version.json",
