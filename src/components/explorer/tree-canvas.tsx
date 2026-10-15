@@ -235,6 +235,7 @@ const TreeNodeView = memo(function TreeNodeView({
       <button
         type="button"
         onClick={() => canvas.onBranch(data.branchId)}
+        data-testid="branch"
         className={cn(
           "flex items-center gap-2 rounded-xl bg-panel px-3 text-[13px] font-semibold transition-colors hover:bg-muted",
           active && "ring-4",
@@ -244,16 +245,19 @@ const TreeNodeView = memo(function TreeNodeView({
           height: SIZES.branch.h,
           ["--tw-ring-color" as string]: `${data.color}33`,
         }}
-        aria-label={`${data.label}, ${data.count} designs. Focus branch`}
+        aria-pressed={active}
         title={data.label}
       >
+        {/* accessible name = visible text first ("Holidays & Seasonal 922 designs, focus branch"),
+            so voice control ("click Holidays") works */}
         <span
           className="size-2.5 shrink-0 rounded-full"
           style={{ background: data.color }}
         />
-        <span className="truncate">{data.label}</span>
+        <span className="truncate">{data.label}</span>{" "}
         <span className="ml-auto text-xs font-normal text-muted-foreground tabular-nums">
           {data.count}
+          <span className="sr-only"> designs, focus branch</span>
         </span>
         <Handles />
       </button>
@@ -270,16 +274,17 @@ const TreeNodeView = memo(function TreeNodeView({
           active && "ring-2 ring-foreground",
         )}
         style={{ width: SIZES.sub.w, height: SIZES.sub.h }}
-        aria-label={`${data.label}, ${data.count} designs. Focus layout group`}
+        aria-pressed={active}
         title={data.label}
       >
         <LayoutIcon
           value={data.structure}
           className="size-[18px] shrink-0 text-muted-foreground"
         />
-        <span className="truncate">{data.label}</span>
+        <span className="truncate">{data.label}</span>{" "}
         <span className="ml-auto text-[11px] text-muted-foreground tabular-nums">
           {data.count}
+          <span className="sr-only"> designs, focus layout group</span>
         </span>
         <Handles />
       </button>
@@ -310,10 +315,10 @@ const TreeNodeView = memo(function TreeNodeView({
           onClick={() => canvas.onMore(data.branchId, data.subId)}
           className="nodrag grid place-items-center rounded-[7px] bg-panel text-xs font-medium transition-colors hover:bg-muted"
           style={{ width: thumb, height: thumb, color: data.color }}
-          aria-label={`Show ${data.more} more in this group`}
           title="Search within this group"
         >
           +{data.more}
+          <span className="sr-only"> more, search within this group</span>
         </button>
       )}
       <Handles />
@@ -629,6 +634,7 @@ function PathPanel({
   onReset: () => void;
 }) {
   const ex = useExplorer();
+  const canHover = useMediaQuery("(hover: hover)");
   const b = branches.find((x) => x.id === focus.branchId);
   const s = b?.subs.find((x) => x.id === focus.subId);
   const rows: { k: string; v: ReactNode; dot?: string }[] = [
@@ -663,7 +669,9 @@ function PathPanel({
       v: ex.hover ? (
         <span className="line-clamp-1">{ex.hover.template.name}</span>
       ) : (
-        <span className="text-muted-foreground">Hover to preview</span>
+        <span className="text-muted-foreground">
+          {canHover ? "Hover or focus a design" : "Tap a design to explore"}
+        </span>
       ),
     },
   ];

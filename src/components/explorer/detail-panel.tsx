@@ -156,7 +156,7 @@ export function DetailPanel({ template: t }: { template: Template }) {
                 aria-label={`Copy ${c.hex} (${c.role}, ${c.name})`}
               >
                 <div className="relative h-14" style={{ background: c.hex }}>
-                  <span className="absolute top-1.5 right-1.5 grid size-5 place-items-center rounded-md bg-white/85 text-black opacity-0 transition-opacity group-hover:opacity-100">
+                  <span className="absolute top-1.5 right-1.5 grid size-5 place-items-center rounded-md bg-white/85 text-black transition-opacity [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:group-focus-visible:opacity-100">
                     {copied === c.hex ? <CheckIcon className="size-3" /> : <CopyIcon className="size-3" />}
                   </span>
                 </div>

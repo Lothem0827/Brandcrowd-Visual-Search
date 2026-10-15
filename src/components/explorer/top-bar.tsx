@@ -79,13 +79,14 @@ export function TopBar() {
         variant="outline"
         className="h-9 rounded-xl bg-panel"
         onClick={() => setBoardsOpen(true)}
-        aria-label="Open boards"
+        aria-haspopup="dialog"
       >
-        <BookmarkIcon />
+        <BookmarkIcon aria-hidden />
         Boards
         {savedCount > 0 && (
           <span className="rounded-full bg-foreground px-1.5 text-[10px] text-background tabular-nums">
             {savedCount}
+            <span className="sr-only"> saved</span>
           </span>
         )}
       </Button>

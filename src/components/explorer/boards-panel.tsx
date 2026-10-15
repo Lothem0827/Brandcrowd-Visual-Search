@@ -3,6 +3,16 @@ import { useState } from "react";
 import { PlusIcon, Trash2Icon } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { SAVED_BOARD_ID } from "@/lib/boards";
 import { useExplorer } from "./context";
 import { useBoards } from "./use-boards";
@@ -12,6 +22,7 @@ export function BoardsPanel() {
   const { boardsOpen, setBoardsOpen, byId, setView, setDetailOpen } = useExplorer();
   const { boards, store } = useBoards();
   const [name, setName] = useState("");
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null);
   return (
     <Sheet open={boardsOpen} onOpenChange={setBoardsOpen}>
       <SheetContent side="right" className="w-[400px]! max-w-[90vw]! gap-0" data-testid="boards-panel">
@@ -51,10 +62,9 @@ export function BoardsPanel() {
                   <button
                     type="button"
                     aria-label={`Delete board ${b.name}`}
-                    onClick={() => {
-                      if (confirm(`Delete board “${b.name}”? Designs stay in your other boards.`)) store.remove(b.id);
-                    }}
-                    className="absolute top-1/2 right-3 grid size-7 -translate-y-1/2 place-items-center rounded-lg text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:bg-muted hover:text-foreground focus-visible:opacity-100"
+                    onClick={() => setPendingDelete({ id: b.id, name: b.name })}
+                    // always visible on touch screens (no hover there); revealed on hover/focus otherwise
+                    className="absolute top-1/2 right-3 grid size-8 -translate-y-1/2 place-items-center rounded-lg text-muted-foreground transition-opacity hover:bg-muted hover:text-foreground [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-focus-within:opacity-100 [@media(hover:hover)]:group-hover:opacity-100"
                   >
                     <Trash2Icon className="size-3.5" />
                   </button>
@@ -78,6 +88,26 @@ export function BoardsPanel() {
           </button>
         </form>
       </SheetContent>
+      <Dialog open={!!pendingDelete} onOpenChange={(open) => !open && setPendingDelete(null)}>
+        <DialogContent showCloseButton={false} role="alertdialog" data-testid="delete-board-dialog">
+          <DialogHeader>
+            <DialogTitle>Delete board “{pendingDelete?.name}”?</DialogTitle>
+            <DialogDescription>Designs in it stay in your other boards. This can&apos;t be undone.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (pendingDelete) store.remove(pendingDelete.id);
+                setPendingDelete(null);
+              }}
+            >
+              Delete board
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Sheet>
   );
 }

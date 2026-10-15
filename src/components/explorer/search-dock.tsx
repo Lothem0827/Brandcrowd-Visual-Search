@@ -110,6 +110,7 @@ function SearchBox({
         )}
         <input
           ref={inputRef}
+          id="template-search"
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
@@ -250,6 +251,8 @@ export function SearchDock({
           "max-md:rounded-b-none max-md:p-3 max-md:pb-[max(0.75rem,env(safe-area-inset-bottom))] max-md:shadow-[0_-8px_24px_rgb(0_0_0/0.08)]",
         )}
         data-testid="search-dock"
+        role="search"
+        aria-label="Search templates"
       >
         {isMobile && (
           <button
