@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { ImagePlusIcon } from "lucide-react";
 import { useExplorer } from "./context";
-import { runImageSearch } from "./top-bar";
+import { runImageSearch } from "./search-dock";
 
 /** Drop an image anywhere on the page to search by its colors. */
 export function ImageDropOverlay() {

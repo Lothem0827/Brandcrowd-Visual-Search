@@ -72,11 +72,11 @@ export function DetailPanel({ template: t }: { template: Template }) {
 
   return (
     <aside
-      className="thin-scroll relative z-10 w-[400px] shrink-0 overflow-y-auto border-l bg-panel"
+      className="thin-scroll absolute top-20 right-4 bottom-4 z-20 w-[400px] max-w-[90vw] overflow-y-auto rounded-2xl border bg-panel shadow-xl"
       aria-label="Design details"
       data-testid="detail-panel"
     >
-      <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-panel/95 px-5 py-3 backdrop-blur">
+      <div className="sticky top-0 z-10 flex items-center justify-between rounded-t-2xl border-b bg-panel/95 px-5 py-3 backdrop-blur">
         <div className="flex min-w-0 items-center gap-1.5 text-[11.5px] text-muted-foreground">
           <span className="size-1.5 rounded-full bg-[#F0812F]" />
           <span className="truncate">

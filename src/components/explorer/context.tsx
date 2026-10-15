@@ -30,9 +30,7 @@ export interface ExplorerApi {
   byId: (id: string) => Template | undefined;
   vocab: VocabTerm[];
   tagCounts: Map<string, number>;
-  categories: string[];
   category: string;
-  setCategory: (c: string) => void;
   query: string;
   setQuery: (q: string) => void;
   parsed: ParsedQuery;

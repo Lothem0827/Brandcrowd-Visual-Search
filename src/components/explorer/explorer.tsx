@@ -8,7 +8,7 @@ import { findAllSimilar, rankByPalette } from "@/lib/similarity";
 import { rng } from "@/lib/color";
 import { ExplorerContext, type ExplorerApi, type HoverState, type ImageQuery, type View } from "./context";
 import { TopBar } from "./top-bar";
-import { FilterBar } from "./filter-bar";
+import { SearchDock } from "./search-dock";
 import { TreeCanvas } from "./tree-canvas";
 import { DetailPanel } from "./detail-panel";
 import { BoardsPanel } from "./boards-panel";
@@ -29,7 +29,7 @@ function seededShuffle<T>(list: T[], seed: number): T[] {
 export function Explorer() {
   const all = templateRepository.all();
   const categories = useMemo(() => templateRepository.categories(), []);
-  const [category, setCategory] = useState(categories[0] ?? "Instagram Post");
+  const [category] = useState(categories[0] ?? "Instagram Post");
   const base = useMemo(() => all.filter((t) => t.category === category), [all, category]);
   const vocab = useMemo(() => buildVocab(base), [base]);
   const index = useMemo(() => buildSearchIndex(base), [base]);
@@ -155,7 +155,7 @@ export function Explorer() {
   }, [detailOpen]);
 
   const api: ExplorerApi = {
-    all, base, results, byId, vocab, tagCounts, categories, category, setCategory,
+    all, base, results, byId, vocab, tagCounts, category,
     query, setQuery, parsed, filters, setFilters, effective, toggleFacet, addFacet, clearAll,
     imageQuery, setImageQuery, imageScores, shuffleSeed, setShuffleSeed,
     view, setView, openTemplate, simScope, setSimScope, similar, center,
@@ -164,15 +164,13 @@ export function Explorer() {
 
   return (
     <ExplorerContext.Provider value={api}>
-      <div className="flex h-full flex-col bg-background text-foreground">
-        <TopBar inputRef={searchRef} />
-        <FilterBar />
-        <div className="relative flex min-h-0 flex-1 border-t">
-          <main className="relative min-w-0 flex-1" aria-label="Template tree">
-            <TreeCanvas />
-          </main>
-          {center && detailOpen && <DetailPanel template={center} />}
-        </div>
+      <div className="relative h-full overflow-hidden bg-background text-foreground">
+        <main className="absolute inset-0" aria-label="Template tree">
+          <TreeCanvas />
+        </main>
+        <TopBar />
+        <SearchDock inputRef={searchRef} />
+        {center && detailOpen && <DetailPanel template={center} />}
         <BoardsPanel />
         <ImageDropOverlay />
       </div>
