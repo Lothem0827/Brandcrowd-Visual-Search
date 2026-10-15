@@ -1073,6 +1073,8 @@ function CanvasInner() {
     ? ex.base.filter((t) => t.industry === ex.center!.industry).length - 1
     : 0;
   const empty = graph.nodes.length <= 1;
+  // a vague query can legitimately find nothing yet — the interpreter is on it
+  const thinking = empty && ex.view.kind === "search" && ex.aiStatus === "loading";
 
   const scopeControls = (
     <>
@@ -1236,20 +1238,24 @@ function CanvasInner() {
           <div className="absolute inset-0 grid place-items-center pb-44">
             <Panel className="max-w-sm p-5 text-center">
               <div className="text-sm font-semibold">
-                {ex.view.kind === "board"
+                {thinking
+                  ? "Reading your query…"
+                  : ex.view.kind === "board"
                   ? "This board is empty"
                   : ex.unsearchable
                     ? "We couldn't search for that"
                     : "No templates match"}
               </div>
               <p className="mt-1 text-xs break-words text-muted-foreground">
-                {ex.view.kind === "board"
+                {thinking
+                  ? "Looking for designs that match what you meant, not just the words you used."
+                  : ex.view.kind === "board"
                   ? "Open any design and press Save to add it here."
                   : ex.unsearchable
                     ? "Search understands English keywords. Try words like “bold”, “coffee” or “minimalist”."
                     : "Remove a chip or clear the filters to widen the search."}
               </p>
-              {ex.view.kind !== "board" && (
+              {ex.view.kind !== "board" && !thinking && (
                 <button
                   type="button"
                   onClick={ex.clearAll}

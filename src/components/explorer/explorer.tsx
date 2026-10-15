@@ -10,6 +10,7 @@ import { findAllSimilar, rankByPalette } from "@/lib/similarity";
 import { rng } from "@/lib/color";
 import { paletteFromFile } from "@/lib/image-search";
 import { toast } from "sonner";
+import { useAiInterpretation } from "./use-ai-interpretation";
 import { ExplorerContext, type ExplorerApi, type HoverState, type ImageQuery, type SearchStep, type View } from "./context";
 import { TopBar } from "./top-bar";
 import { SearchDock } from "./search-dock";
@@ -101,26 +102,49 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
 
   const debouncedQuery = useDebouncedValue(query, QUERY_DEBOUNCE_MS);
   const parsed = useMemo(() => parseQuery(debouncedQuery, vocab), [debouncedQuery, vocab]);
+  const { ai, status: aiStatus, enabled: aiEnabled, dismiss: dismissAi } = useAiInterpretation(
+    debouncedQuery,
+    category,
+    parsed,
+  );
 
-  // Latest text-search scores from the worker. While a newer query is in flight the
-  // previous scores stay applied, so the tree doesn't flash back to "all templates".
-  const [textHits, setTextHits] = useState<{ text: string; scores: Map<string, number> } | null>(null);
+  // Text search runs in the worker on the typed words plus any AI keywords. While a newer
+  // search is in flight the previous scores stay applied, so the tree doesn't flash back
+  // to "all templates". `fallback` holds scores for the typed words alone, used when the
+  // AI keywords would otherwise blank out a working result set.
+  const aiText = ai?.text ?? "";
+  const combinedText = [parsed.text, aiText].filter(Boolean).join(" ").trim();
+  const [textHits, setTextHits] = useState<{
+    text: string;
+    scores: Map<string, number>;
+    fallback: Map<string, number> | null;
+  } | null>(null);
   useEffect(() => {
-    if (!parsed.text || !searchClient) return;
+    if (!combinedText || !searchClient) return;
     let live = true;
-    searchClient.search(parsed.text).then(
-      (scores) => live && setTextHits({ text: parsed.text, scores }),
+    const fallbackText = aiText && parsed.text ? parsed.text : "";
+    Promise.all([
+      searchClient.search(combinedText),
+      fallbackText ? searchClient.search(fallbackText) : Promise.resolve(null),
+    ]).then(
+      ([scores, fallback]) => live && setTextHits({ text: combinedText, scores, fallback }),
       () => undefined,
     );
     return () => {
       live = false;
     };
-  }, [parsed.text, searchClient]);
-  const textScores = parsed.text ? (textHits?.scores ?? null) : null;
-  const searching = (!!parsed.text && textHits?.text !== parsed.text) || debouncedQuery !== query;
+  }, [combinedText, aiText, parsed.text, searchClient]);
+  const liveHits = combinedText ? textHits : null;
+  const searching = (!!combinedText && textHits?.text !== combinedText) || debouncedQuery !== query;
   const effective = useMemo<FilterState>(
-    () => ({ facets: mergeSelections(filters.facets, chipsToSelection(parsed.chips)), color: filters.color }),
-    [filters, parsed],
+    () => ({
+      facets: mergeSelections(
+        mergeSelections(filters.facets, chipsToSelection(parsed.chips)),
+        ai?.facets ?? {},
+      ),
+      color: filters.color,
+    }),
+    [filters, parsed, ai],
   );
 
   const imageScores = useMemo(() => {
@@ -134,16 +158,20 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
   const results = useMemo(() => {
     if (unsearchable) return [];
     let list = applyFilters(base, effective);
-    if (textScores) {
-      const scores = textScores;
-      list = list.filter((t) => scores.has(t.templateId)).sort((a, b) => scores.get(b.templateId)! - scores.get(a.templateId)!);
+    if (liveHits) {
+      const rank = (scores: Map<string, number>) =>
+        list.filter((t) => scores.has(t.templateId)).sort((a, b) => scores.get(b.templateId)! - scores.get(a.templateId)!);
+      let next = rank(liveHits.scores);
+      // AI keywords are a guess: never let them blank out an otherwise working set
+      if (!next.length && aiText) next = liveHits.fallback ? rank(liveHits.fallback) : parsed.text ? next : list;
+      list = next;
     }
     if (imageScores) {
       list = [...list].sort((a, b) => imageScores.get(b.templateId)! - imageScores.get(a.templateId)!).slice(0, IMAGE_RESULTS);
     }
     if (shuffleSeed !== null) list = seededShuffle(list, shuffleSeed);
     return list;
-  }, [base, effective, textScores, imageScores, shuffleSeed, unsearchable]);
+  }, [base, effective, liveHits, aiText, parsed.text, imageScores, shuffleSeed, unsearchable]);
 
   const byId = useCallback((id: string) => repo.byId(id), [repo]);
   const center = view.kind === "similar" ? byId(view.trail[view.trail.length - 1]) ?? null : null;
@@ -371,6 +399,7 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
   const api: ExplorerApi = {
     all, base, results, byId, vocab, tagCounts, category,
     query, setQuery, parsed, searching, unsearchable, filters, setFilters, effective, toggleFacet, addFacet, clearAll,
+    ai, aiStatus, aiEnabled, dismissAi,
     searchPath, searchWithin, backOneStep, jumpToStep,
     imageQuery, setImageQuery, imageScores, imageBusy, searchByImage, shuffleSeed, setShuffleSeed,
     view, setView, openTemplate, simScope, setSimScope, similar, center,
