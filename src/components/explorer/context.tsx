@@ -45,6 +45,8 @@ export interface ExplorerApi {
   parsed: ParsedQuery;
   /** true while a typed query is debouncing or its text search is still running */
   searching: boolean;
+  /** the query has text but nothing the search understands (emoji, non-Latin scripts) */
+  unsearchable: boolean;
   filters: FilterState;
   setFilters: (f: FilterState | ((f: FilterState) => FilterState)) => void;
   effective: FilterState;

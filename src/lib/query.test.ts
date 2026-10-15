@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import fixture from "../../tests/fixtures/templates.fixture.json";
 import { parseTemplates } from "./schema";
-import { buildVocab, parseQuery, removeChipFromQuery, suggest, completeQuery, chipsToSelection } from "./query";
+import {
+  buildVocab, parseQuery, removeChipFromQuery, suggest, completeQuery, chipsToSelection, ignoredQueryText, isUnsearchableQuery,
+} from "./query";
 import { applyFilters } from "./facets";
 
 const { templates } = parseTemplates(fixture);
@@ -74,5 +76,17 @@ describe("autocomplete", () => {
   });
   it("completes the trailing partial word", () => {
     expect(completeQuery("bold constr", "Construction")).toBe("bold construction ");
+  });
+});
+
+describe("unsupported query text", () => {
+  it("flags queries with nothing searchable (emoji, CJK)", () => {
+    expect(isUnsearchableQuery("🍕")).toBe(true);
+    expect(isUnsearchableQuery("カフェ ☕")).toBe(true);
+    expect(isUnsearchableQuery("")).toBe(false);
+    expect(isUnsearchableQuery("   ")).toBe(false);
+    expect(isUnsearchableQuery("coffee 🍕")).toBe(false);
+    expect(ignoredQueryText("coffee 🍕 カフェ bold")).toBe("🍕 カフェ");
+    expect(ignoredQueryText("coffee bold")).toBe("");
   });
 });

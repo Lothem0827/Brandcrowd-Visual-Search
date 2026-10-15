@@ -3,6 +3,7 @@ import { useId, useMemo, useRef, useState, type RefObject } from "react";
 import { ChevronUpIcon, ImagePlusIcon, LoaderCircleIcon, SearchIcon, XIcon } from "lucide-react";
 import { activeFilterCount } from "@/lib/facets";
 import { useIsMobile } from "@/lib/use-media-query";
+import { MAX_QUERY_LENGTH } from "@/lib/url-state";
 import { Button } from "@/components/ui/button";
 import {
   completeQuery,
@@ -111,6 +112,7 @@ function SearchBox({
         <input
           ref={inputRef}
           id="template-search"
+          maxLength={MAX_QUERY_LENGTH}
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);

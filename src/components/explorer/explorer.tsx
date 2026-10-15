@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { TemplateRepository } from "@/lib/data";
 import { applyFilters, EMPTY_FILTERS, mergeSelections, removeSelections, type FacetKey, type FacetSelection, type FilterState } from "@/lib/facets";
-import { buildVocab, chipsToSelection, parseQuery, removeChipFromQuery } from "@/lib/query";
+import { buildVocab, chipsToSelection, isUnsearchableQuery, parseQuery, removeChipFromQuery } from "@/lib/query";
 import { createSearchClient, type SearchClient } from "@/lib/search-client";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { fromSearch, historyAction, toSearch, type UrlState } from "@/lib/url-state";
@@ -17,6 +17,7 @@ import { TreeCanvas } from "./tree-canvas";
 import { DetailPanel } from "./detail-panel";
 import { BoardsPanel } from "./boards-panel";
 import { ImageDropOverlay } from "./image-drop";
+import { OfflineBanner } from "./offline-banner";
 
 const IMAGE_RESULTS = 36;
 /** Typing is debounced so the 7,000-record filter + tree layout runs once per pause, not per key. */
@@ -127,7 +128,11 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
     return new Map(rankByPalette(imageQuery.palette, base).map((r) => [r.template.templateId, r.score]));
   }, [imageQuery, base]);
 
+  // Emoji/CJK-only queries used to be silently ignored (all 7,000 shown); now they match nothing
+  // and the empty state explains why.
+  const unsearchable = useMemo(() => isUnsearchableQuery(debouncedQuery), [debouncedQuery]);
   const results = useMemo(() => {
+    if (unsearchable) return [];
     let list = applyFilters(base, effective);
     if (textScores) {
       const scores = textScores;
@@ -138,7 +143,7 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
     }
     if (shuffleSeed !== null) list = seededShuffle(list, shuffleSeed);
     return list;
-  }, [base, effective, textScores, imageScores, shuffleSeed]);
+  }, [base, effective, textScores, imageScores, shuffleSeed, unsearchable]);
 
   const byId = useCallback((id: string) => repo.byId(id), [repo]);
   const center = view.kind === "similar" ? byId(view.trail[view.trail.length - 1]) ?? null : null;
@@ -365,7 +370,7 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
 
   const api: ExplorerApi = {
     all, base, results, byId, vocab, tagCounts, category,
-    query, setQuery, parsed, searching, filters, setFilters, effective, toggleFacet, addFacet, clearAll,
+    query, setQuery, parsed, searching, unsearchable, filters, setFilters, effective, toggleFacet, addFacet, clearAll,
     searchPath, searchWithin, backOneStep, jumpToStep,
     imageQuery, setImageQuery, imageScores, imageBusy, searchByImage, shuffleSeed, setShuffleSeed,
     view, setView, openTemplate, simScope, setSimScope, similar, center,
@@ -396,6 +401,7 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
         {center && detailOpen && <DetailPanel template={center} />}
         <BoardsPanel />
         <ImageDropOverlay />
+        <OfflineBanner />
       </div>
     </ExplorerContext.Provider>
   );

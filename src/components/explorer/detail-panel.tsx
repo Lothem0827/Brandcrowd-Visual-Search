@@ -57,9 +57,12 @@ export function DetailPanel({ template: t }: { template: Template }) {
   const [copied, setCopied] = useState<string | null>(null);
   const copy = async (hex: string) => {
     try {
+      if (!navigator.clipboard) throw new Error("clipboard unavailable");
       await navigator.clipboard.writeText(hex);
     } catch {
-      /* clipboard may be unavailable */
+      // e.g. insecure context or permission denied: say so instead of a false "Copied"
+      toast.error(`Couldn't copy ${hex}`, { description: `Your browser blocked clipboard access. The code is ${hex}.` });
+      return;
     }
     setCopied(hex);
     toast(`Copied ${hex}`);

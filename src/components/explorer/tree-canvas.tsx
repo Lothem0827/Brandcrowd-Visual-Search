@@ -197,7 +197,7 @@ const TreeNodeView = memo(function TreeNodeView({
     return (
       <div
         className="flex items-center gap-3 rounded-2xl bg-foreground px-4 text-background"
-        style={{ minWidth: SIZES.root.w, height: SIZES.root.h }}
+        style={{ minWidth: SIZES.root.w, maxWidth: 340, height: SIZES.root.h }}
         data-testid="tree-root"
       >
         {data.image && (
@@ -209,7 +209,9 @@ const TreeNodeView = memo(function TreeNodeView({
           />
         )}
         <div className="min-w-0 flex-1 text-center">
-          <div className="truncate text-[15px] font-semibold">{data.label}</div>
+          <div className="truncate text-[15px] font-semibold" title={data.label}>
+            {data.label}
+          </div>
           <div className="mt-0.5 font-mono text-[10.5px] tracking-tight text-background/65">
             {data.sub}
           </div>
@@ -687,14 +689,14 @@ function PathPanel({
               <span>{String(i + 1).padStart(2, "0")}</span>
               <span>{r.k}</span>
             </div>
-            <div className="mt-0.5 flex items-center gap-1.5 pl-[22px] font-semibold">
+            <div className="mt-0.5 flex min-w-0 items-center gap-1.5 pl-[22px] font-semibold [&>span:last-child]:truncate">
               {r.dot && (
                 <span
                   className="size-2 shrink-0 rounded-full"
                   style={{ background: r.dot }}
                 />
               )}
-              {r.v}
+              <span className="min-w-0">{r.v}</span>
             </div>
           </li>
         ))}
@@ -1236,12 +1238,16 @@ function CanvasInner() {
               <div className="text-sm font-semibold">
                 {ex.view.kind === "board"
                   ? "This board is empty"
-                  : "No templates match"}
+                  : ex.unsearchable
+                    ? "We couldn't search for that"
+                    : "No templates match"}
               </div>
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="mt-1 text-xs break-words text-muted-foreground">
                 {ex.view.kind === "board"
                   ? "Open any design and press Save to add it here."
-                  : "Remove a chip or clear the filters to widen the search."}
+                  : ex.unsearchable
+                    ? "Search understands English keywords. Try words like “bold”, “coffee” or “minimalist”."
+                    : "Remove a chip or clear the filters to widen the search."}
               </p>
               {ex.view.kind !== "board" && (
                 <button
