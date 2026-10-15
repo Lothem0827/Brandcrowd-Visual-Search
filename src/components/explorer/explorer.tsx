@@ -5,6 +5,7 @@ import { applyFilters, EMPTY_FILTERS, mergeSelections, removeSelections, type Fa
 import { buildVocab, chipsToSelection, parseQuery, removeChipFromQuery } from "@/lib/query";
 import { createSearchClient, type SearchClient } from "@/lib/search-client";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
+import { fromSearch, historyAction, toSearch, type UrlState } from "@/lib/url-state";
 import { findAllSimilar, rankByPalette } from "@/lib/similarity";
 import { rng } from "@/lib/color";
 import { paletteFromFile } from "@/lib/image-search";
@@ -20,6 +21,19 @@ import { ImageDropOverlay } from "./image-drop";
 const IMAGE_RESULTS = 36;
 /** Typing is debounced so the 7,000-record filter + tree layout runs once per pause, not per key. */
 const QUERY_DEBOUNCE_MS = 180;
+
+/** View described by the URL; design ids that aren't in the dataset are dropped. */
+function viewFromUrl(u: UrlState, exists: (id: string) => boolean): View {
+  const trail = u.design.filter(exists);
+  if (trail.length) {
+    return { kind: "similar", trail, origin: u.board ? { kind: "board", boardId: u.board } : { kind: "search" } };
+  }
+  if (u.board) return { kind: "board", boardId: u.board };
+  return { kind: "search" };
+}
+
+const searchKey = (query: string, filters: FilterState, imageUrl: string | undefined, category: string) =>
+  JSON.stringify([query, filters, imageUrl, category]);
 
 function seededShuffle<T>(list: T[], seed: number): T[] {
   const r = rng(seed);
@@ -69,13 +83,15 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
     return m;
   }, [base]);
 
-  const [query, setQuery] = useState("");
-  const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
+  // Initial state comes from the URL (?q=…&industry=…&design=…), see lib/url-state.ts.
+  const [initialUrl] = useState(() => fromSearch(window.location.search));
+  const [query, setQuery] = useState(initialUrl.query);
+  const [filters, setFilters] = useState<FilterState>({ facets: initialUrl.facets, color: initialUrl.color });
   const [imageQuery, setImageQuery] = useState<ImageQuery | null>(null);
-  const [shuffleSeed, setShuffleSeed] = useState<number | null>(null);
-  const [view, setView] = useState<View>({ kind: "search" });
-  const [simScope, setSimScope] = useState<"industry" | "all">("industry");
-  const [detailOpen, setDetailOpen] = useState(false);
+  const [shuffleSeed, setShuffleSeed] = useState<number | null>(initialUrl.shuffle);
+  const [view, setView] = useState<View>(() => viewFromUrl(initialUrl, (id) => !!repo.byId(id)));
+  const [simScope, setSimScope] = useState<"industry" | "all">(initialUrl.scope);
+  const [detailOpen, setDetailOpen] = useState(() => view.kind === "similar");
   const [hover, setHover] = useState<HoverState | null>(null);
   const [boardsOpen, setBoardsOpen] = useState(false);
   const [boardGroup, setBoardGroup] = useState<"layout" | "style">("layout");
@@ -254,7 +270,7 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
   // when the filters/search change while exploring similar, go back to the search tree
   const lastSearchKey = useRef("");
   useEffect(() => {
-    const key = JSON.stringify([query, filters, imageQuery?.url, category]);
+    const key = searchKey(query, filters, imageQuery?.url, category);
     if (lastSearchKey.current && key !== lastSearchKey.current) {
       setView((v) => (v.kind === "search" ? v : { kind: "search" }));
     }
@@ -268,6 +284,64 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
     if (lastPathKey.current && key !== lastPathKey.current) setSearchPath([]);
     lastPathKey.current = key;
   }, [query, imageQuery?.url]);
+
+  // ---- URL sync: state -> URL (push for discrete changes, replace while typing) ----
+  const urlState = useMemo<UrlState>(
+    () => ({
+      query,
+      facets: filters.facets,
+      color: filters.color,
+      design: view.kind === "similar" ? view.trail : [],
+      board:
+        view.kind === "board" ? view.boardId : view.kind === "similar" && view.origin.kind === "board" ? view.origin.boardId : null,
+      scope: simScope,
+      shuffle: shuffleSeed,
+    }),
+    [query, filters, view, simScope, shuffleSeed],
+  );
+  const lastUrl = useRef<UrlState | null>(null);
+  const typingRun = useRef(false);
+  useEffect(() => {
+    const url = (s: UrlState) => window.location.pathname + toSearch(s) + window.location.hash;
+    if (!lastUrl.current) {
+      // first render: normalise the address (e.g. drop unknown design ids) without a new entry
+      lastUrl.current = urlState;
+      if (window.location.search !== toSearch(urlState)) window.history.replaceState(null, "", url(urlState));
+      return;
+    }
+    const { action, typing } = historyAction(lastUrl.current, urlState, typingRun.current);
+    typingRun.current = typing;
+    lastUrl.current = urlState;
+    if (action === "push") window.history.pushState(null, "", url(urlState));
+    else if (action === "replace") window.history.replaceState(null, "", url(urlState));
+  }, [urlState]);
+
+  // ---- URL -> state on Back/Forward ----
+  const imageUrlRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    imageUrlRef.current = imageQuery?.url;
+  }, [imageQuery]);
+  useEffect(() => {
+    const onPop = () => {
+      const u = fromSearch(window.location.search);
+      const nextFilters: FilterState = { facets: u.facets, color: u.color };
+      const nextView = viewFromUrl(u, (id) => !!byId(id));
+      lastUrl.current = u;
+      typingRun.current = false;
+      // restoring a design view together with a different query must not bounce back to the tree
+      lastSearchKey.current = searchKey(u.query, nextFilters, imageUrlRef.current, category);
+      setQuery(u.query);
+      setFilters(nextFilters);
+      setView(nextView);
+      setSimScope(u.scope);
+      setShuffleSeed(u.shuffle);
+      setSearchPath([]);
+      setHover(null);
+      setDetailOpen(nextView.kind === "similar");
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [byId, category]);
 
   const focusSearch = useCallback(() => searchRef.current?.focus(), []);
 

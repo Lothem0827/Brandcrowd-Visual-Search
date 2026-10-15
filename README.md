@@ -57,6 +57,9 @@ Works the same on Windows, macOS and Linux (no machine-specific paths).
 - **Image search**: click the image button in the search box, or drop an image anywhere. Three dominant colors are
   extracted in the browser (k-means in OKLab on a 72×72 canvas, background = largest cluster) and templates are
   ranked by palette similarity. Nothing is uploaded.
+- **Shareable URLs**: the query, filters, colour filter, open design trail, board, scope and shuffle are kept in
+  the address bar (`?q=retro+serif&industry=Construction&design=<id>`), so Back/Forward step through searches and
+  designs, and links can be bookmarked or shared. A typing run is one history entry. Uploaded images stay local.
 - Light/dark toggle in the top bar. `Esc` closes panels.
 
 ## Data
@@ -117,6 +120,7 @@ GUID and `logoTemplateVersion`). Images load directly from `dynamic.design.com`.
 | `src/lib/similarity.ts` | Pure similarity scores (colors, layout, style, overall) |
 | `src/lib/color.ts` | OKLab, deltaE, palette similarity, k-means palette extraction |
 | `src/lib/tree.ts` | Mind-map layout for search/board trees and the similar view |
+| `src/lib/url-state.ts` | URL <-> explorer state, history push/replace policy |
 | `src/lib/boards.ts` | `BoardStore` interface + localStorage implementation |
 | `src/components/explorer/*` | UI (top bar, filters, canvas, details, boards, image drop) |
 
