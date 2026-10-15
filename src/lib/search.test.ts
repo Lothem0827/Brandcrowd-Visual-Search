@@ -27,11 +27,15 @@ describe("text search", () => {
     expect([...index.search("renov").keys()].map(nameOf)).toContain("House Renovation");
   });
 
-  it("uses AND first and falls back to OR when no record matches every word", () => {
-    const and = index.search("coffee promo");
-    expect([...and.keys()].map(nameOf)[0]).toBe("Coffee Promo");
-    const or = index.search("burger zzqqxxunmatched");
-    expect(or.size).toBeGreaterThan(0);
+  it("scores full-coverage matches above partial ones (soft-AND)", () => {
+    const full = index.search("coffee promo");
+    expect([...full.keys()].map(nameOf)[0]).toBe("Coffee Promo");
+    // a partial match still surfaces, but strictly weaker than a clean full-coverage search
+    const partial = index.search("burger zzqqxxunmatched");
+    expect(partial.size).toBeGreaterThan(0);
+    const burger = templates.find((t) => t.name === "National Burger Day")!;
+    const clean = index.search("burger").get(burger.templateId)!;
+    expect(partial.get(burger.templateId) ?? 0).toBeLessThan(clean);
   });
 
   it("returns no results for nonsense", () => {

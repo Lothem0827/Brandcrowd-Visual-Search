@@ -485,6 +485,7 @@ function useGraph() {
     byId,
     results,
     imageScores,
+    textScores,
     imageQuery,
     parsed,
     effective,
@@ -571,6 +572,7 @@ function useGraph() {
       badges,
       maxThumbs: results.length > 80 ? 3 : 6,
       maxSubs: results.length > 80 ? 4 : undefined,
+      scoreFor: textScores ? (t) => textScores.get(t.templateId) ?? 0 : undefined,
     });
     return {
       key: `search:${results.length}:${results
@@ -592,6 +594,7 @@ function useGraph() {
     byId,
     results,
     imageScores,
+    textScores,
     imageQuery,
     rootQueryLabel,
     effective,
@@ -1038,8 +1041,8 @@ function CanvasInner() {
         ex.searchWithin({
           label: s ? `${b.label} · ${s.label}` : b.label,
           facets: {
-            [b.facet]: [b.value],
-            ...(s?.facet ? { [s.facet]: [s.value] } : {}),
+            [b.facet]: b.values,
+            ...(s?.facet ? { [s.facet]: s.values } : {}),
           },
         });
       } else {
@@ -1063,8 +1066,8 @@ function CanvasInner() {
     ex.searchWithin({
       label: s ? `${b.label} · ${s.label}` : b.label,
       facets: {
-        [b.facet]: [b.value],
-        ...(s?.facet ? { [s.facet]: [s.value] } : {}),
+        [b.facet]: b.values,
+        ...(s?.facet ? { [s.facet]: s.values } : {}),
       },
     });
   };
@@ -1244,7 +1247,9 @@ function CanvasInner() {
                   ? "This board is empty"
                   : ex.unsearchable
                     ? "We couldn't search for that"
-                    : "No templates match"}
+                    : ex.noCloseMatch
+                      ? "No close match"
+                      : "No templates match"}
               </div>
               <p className="mt-1 text-xs break-words text-muted-foreground">
                 {thinking
@@ -1253,7 +1258,9 @@ function CanvasInner() {
                   ? "Open any design and press Save to add it here."
                   : ex.unsearchable
                     ? "Search understands English keywords. Try words like “bold”, “coffee” or “minimalist”."
-                    : "Remove a chip or clear the filters to widen the search."}
+                    : ex.noCloseMatch
+                      ? "Check the spelling, or try fewer or more common words."
+                      : "Remove a chip or clear the filters to widen the search."}
               </p>
               {ex.view.kind !== "board" && !thinking && (
                 <button

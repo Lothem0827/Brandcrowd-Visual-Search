@@ -152,6 +152,9 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
     return new Map(rankByPalette(imageQuery.palette, base).map((r) => [r.template.templateId, r.score]));
   }, [imageQuery, base]);
 
+  // Text-relevance scores for the current free-text query, used to order tree branches.
+  const textScores = useMemo(() => (liveHits ? liveHits.scores : null), [liveHits]);
+
   // Emoji/CJK-only queries used to be silently ignored (all 7,000 shown); now they match nothing
   // and the empty state explains why.
   const unsearchable = useMemo(() => isUnsearchableQuery(debouncedQuery), [debouncedQuery]);
@@ -172,6 +175,12 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
     if (shuffleSeed !== null) list = seededShuffle(list, shuffleSeed);
     return list;
   }, [base, effective, liveHits, aiText, parsed.text, imageScores, shuffleSeed, unsearchable]);
+
+  // A free-text query that found nothing (and wasn't just filters narrowing the set)
+  // is a "no close match", distinct from "remove a chip / clear the filters".
+  const filtered =
+    !!effective.color || Object.values(effective.facets).some((v) => v?.length);
+  const noCloseMatch = !!combinedText && !unsearchable && results.length === 0 && !filtered;
 
   const byId = useCallback((id: string) => repo.byId(id), [repo]);
   const center = view.kind === "similar" ? byId(view.trail[view.trail.length - 1]) ?? null : null;
@@ -398,10 +407,10 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
 
   const api: ExplorerApi = {
     all, base, results, byId, vocab, tagCounts, category,
-    query, setQuery, parsed, searching, unsearchable, filters, setFilters, effective, toggleFacet, addFacet, clearAll,
+    query, setQuery, parsed, searching, unsearchable, noCloseMatch, filters, setFilters, effective, toggleFacet, addFacet, clearAll,
     ai, aiStatus, aiEnabled, dismissAi,
     searchPath, searchWithin, backOneStep, jumpToStep,
-    imageQuery, setImageQuery, imageScores, imageBusy, searchByImage, shuffleSeed, setShuffleSeed,
+    imageQuery, setImageQuery, imageScores, textScores, imageBusy, searchByImage, shuffleSeed, setShuffleSeed,
     view, setView, openTemplate, simScope, setSimScope, similar, center,
     detailsReady, detailsError, loadDetails,
     detailOpen, setDetailOpen, hover, setHover, boardsOpen, setBoardsOpen, boardGroup, setBoardGroup, focusSearch,

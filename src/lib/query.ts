@@ -112,14 +112,24 @@ export function buildVocab(templates: Template[]): VocabTerm[] {
   return Array.from(terms.values());
 }
 
-/** phrase -> term, honouring facet priority order (first registered wins). */
+/**
+ * phrase -> term. When several facets share a phrase, the broadest interpretation
+ * wins (highest count); ties fall back to facet priority order. This stops a narrow
+ * `topic` value (the dataset has ~6.5k of them, mostly near-unique labels) from
+ * hijacking a word that is really a common tag — e.g. "gaming" is a 2-template
+ * topic but a 102-template tag, so it resolves to the tag.
+ */
 function phraseIndex(vocab: VocabTerm[]): Map<string, VocabTerm> {
   const idx = new Map<string, VocabTerm>();
   const order = FACETS.map((f) => f.key);
-  const sorted = [...vocab].sort((a, b) => order.indexOf(a.facet) - order.indexOf(b.facet));
-  for (const t of sorted) {
+  const rank = (t: VocabTerm) => order.indexOf(t.facet);
+  for (const t of vocab) {
     if (t.count === 0 && (t.facet === "industry" || t.facet === "topic")) continue;
-    for (const p of t.phrases) if (p && !idx.has(p)) idx.set(p, t);
+    for (const p of t.phrases) {
+      if (!p) continue;
+      const cur = idx.get(p);
+      if (!cur || t.count > cur.count || (t.count === cur.count && rank(t) < rank(cur))) idx.set(p, t);
+    }
   }
   return idx;
 }

@@ -34,13 +34,23 @@ export function buildSearchIndex(templates: Template[]) {
     })),
   );
   return {
-    /** id -> score. Tries AND first, falls back to OR if nothing matches all words. */
+    /**
+     * id -> score. A single OR query, then each hit is scaled by the fraction of
+     * query terms it actually matched (soft-AND). Full matches rank above partial
+     * ones, so a single unmatched word no longer demotes the whole query to an
+     * undifferentiated OR dump (the old binary AND→OR fallback).
+     */
     search(text: string): Map<string, number> {
       const q = text.trim();
       if (!q) return new Map();
-      let res = ms.search(q, { combineWith: "AND" });
-      if (!res.length) res = ms.search(q, { combineWith: "OR" });
-      return new Map(res.map((r) => [String(r.id), r.score]));
+      const terms = q.split(/\s+/).filter(Boolean);
+      const res = ms.search(q, { combineWith: "OR" });
+      const out = new Map<string, number>();
+      for (const r of res) {
+        const coverage = r.queryTerms.length / terms.length;
+        out.set(String(r.id), r.score * coverage);
+      }
+      return out;
     },
   };
 }

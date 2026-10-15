@@ -112,7 +112,9 @@ export const FACETS: FacetDef[] = [
     },
     display: (v) => CONTAINS_LABEL[v] ?? cap(v),
   },
-  { key: "tag", label: "Tag", get: (t) => t.tags.map((x) => x.toLowerCase()), display: (v) => v },
+  // Tags are parseable too: a free word that matches a tag is usually a broader,
+  // more useful interpretation than a narrow topic of the same name (see query.ts).
+  { key: "tag", label: "Tag", get: (t) => t.tags.map((x) => x.toLowerCase()), display: (v) => v, parse: true },
 ];
 
 export const FACET_MAP = Object.fromEntries(FACETS.map((f) => [f.key, f])) as Record<FacetKey, FacetDef>;

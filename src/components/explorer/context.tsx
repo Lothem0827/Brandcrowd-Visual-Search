@@ -48,6 +48,8 @@ export interface ExplorerApi {
   searching: boolean;
   /** the query has text but nothing the search understands (emoji, non-Latin scripts) */
   unsearchable: boolean;
+  /** a text query returned no close match (vs. filters narrowing to nothing) */
+  noCloseMatch: boolean;
   /** LLM reading of the vague part of the query (null when not needed/available) */
   ai: AiInterpretation | null;
   aiStatus: "idle" | "loading" | "ready";
@@ -68,6 +70,8 @@ export interface ExplorerApi {
   imageQuery: ImageQuery | null;
   setImageQuery: (q: ImageQuery | null) => void;
   imageScores: Map<string, number> | null;
+  /** id -> text-relevance score for the current free-text query (null when no text) */
+  textScores: Map<string, number> | null;
   /** an uploaded image is being analysed */
   imageBusy: boolean;
   /** validate + analyse an image and search by its colors (newest file wins) */

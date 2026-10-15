@@ -64,9 +64,11 @@ export interface BranchInfo {
   label: string;
   count: number;
   facet?: FacetKey;
+  /** the facet value(s) this node represents; merged overflow groups list every value */
+  values: string[];
   value: string;
   color: string;
-  subs: { id: string; label: string; count: number; facet?: FacetKey; value: string }[];
+  subs: { id: string; label: string; count: number; facet?: FacetKey; values: string[]; value: string }[];
 }
 
 export interface TreeSpec {
@@ -83,6 +85,8 @@ export interface TreeSpec {
   /** cap sub-branches per branch; the rest merge into "Other layouts" */
   maxSubs?: number;
   badges?: Record<string, string>;
+  /** optional per-item relevance; when set, groups order by score before count */
+  scoreFor?: (t: Template) => number;
 }
 
 function clusterDims(tiles: number) {
@@ -124,37 +128,52 @@ export function buildTree(spec: TreeSpec): { nodes: TreeNode[]; edges: Edge[]; b
     draggable: false,
   });
 
-  let groups = Array.from(groupBy(spec.items, spec.level1).entries()).sort((a, b) => b[1].length - a[1].length);
-  if (groups.length > maxBranches) {
-    const head = groups.slice(0, maxBranches - 1);
-    const rest = groups.slice(maxBranches - 1).flatMap(([, v]) => v);
-    groups = [...head, [OTHER, rest]];
-  }
+  /** a group of items under one label, plus the raw facet values it stands for */
+  type Group = { label: string; items: Template[]; values: string[] };
+  const scoreFor = spec.scoreFor;
+  const toGroups = (list: Template[], key: (t: Template) => string): Group[] => {
+    const entries = Array.from(groupBy(list, key).entries());
+    const groupScore = (items: Template[]) => (scoreFor ? items.reduce((a, t) => a + scoreFor(t), 0) : 0);
+    entries.sort((a, b) => {
+      // when relevance scores are available, lead with the highest-scoring branch
+      // (count is the tie-breaker, and the sole key when no scores are provided)
+      if (scoreFor) {
+        const d = groupScore(b[1]) - groupScore(a[1]);
+        if (d) return d;
+      }
+      return b[1].length - a[1].length;
+    });
+    return entries.map(([label, items]) => ({ label, items, values: [label] }));
+  };
+  /** merge overflow groups into a synthetic bucket; all merged values stay filterable (OR) */
+  const mergeOverflow = (list: Group[], cap: number, label: string): Group[] => {
+    if (list.length <= cap) return list;
+    const head = list.slice(0, cap - 1);
+    const rest = list.slice(cap - 1);
+    return [...head, { label, items: rest.flatMap((g) => g.items), values: rest.map((g) => g.label) }];
+  };
+
+  const groups = mergeOverflow(toGroups(spec.items, spec.level1), maxBranches, OTHER);
 
   type Block = {
     label: string;
+    values: string[];
     items: Template[];
     color: string;
-    subs: { label: string; items: Template[]; dims: ReturnType<typeof clusterDims>; tiles: number; h: number }[];
+    subs: { label: string; values: string[]; items: Template[]; dims: ReturnType<typeof clusterDims>; tiles: number; h: number }[];
     h: number;
   };
   const SUB_GAP = 14;
   const BRANCH_GAP = 36;
-  const blocks: Block[] = groups.map(([label, items], i) => {
-    let subGroups = Array.from(groupBy(items, spec.level2).entries()).sort((a, b) => b[1].length - a[1].length);
-    if (spec.maxSubs && subGroups.length > spec.maxSubs) {
-      const head = subGroups.slice(0, spec.maxSubs - 1);
-      const rest = subGroups.slice(spec.maxSubs - 1).flatMap(([, v]) => v);
-      subGroups = [...head, [OTHER_SUB, rest]];
-    }
-    const subs = subGroups
-      .map(([sl, sitems]) => {
-        const tiles = Math.min(sitems.length, maxThumbs);
-        const dims = clusterDims(tiles);
-        return { label: sl, items: sitems, dims, tiles, h: Math.max(dims.h, S.h) };
-      });
+  const blocks: Block[] = groups.map((g, i) => {
+    const subGroups = mergeOverflow(toGroups(g.items, spec.level2), spec.maxSubs ?? Infinity, OTHER_SUB);
+    const subs = subGroups.map((s) => {
+      const tiles = Math.min(s.items.length, maxThumbs);
+      const dims = clusterDims(tiles);
+      return { label: s.label, values: s.values, items: s.items, dims, tiles, h: Math.max(dims.h, S.h) };
+    });
     const h = subs.reduce((a, s) => a + s.h, 0) + SUB_GAP * (subs.length - 1);
-    return { label, items, color: spec.colorFor(label, i), subs, h };
+    return { label: g.label, values: g.values, items: g.items, color: spec.colorFor(g.label, i), subs, h };
   });
 
   // balance sides
@@ -194,7 +213,7 @@ export function buildTree(spec: TreeSpec): { nodes: TreeNode[]; edges: Edge[]; b
         style: { stroke: b.color, strokeWidth: 2.25 },
         data: { branchId: bid },
       });
-      const info: BranchInfo = { id: bid, label: b.label, count: b.items.length, facet: b.label === OTHER ? undefined : spec.level1Facet, value: b.label, color: b.color, subs: [] };
+      const info: BranchInfo = { id: bid, label: b.label, count: b.items.length, facet: spec.level1Facet, values: b.values, value: b.label, color: b.color, subs: [] };
       let sy = y;
       for (const s of b.subs) {
         const sid = `s:${b.label}:${s.label}`;
@@ -251,7 +270,7 @@ export function buildTree(spec: TreeSpec): { nodes: TreeNode[]; edges: Edge[]; b
           style: { stroke: b.color, strokeWidth: 1.25, strokeDasharray: "3 4" },
           data: { branchId: bid },
         });
-        info.subs.push({ id: sid, label, count: s.items.length, facet: s.label === OTHER_SUB ? undefined : spec.level2Facet, value: s.label });
+        info.subs.push({ id: sid, label, values: s.values, count: s.items.length, facet: spec.level2Facet, value: s.label });
         sy += s.h + SUB_GAP;
       }
       branches.push(info);

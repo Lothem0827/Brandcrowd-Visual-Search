@@ -65,6 +65,19 @@ describe("parseQuery", () => {
     const p = parseQuery("construction bold design", vocab);
     expect(removeChipFromQuery("construction bold design", p.chips[1])).toBe("construction design");
   });
+
+  it("prefers a broader tag over a narrow topic of the same name", () => {
+    // the real dataset has ~6.5k near-unique topics, so a common word often matches a
+    // 1-2 template topic and a much larger tag; the tag interpretation must win
+    const sample = structuredClone(templates.slice(0, 5));
+    sample[0].topic = "Gaming";
+    for (const t of sample) t.tags = [...t.tags, "gaming"];
+    const v = buildVocab(sample);
+    const p = parseQuery("gaming", v);
+    expect(p.chips).toEqual([expect.objectContaining({ facet: "tag", value: "gaming" })]);
+    expect(p.text).toBe("");
+    expect(applyFilters(sample, { facets: chipsToSelection(p.chips), color: null })).toHaveLength(sample.length);
+  });
 });
 
 describe("autocomplete", () => {

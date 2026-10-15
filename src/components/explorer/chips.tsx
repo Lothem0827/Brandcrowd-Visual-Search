@@ -1,9 +1,35 @@
 "use client";
-import { SparklesIcon, WandSparklesIcon, XIcon } from "lucide-react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
+import {
+  ChevronDownIcon,
+  SparklesIcon,
+  WandSparklesIcon,
+  XIcon,
+} from "lucide-react";
 import { displayValue, FACET_MAP, type FacetKey } from "@/lib/facets";
 import { ignoredQueryText } from "@/lib/query";
+import { useIsMobile } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
 import { useExplorer } from "./context";
+
+// useLayoutEffect warns when a client component is server-rendered.
+const useIsoLayoutEffect =
+  typeof window === "undefined" ? useEffect : useLayoutEffect;
+
+type ChipMetrics = {
+  rows: number;
+  /** Height that shows exactly 2 rows, or null when the chips fit in 2 rows. */
+  collapsePx: number | null;
+  /** Height that shows exactly 6 rows, or null when the chips fit in 6 rows. */
+  expandPx: number | null;
+};
 
 export function ActiveChips() {
   const {
@@ -20,6 +46,15 @@ export function ActiveChips() {
     aiStatus,
     dismissAi,
   } = useExplorer();
+  const isMobile = useIsMobile();
+  const listRef = useRef<HTMLDivElement>(null);
+  const listId = useId();
+  const [expanded, setExpanded] = useState(false);
+  const [metrics, setMetrics] = useState<ChipMetrics>({
+    rows: 0,
+    collapsePx: null,
+    expandPx: null,
+  });
   const detected = parsed.chips;
   const ignored = ignoredQueryText(query);
   const committed = (
@@ -45,8 +80,101 @@ export function ActiveChips() {
     imageQuery ||
     showAi ||
     query.trim();
+
+  // Any change to the chip set re-measures and re-collapses the list.
+  const signature = [
+    detected.length,
+    committed.length,
+    aiChips.length,
+    ai?.text ?? "",
+    filters.color?.hex ?? "",
+    imageQuery?.url ?? "",
+    query.trim(),
+  ].join("|");
+
+  // Collapse again whenever the chip set changes (new search or facets).
+  const lastSignature = useRef<string | null>(null);
+
+  const measure = useCallback(() => {
+    if (lastSignature.current !== signature) {
+      lastSignature.current = signature;
+      setExpanded(false);
+    }
+    const el = listRef.current;
+    if (!el) return;
+    const items = Array.from(el.children) as HTMLElement[];
+    if (!items.length) {
+      setMetrics((m) =>
+        m.rows === 0 && m.collapsePx === null && m.expandPx === null
+          ? m
+          : { rows: 0, collapsePx: null, expandPx: null },
+      );
+      return;
+    }
+    const top = el.getBoundingClientRect().top;
+    // Items are centre-aligned, so a shared vertical centre means a shared row.
+    const centers = items.map((c) => {
+      const r = c.getBoundingClientRect();
+      return Math.round(r.top + r.height / 2);
+    });
+    const rows = Array.from(new Set(centers)).sort((a, b) => a - b);
+    const rowsCount = rows.length;
+    const bottomOfFirstRows = (count: number) => {
+      let bottom = 0;
+      items.forEach((c, i) => {
+        if (rows.indexOf(centers[i]) < count) {
+          bottom = Math.max(bottom, c.getBoundingClientRect().bottom - top);
+        }
+      });
+      return Math.ceil(bottom);
+    };
+    const collapsePx = rowsCount > 2 ? bottomOfFirstRows(2) : null;
+    const expandPx = rowsCount > 6 ? bottomOfFirstRows(6) : null;
+    setMetrics((m) =>
+      m.rows === rowsCount &&
+      m.collapsePx === collapsePx &&
+      m.expandPx === expandPx
+        ? m
+        : { rows: rowsCount, collapsePx, expandPx },
+    );
+  }, [signature]);
+
+  // Re-measure after every render: chips can reflow without a container resize
+  // (async AI text, "Searching…", font swap), and the clamp hides those reflows.
+  useIsoLayoutEffect(() => {
+    if (!isMobile) measure();
+  });
+
+  // Width changes re-wrap the chips, so re-measure on container resize.
+  useEffect(() => {
+    if (isMobile || typeof ResizeObserver === "undefined") return;
+    const el = listRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => measure());
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [isMobile, measure]);
+
+  const overflow = !isMobile && metrics.collapsePx !== null;
+  const scrollable = overflow && expanded && metrics.expandPx !== null;
+  const maxHeight = !overflow
+    ? undefined
+    : expanded
+      ? (metrics.expandPx ?? undefined)
+      : (metrics.collapsePx ?? undefined);
+
   return (
-    <div className="flex min-h-7 flex-wrap items-center gap-1.5">
+    <div className="space-y-1.5">
+      <div
+        ref={listRef}
+        id={listId}
+        className={cn(
+          "flex min-h-7 flex-wrap items-center gap-1.5",
+          overflow && !expanded && "overflow-hidden",
+          scrollable && "thin-scroll overflow-y-auto overscroll-contain pr-1",
+        )}
+        style={{ maxHeight }}
+      >
       {detected.length > 0 && (
         <span className="mr-1 flex items-center gap-1 text-[10px] font-medium tracking-[0.12em] text-muted-foreground uppercase">
           <SparklesIcon className="size-3" /> Detected
@@ -142,19 +270,41 @@ export function ActiveChips() {
           Searching…
         </span>
       )}
-      {any ? (
-        <button
-          type="button"
-          onClick={clearAll}
-          className="ml-1 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
-        >
-          Clear all
-        </button>
-      ) : (
+      {!any && (
         <span className="text-xs text-muted-foreground">
           Try “construction bold design”, “retro serif cutout”, or “text only
           quote”.
         </span>
+      )}
+      </div>
+      {any && (
+        <div className="flex items-center gap-3">
+          {overflow && (
+            <button
+              type="button"
+              aria-expanded={expanded}
+              aria-controls={listId}
+              onClick={() => setExpanded((e) => !e)}
+              className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+            >
+              {expanded ? "Show less" : `Show all ${metrics.rows} rows`}
+              <ChevronDownIcon
+                className={cn(
+                  "size-3.5 transition-transform",
+                  expanded && "rotate-180",
+                )}
+                aria-hidden
+              />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={clearAll}
+            className="ml-auto text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+          >
+            Clear all
+          </button>
+        </div>
       )}
     </div>
   );
