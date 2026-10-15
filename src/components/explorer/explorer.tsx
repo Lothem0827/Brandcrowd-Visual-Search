@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { TemplateRepository } from "@/lib/data";
-import { applyFilters, EMPTY_FILTERS, mergeSelections, removeSelections, type FacetKey, type FacetSelection, type FilterState } from "@/lib/facets";
+import { applyFilters, EMPTY_FILTERS, mergeSelections, replaceSelections, restoreSelections, type FacetKey, type FacetSelection, type FilterState } from "@/lib/facets";
 import { buildVocab, chipsToSelection, isUnsearchableQuery, parseQuery, removeChipFromQuery } from "@/lib/query";
 import { createSearchClient, type SearchClient } from "@/lib/search-client";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
@@ -214,19 +214,42 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
     });
   }, []);
   // Canvas "search within": narrow the search and remember the step so it can be undone.
+  // Each step *replaces* the facet values of the group being entered (a group is a
+  // specific subset, not a union), so drilling into merged "Other (more)" groups still
+  // narrows the tree. A click that would change nothing is skipped so the breadcrumb
+  // doesn't gain a duplicate crumb.
   const searchWithin = useCallback(
     ({ label, facets }: { label: string; facets: FacetSelection }) => {
-      setFilters((f) => ({ ...f, facets: mergeSelections(f.facets, facets) }));
+      const prev: FacetSelection = {};
+      let changed = false;
+      for (const k of Object.keys(facets) as FacetKey[]) {
+        const cur = filters.facets[k] ?? [];
+        if (cur.length) prev[k] = cur;
+        const next = facets[k] ?? [];
+        if (cur.length !== next.length || !next.every((v) => cur.includes(v))) {
+          changed = true;
+        }
+      }
+      if (!changed) return;
+      setFilters((f) => ({ ...f, facets: replaceSelections(f.facets, facets) }));
       setSearchPath((p) => [
         ...p,
-        { id: `${p.length}:${label}`, label, facets },
+        {
+          id: `${p.length}:${label}`,
+          label,
+          facets,
+          prev: Object.keys(prev).length ? prev : undefined,
+        },
       ]);
     },
-    [],
+    [filters.facets],
   );
-  // Drop the facets of `steps` (the ones being undone), keeping any other filters.
+  // Undo `steps` (the ones being removed), restoring the values each step replaced.
+  // Steps are undone newest-first so a facet narrowed repeatedly is restored in order.
   const dropSteps = useCallback((steps: SearchStep[]) => {
-    setFilters((f) => steps.reduce((acc, s) => removeSelections(acc, s.facets), f));
+    setFilters((f) =>
+      [...steps].reverse().reduce((acc, s) => restoreSelections(acc, s), f),
+    );
   }, []);
   const backOneStep = useCallback(() => {
     if (!searchPath.length) return;

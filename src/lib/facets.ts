@@ -160,6 +160,43 @@ export function removeSelections(f: FilterState, b: FacetSelection): FilterState
   return { ...f, facets };
 }
 
+/**
+ * Narrow a facet selection by *replacing* the values for each facet in `next`
+ * (unlike `mergeSelections`, which unions). Other facets are left untouched.
+ */
+export function replaceSelections(current: FacetSelection, next: FacetSelection): FacetSelection {
+  const out: FacetSelection = { ...current };
+  for (const [k, vs] of Object.entries(next) as [FacetKey, string[]][]) {
+    if (vs.length) out[k] = [...vs];
+    else delete out[k];
+  }
+  return out;
+}
+
+/**
+ * Undo one drill step: restore the values a step replaced (`step.prev`), and
+ * remove the values it newly introduced. `color` is left untouched.
+ */
+export function restoreSelections(
+  f: FilterState,
+  step: { facets: FacetSelection; prev?: FacetSelection },
+): FilterState {
+  const facets: FacetSelection = { ...f.facets };
+  const prev = step.prev ?? {};
+  for (const [k, vs] of Object.entries(step.facets) as [FacetKey, string[]][]) {
+    if (k in prev) {
+      const restored = prev[k] ?? [];
+      if (restored.length) facets[k] = restored;
+      else delete facets[k];
+    } else {
+      const next = (facets[k] ?? []).filter((v) => !vs.includes(v));
+      if (next.length) facets[k] = next;
+      else delete facets[k];
+    }
+  }
+  return { ...f, facets };
+}
+
 /** AND across facets, OR within a facet. `except` skips one facet (for option counts). */
 export function matchesFilters(t: Template, f: FilterState, except?: FacetKey | "color"): boolean {
   for (const [k, vs] of Object.entries(f.facets) as [FacetKey, string[]][]) {

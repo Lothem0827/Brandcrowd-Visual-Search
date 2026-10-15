@@ -31,6 +31,8 @@ export interface SearchStep {
   label: string;
   /** facets this step added to the search */
   facets: FacetSelection;
+  /** per-facet values this step replaced, so undo can restore them */
+  prev?: FacetSelection;
 }
 
 export interface ExplorerApi {
