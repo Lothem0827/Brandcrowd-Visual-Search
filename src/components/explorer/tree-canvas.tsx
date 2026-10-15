@@ -54,6 +54,7 @@ import { cn } from "@/lib/utils";
 import { useExplorer } from "./context";
 import { useBoards } from "./use-boards";
 import { LayoutIcon } from "./icons";
+import { ThumbImage } from "./thumb-image";
 
 /* ------------------------------------------------------------------ */
 /* Canvas context (callbacks used inside custom nodes)                 */
@@ -144,15 +145,7 @@ function Thumb({
       className="nodrag group relative shrink-0 overflow-hidden rounded-[7px] bg-muted ring-1 ring-black/5 transition-transform duration-150 hover:z-10 hover:scale-[1.08] hover:ring-2 hover:ring-foreground focus-visible:ring-2 focus-visible:ring-foreground focus-visible:outline-none"
       style={{ width: size, height: size }}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={t.thumbnailImage}
-        alt=""
-        loading="lazy"
-        decoding="async"
-        draggable={false}
-        className="size-full object-cover"
-      />
+      <ThumbImage key={t.thumbnailImage} src={t.thumbnailImage} alt="" className="size-full object-cover" />
       {badge && (
         <span className="absolute right-1 bottom-1 rounded bg-black/70 px-1 text-[9px] font-medium text-white tabular-nums">
           {badge}
@@ -315,13 +308,16 @@ const CenterNodeView = memo(function CenterNodeView({
         className="nodrag block w-full overflow-hidden rounded-lg"
         aria-label="Show details"
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={t.thumbnailImage}
-          alt={t.displayTitle}
-          className="aspect-square w-full bg-muted object-cover"
-          draggable={false}
-        />
+        <span className="block aspect-square w-full">
+          <ThumbImage
+            key={t.previewImage || t.thumbnailImage}
+            src={t.previewImage || t.thumbnailImage}
+            alt={t.displayTitle}
+            eager
+            className="aspect-square w-full bg-muted bg-cover object-cover"
+            style={{ backgroundImage: `url("${t.thumbnailImage}")` }}
+          />
+        </span>
       </button>
       <div className="mt-2.5 flex items-end justify-between gap-2">
         <div className="min-w-0">

@@ -14,6 +14,7 @@ export function ActiveChips() {
     imageQuery,
     setImageQuery,
     query,
+    searching,
   } = useExplorer();
   const detected = parsed.chips;
   const committed = (
@@ -72,6 +73,11 @@ export function ActiveChips() {
       {parsed.text && (
         <span className="text-xs text-muted-foreground">
           + text “{parsed.text}”
+        </span>
+      )}
+      {searching && query.trim() && (
+        <span className="text-xs text-muted-foreground" role="status">
+          Searching…
         </span>
       )}
       {any ? (

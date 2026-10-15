@@ -1,4 +1,5 @@
-import { VOCAB, type Template } from "./schema";
+import type { Template } from "./schema";
+import { VOCAB } from "./vocab";
 import { colorMatchDistance, normalizeHex } from "./color";
 
 export type FacetKey =

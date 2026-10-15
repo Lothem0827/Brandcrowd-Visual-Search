@@ -1,9 +1,10 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { templateRepository } from "@/lib/data";
+import type { TemplateRepository } from "@/lib/data";
 import { applyFilters, EMPTY_FILTERS, mergeSelections, removeSelections, type FacetKey, type FacetSelection, type FilterState } from "@/lib/facets";
 import { buildVocab, chipsToSelection, parseQuery, removeChipFromQuery } from "@/lib/query";
-import { buildSearchIndex } from "@/lib/search";
+import { createSearchClient, type SearchClient } from "@/lib/search-client";
+import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { findAllSimilar, rankByPalette } from "@/lib/similarity";
 import { rng } from "@/lib/color";
 import { ExplorerContext, type ExplorerApi, type HoverState, type ImageQuery, type SearchStep, type View } from "./context";
@@ -15,6 +16,8 @@ import { BoardsPanel } from "./boards-panel";
 import { ImageDropOverlay } from "./image-drop";
 
 const IMAGE_RESULTS = 36;
+/** Typing is debounced so the 7,000-record filter + tree layout runs once per pause, not per key. */
+const QUERY_DEBOUNCE_MS = 180;
 
 function seededShuffle<T>(list: T[], seed: number): T[] {
   const r = rng(seed);
@@ -26,13 +29,38 @@ function seededShuffle<T>(list: T[], seed: number): T[] {
   return a;
 }
 
-export function Explorer() {
-  const all = templateRepository.all();
-  const categories = useMemo(() => templateRepository.categories(), []);
+export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateRepository; dataUrl: string; detailsUrl?: string }) {
+  const all = repo.all();
+  const categories = useMemo(() => repo.categories(), [repo]);
   const [category] = useState(categories[0] ?? "Instagram Post");
   const base = useMemo(() => all.filter((t) => t.category === category), [all, category]);
   const vocab = useMemo(() => buildVocab(base), [base]);
-  const index = useMemo(() => buildSearchIndex(base), [base]);
+  // The text index is built in a Web Worker (see search-client.ts), never on the main thread.
+  const [searchClient, setSearchClient] = useState<SearchClient | null>(null);
+  const baseRef = useRef(base);
+  useEffect(() => {
+    baseRef.current = base;
+  }, [base]);
+  useEffect(() => {
+    const client = createSearchClient({ dataUrl, detailsUrl, category, getTemplates: () => repo.ensureDetails().then(() => baseRef.current, () => baseRef.current) });
+    setSearchClient(client);
+    return () => client.dispose();
+  }, [dataUrl, detailsUrl, category, repo]);
+
+  // Long-text details (description, copy, hashtags…) load after the tree is up.
+  const [detailsReady, setDetailsReady] = useState(() => repo.detailsLoaded());
+  const [detailsError, setDetailsError] = useState(false);
+  const loadDetails = useCallback(() => {
+    setDetailsError(false);
+    repo.ensureDetails().then(
+      () => setDetailsReady(true),
+      () => setDetailsError(true),
+    );
+  }, [repo]);
+  useEffect(() => {
+    const id = window.setTimeout(loadDetails, 1500);
+    return () => window.clearTimeout(id);
+  }, [loadDetails]);
   const tagCounts = useMemo(() => {
     const m = new Map<string, number>();
     for (const t of base) for (const g of t.tags) m.set(g.toLowerCase(), (m.get(g.toLowerCase()) ?? 0) + 1);
@@ -52,7 +80,25 @@ export function Explorer() {
   const [searchPath, setSearchPath] = useState<SearchStep[]>([]);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  const parsed = useMemo(() => parseQuery(query, vocab), [query, vocab]);
+  const debouncedQuery = useDebouncedValue(query, QUERY_DEBOUNCE_MS);
+  const parsed = useMemo(() => parseQuery(debouncedQuery, vocab), [debouncedQuery, vocab]);
+
+  // Latest text-search scores from the worker. While a newer query is in flight the
+  // previous scores stay applied, so the tree doesn't flash back to "all templates".
+  const [textHits, setTextHits] = useState<{ text: string; scores: Map<string, number> } | null>(null);
+  useEffect(() => {
+    if (!parsed.text || !searchClient) return;
+    let live = true;
+    searchClient.search(parsed.text).then(
+      (scores) => live && setTextHits({ text: parsed.text, scores }),
+      () => undefined,
+    );
+    return () => {
+      live = false;
+    };
+  }, [parsed.text, searchClient]);
+  const textScores = parsed.text ? (textHits?.scores ?? null) : null;
+  const searching = (!!parsed.text && textHits?.text !== parsed.text) || debouncedQuery !== query;
   const effective = useMemo<FilterState>(
     () => ({ facets: mergeSelections(filters.facets, chipsToSelection(parsed.chips)), color: filters.color }),
     [filters, parsed],
@@ -65,8 +111,8 @@ export function Explorer() {
 
   const results = useMemo(() => {
     let list = applyFilters(base, effective);
-    if (parsed.text) {
-      const scores = index.search(parsed.text);
+    if (textScores) {
+      const scores = textScores;
       list = list.filter((t) => scores.has(t.templateId)).sort((a, b) => scores.get(b.templateId)! - scores.get(a.templateId)!);
     }
     if (imageScores) {
@@ -74,9 +120,9 @@ export function Explorer() {
     }
     if (shuffleSeed !== null) list = seededShuffle(list, shuffleSeed);
     return list;
-  }, [base, effective, parsed.text, index, imageScores, shuffleSeed]);
+  }, [base, effective, textScores, imageScores, shuffleSeed]);
 
-  const byId = useCallback((id: string) => templateRepository.byId(id), []);
+  const byId = useCallback((id: string) => repo.byId(id), [repo]);
   const center = view.kind === "similar" ? byId(view.trail[view.trail.length - 1]) ?? null : null;
   const similar = useMemo(() => {
     if (!center) return null;
@@ -193,10 +239,11 @@ export function Explorer() {
 
   const api: ExplorerApi = {
     all, base, results, byId, vocab, tagCounts, category,
-    query, setQuery, parsed, filters, setFilters, effective, toggleFacet, addFacet, clearAll,
+    query, setQuery, parsed, searching, filters, setFilters, effective, toggleFacet, addFacet, clearAll,
     searchPath, searchWithin, backOneStep, jumpToStep,
     imageQuery, setImageQuery, imageScores, shuffleSeed, setShuffleSeed,
     view, setView, openTemplate, simScope, setSimScope, similar, center,
+    detailsReady, detailsError, loadDetails,
     detailOpen, setDetailOpen, hover, setHover, boardsOpen, setBoardsOpen, boardGroup, setBoardGroup, focusSearch,
   };
 

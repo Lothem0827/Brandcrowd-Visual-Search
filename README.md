@@ -61,8 +61,12 @@ Works the same on Windows, macOS and Linux (no machine-specific paths).
 
 ## Data
 
-All template data comes from **`data/templates.json`** (an array of records), loaded and validated by
-`src/lib/data.ts` with the Zod schema in `src/lib/schema.ts`. Invalid records are skipped (a warning is logged in dev).
+All template data comes from **`data/templates.json`** (an array of records). It is validated **at build time**
+by `scripts/build-data.ts` (`pnpm data`, run automatically before `pnpm dev` and `pnpm build`) with the Zod schema in
+`src/lib/schema.ts`. Invalid records are skipped with a warning. The script writes a minified, content-hashed copy to
+`public/data/templates.<hash>.json` (plus `manifest.json`), swapping the 600px thumbnails for the 200px rendering.
+The browser downloads that file once (preloaded from the page head, compressed, cached for a year) and the text-search
+index is built in a Web Worker (`src/lib/search.worker.ts`), so neither the dataset nor Zod ship in the JS bundle.
 
 Record shape (see `../schema.md` for the full spec and controlled vocabularies):
 
@@ -94,7 +98,7 @@ GUID and `logoTemplateVersion`). Images load directly from `dynamic.design.com`.
 1. Overwrite `data/templates.json` with the new array (same schema).
 2. Run `pnpm test` — `src/lib/data.test.ts` checks it parses, has no logo templates, and prints any
    out-of-vocabulary values (those still work as filters, they just appear as extra options).
-3. `pnpm build`. Filters, autocomplete and chip detection are generated from the data, so new industries,
+3. `pnpm build` (runs `pnpm data` first). Filters, autocomplete and chip detection are generated from the data, so new industries,
    topics, tags and elements appear automatically. Categories in the top bar come from `category`.
 
 `tests/fixtures/templates.fixture.json` is a small fixed set used by the unit tests so they don't depend on the dataset.
@@ -104,7 +108,9 @@ GUID and `logoTemplateVersion`). Images load directly from `dynamic.design.com`.
 | Path | What |
 | --- | --- |
 | `src/lib/schema.ts` | Zod schema, controlled vocabularies, `parseTemplates` |
-| `src/lib/data.ts` | `TemplateRepository` interface + static JSON implementation |
+| `scripts/build-data.ts` | Build-time validation + hashed static dataset in `public/data/` |
+| `src/lib/data.ts` | `TemplateRepository` interface + static JSON implementation (fetched in the browser) |
+| `src/lib/search-client.ts`, `search.worker.ts` | Text index in a Web Worker, with a main-thread fallback |
 | `src/lib/facets.ts` | Facet registry, filter state, filtering, option counts |
 | `src/lib/query.ts` | Query → chips parsing, synonyms, autocomplete |
 | `src/lib/search.ts` | Weighted fuzzy search (MiniSearch) |
@@ -116,7 +122,8 @@ GUID and `logoTemplateVersion`). Images load directly from `dynamic.design.com`.
 
 ### Swappable boundaries (for v2)
 
-- **Data**: implement `TemplateRepository` (`all`, `byId`, `categories`) against Supabase and export it from `src/lib/data.ts`.
+- **Data**: implement `TemplateRepository` (`all`, `byId`, `categories`) against Supabase and create it in
+  `src/components/explorer/explorer-loader.tsx` instead of `fetchTemplateRepository`.
 - **Boards**: implement `BoardStore` (`list/create/rename/remove/add/removeItem/toggle/subscribe`) against Supabase
   tables (`boards`, `board_items`) and return it from `getBoardStore()`.
 

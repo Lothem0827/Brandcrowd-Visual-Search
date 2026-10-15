@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { SAVED_BOARD_ID } from "@/lib/boards";
 import { useExplorer } from "./context";
 import { useBoards } from "./use-boards";
+import { ThumbImage } from "./thumb-image";
 
 export function BoardsPanel() {
   const { boardsOpen, setBoardsOpen, byId, setView, setDetailOpen } = useExplorer();
@@ -36,8 +37,7 @@ export function BoardsPanel() {
                 >
                   <div className={`grid size-14 shrink-0 gap-0.5 overflow-hidden rounded-lg bg-muted ${items.length >= 4 ? "grid-cols-2" : "grid-cols-1"}`}>
                     {items.map((t) => (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img key={t!.templateId} src={t!.thumbnailImage} alt="" className="size-full object-cover" />
+                      <ThumbImage key={t!.templateId} src={t!.thumbnailImage} alt="" className="size-full object-cover" />
                     ))}
                   </div>
                   <div className="min-w-0 flex-1">

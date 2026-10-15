@@ -43,6 +43,8 @@ export interface ExplorerApi {
   query: string;
   setQuery: (q: string) => void;
   parsed: ParsedQuery;
+  /** true while a typed query is debouncing or its text search is still running */
+  searching: boolean;
   filters: FilterState;
   setFilters: (f: FilterState | ((f: FilterState) => FilterState)) => void;
   effective: FilterState;
@@ -67,6 +69,10 @@ export interface ExplorerApi {
   setSimScope: (s: "industry" | "all") => void;
   similar: Record<SimilarKind, SimilarHit[]> | null;
   center: Template | null;
+  /** long-text template details (description, copy lines…) have been loaded */
+  detailsReady: boolean;
+  detailsError: boolean;
+  loadDetails: () => void;
   detailOpen: boolean;
   setDetailOpen: (o: boolean) => void;
   hover: HoverState | null;
