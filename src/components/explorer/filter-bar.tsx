@@ -173,7 +173,7 @@ function QuickFilter({
       <PopoverContent
         align="start"
         className={cn(
-          "thin-scroll max-h-[70vh] gap-4 overflow-y-auto p-3.5",
+          "thin-scroll max-h-[70vh] max-w-[calc(100vw-1rem)] gap-4 overflow-y-auto p-3.5",
           width,
         )}
       >
@@ -440,7 +440,8 @@ export function FilterBar() {
   const { results, base, shuffleSeed, setShuffleSeed } = useExplorer();
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-2">
+      {/* one scrollable row on phones instead of clipped buttons */}
+      <div className="thin-scroll flex items-center gap-2 max-md:-mx-3 max-md:overflow-x-auto max-md:px-3 max-md:pb-1 [&>*]:shrink-0">
         <QuickFilter label="Style" facets={["aesthetic"]}>
           <Section title="Aesthetic">
             <OptionList facet="aesthetic" />
@@ -527,7 +528,7 @@ export function FilterBar() {
           </Button>
         )}
       </div>
-      <div className="text-xs text-muted-foreground tabular-nums">
+      <div className="text-xs text-muted-foreground tabular-nums max-md:hidden">
         <b className="text-foreground">{results.length}</b> of {base.length}{" "}
         no-logo templates
       </div>

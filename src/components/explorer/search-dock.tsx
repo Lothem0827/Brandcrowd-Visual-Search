@@ -1,6 +1,8 @@
 "use client";
 import { useId, useMemo, useRef, useState, type RefObject } from "react";
-import { ImagePlusIcon, LoaderCircleIcon, SearchIcon, XIcon } from "lucide-react";
+import { ChevronUpIcon, ImagePlusIcon, LoaderCircleIcon, SearchIcon, XIcon } from "lucide-react";
+import { activeFilterCount } from "@/lib/facets";
+import { useIsMobile } from "@/lib/use-media-query";
 import { Button } from "@/components/ui/button";
 import {
   completeQuery,
@@ -226,18 +228,54 @@ export function SearchDock({
 }: {
   inputRef: RefObject<HTMLInputElement | null>;
 }) {
-  const { detailOpen } = useExplorer();
+  const { detailOpen, effective, imageQuery, results, base } = useExplorer();
+  const isMobile = useIsMobile();
+  // On phones the dock is a bottom sheet: search box always visible, chips + filters on demand.
+  const [expanded, setExpanded] = useState(false);
+  const panelId = useId();
+  if (isMobile && detailOpen) return null; // details take the full screen on phones
+  const active = activeFilterCount(effective) + (effective.color ? 1 : 0) + (imageQuery ? 1 : 0);
+  const showAll = !isMobile || expanded;
   return (
     <div
       className={cn(
         "pointer-events-none absolute inset-x-0 bottom-5 z-20 flex justify-center px-4",
-        detailOpen && "pr-[432px]",
+        "max-md:bottom-0 max-md:px-0",
+        detailOpen && "md:pr-[432px]",
       )}
     >
-      <div className="pointer-events-auto w-full max-w-[800px] space-y-2 rounded-2xl bg-background/95 p-4 backdrop-blur">
-        <ActiveChips />
+      <div
+        className={cn(
+          "pointer-events-auto w-full max-w-[800px] space-y-2 rounded-2xl bg-background/95 p-4 backdrop-blur",
+          "max-md:rounded-b-none max-md:p-3 max-md:pb-[max(0.75rem,env(safe-area-inset-bottom))] max-md:shadow-[0_-8px_24px_rgb(0_0_0/0.08)]",
+        )}
+        data-testid="search-dock"
+      >
+        {isMobile && (
+          <button
+            type="button"
+            aria-expanded={expanded}
+            aria-controls={panelId}
+            onClick={() => setExpanded((e) => !e)}
+            className="-mt-1 flex h-8 w-full items-center justify-between gap-2 rounded-lg px-1 text-xs text-muted-foreground"
+          >
+            <span className="tabular-nums">
+              <b className="text-foreground">{results.length}</b> of {base.length} templates
+            </span>
+            <span className="flex items-center gap-1 font-medium text-foreground">
+              {expanded ? "Hide filters" : "Filters"}
+              {active > 0 && (
+                <span className="rounded-full bg-[#F0812F] px-1.5 text-[10px] text-white tabular-nums">{active}</span>
+              )}
+              <ChevronUpIcon className={cn("size-4 transition-transform", expanded && "rotate-180")} aria-hidden />
+            </span>
+          </button>
+        )}
+        <div id={panelId} className={cn("space-y-2", !showAll && "hidden")}>
+          <ActiveChips />
+        </div>
         <SearchBox inputRef={inputRef} />
-        <FilterBar />
+        {showAll && <FilterBar />}
       </div>
     </div>
   );

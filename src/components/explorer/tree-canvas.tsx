@@ -49,10 +49,40 @@ const FIT_SIM = {
   padding: { top: "134px", left: "40px", right: "40px", bottom: "170px" },
   maxZoom: 1.1,
 } as const;
+const ZOOM_PADDING = { top: "90px", left: "280px", right: "60px", bottom: "80px" } as const;
+// Phones: don't shrink the whole tree into 375px (6px labels, 20px tiles). Keep text
+// readable and tiles >= 44px, centred on the root; the rest is a swipe away.
+const FIT_TREE_MOBILE = {
+  padding: { top: "110px", left: "12px", right: "12px", bottom: "110px" },
+  maxZoom: 1,
+  minZoom: 0.6,
+} as const;
+const FIT_SIM_MOBILE = {
+  padding: { top: "150px", left: "12px", right: "12px", bottom: "100px" },
+  maxZoom: 1,
+  minZoom: 0.5,
+} as const;
+/**
+ * What to frame first on a phone: the root plus the right-hand column of branches (or the
+ * similar-view center plus its right-hand groups). Labels stay readable and every branch
+ * there is a tap target; the left half is one swipe away.
+ */
+function mobileFitNodes(nodes: Node[]): { id: string }[] {
+  const pick = nodes.filter((n) => {
+    const d = n.data as { kind?: string; side?: string };
+    if (d.kind === "root" || d.kind === "center") return true;
+    if (d.kind === "branch") return d.side === "right";
+    if (d.kind === "similar") return d.side === "right";
+    return false;
+  });
+  return (pick.length ? pick : nodes).map((n) => ({ id: n.id }));
+}
+const ZOOM_PADDING_MOBILE = { top: "150px", left: "12px", right: "12px", bottom: "120px" } as const;
 const structureLabel = (v: string) => STRUCTURE_LABEL[v] ?? cap(v);
 import { cn } from "@/lib/utils";
 import { useExplorer } from "./context";
 import { useBoards } from "./use-boards";
+import { useMediaQuery, useIsMobile, WIDE_QUERY } from "@/lib/use-media-query";
 import { LayoutIcon } from "./icons";
 import { ThumbImage } from "./thumb-image";
 
@@ -898,6 +928,14 @@ function CanvasInner() {
   const { resolvedTheme } = useTheme();
   const graph = useGraph();
   const rf = useReactFlow();
+  const isMobile = useIsMobile();
+  const wide = useMediaQuery(WIDE_QUERY);
+  const fitTree = isMobile ? FIT_TREE_MOBILE : FIT_TREE;
+  const fitSim = isMobile ? FIT_SIM_MOBILE : FIT_SIM;
+  const fitRef = useRef({ fitTree, fitSim, mobile: isMobile });
+  useEffect(() => {
+    fitRef.current = { fitTree, fitSim, mobile: isMobile };
+  }, [fitTree, fitSim, isMobile]);
   const [focus, setFocus] = useState<Focus>({});
   const [ready, setReady] = useState(false);
   const lastKey = useRef("");
@@ -910,8 +948,10 @@ function CanvasInner() {
     const first = !readyRef.current;
     setTimeout(
       () => {
+        const sim = graph.key.startsWith("sim:");
         void rf.fitView({
-          ...(graph.key.startsWith("sim:") ? FIT_SIM : FIT_TREE),
+          ...(sim ? fitRef.current.fitSim : fitRef.current.fitTree),
+          ...(fitRef.current.mobile ? { nodes: mobileFitNodes(graph.nodes) } : {}),
           duration: first ? 0 : 450,
         });
         readyRef.current = true;
@@ -919,7 +959,7 @@ function CanvasInner() {
       },
       first ? 60 : 30,
     );
-  }, [graph.key, rf]);
+  }, [graph.key, graph.nodes, rf]);
 
   const { nodes, edges } = useMemo(() => {
     const inFocus = (n: Node) => {
@@ -950,7 +990,7 @@ function CanvasInner() {
     requestAnimationFrame(() =>
       rf.fitView({
         nodes: ids.map((id) => ({ id })),
-        padding: { top: "90px", left: "280px", right: "60px", bottom: "80px" },
+        padding: isMobile ? ZOOM_PADDING_MOBILE : ZOOM_PADDING,
         duration: 500,
         maxZoom: 1.4,
       }),
@@ -961,7 +1001,7 @@ function CanvasInner() {
     onBranch: (branchId) => {
       if (focus.branchId === branchId && !focus.subId) {
         setFocus({});
-        void rf.fitView({ ...FIT_TREE, duration: 450 });
+        void rf.fitView({ ...fitTree, duration: 450 });
         return;
       }
       setFocus({ branchId });
@@ -1024,6 +1064,56 @@ function CanvasInner() {
     : 0;
   const empty = graph.nodes.length <= 1;
 
+  const scopeControls = (
+    <>
+      {ex.view.kind === "similar" && ex.center && (
+        <>
+          <Segmented
+            className="p-0.5"
+            label="Similar scope"
+            value={ex.simScope}
+            onChange={ex.setSimScope}
+            options={[
+              {
+                value: "industry",
+                label: (
+                  <>
+                    In {ex.center.industry}{" "}
+                    <span className="font-mono text-[11px] opacity-60">{indCount}</span>
+                  </>
+                ),
+              },
+              {
+                value: "all",
+                label: (
+                  <>
+                    All categories{" "}
+                    <span className="font-mono text-[11px] opacity-60">{ex.base.length - 1}</span>
+                  </>
+                ),
+              },
+            ]}
+          />
+          <div className="text-xs text-muted-foreground max-md:hidden">
+            Exploring similar to <b className="text-foreground">{ex.center.name}</b>
+          </div>
+        </>
+      )}
+      {ex.view.kind === "board" && (
+        <Segmented
+          className="p-0.5"
+          label="Group board by"
+          value={ex.boardGroup}
+          onChange={ex.setBoardGroup}
+          options={[
+            { value: "layout", label: "By layout" },
+            { value: "style", label: "By style" },
+          ]}
+        />
+      )}
+    </>
+  );
+
   return (
     <CanvasCtx.Provider value={api}>
       <ReactFlow
@@ -1040,13 +1130,13 @@ function CanvasInner() {
         onPaneClick={() => {
           if (focus.branchId) {
             setFocus({});
-            void rf.fitView({ ...FIT_TREE, duration: 450 });
+            void rf.fitView({ ...fitTree, duration: 450 });
           }
         }}
         onMoveStart={() => ex.hover && ex.setHover(null)}
         proOptions={{ hideAttribution: true }}
         fitView
-        fitViewOptions={FIT_TREE}
+        fitViewOptions={fitTree}
         className={cn(
           "transition-opacity duration-300",
           ready ? "opacity-100" : "opacity-0",
@@ -1059,6 +1149,7 @@ function CanvasInner() {
           size={1.4}
           color="var(--canvas-dot)"
         />
+        {wide && (
         <MiniMap
           pannable
           zoomable
@@ -1074,19 +1165,26 @@ function CanvasInner() {
           // so its center sits 20 + 170 / 2 = 105px from the bottom => 105 - 96 / 2 = 57.
           style={{ width: 150, height: 96, marginBottom: 57 }}
         />
-        <Controls
-          position="bottom-right"
-          showInteractive={false}
-          // 66 = 57 (the map's own offset) + (96 - 78) / 2 so the 78px-tall control stack is
-          // centered vertically against the 96px-tall minimap instead of bottom-aligned to it.
-          style={{ marginRight: 175, marginBottom: 66 }}
-        />
+        )}
+        {wide ? (
+          <Controls
+            position="bottom-right"
+            showInteractive={false}
+            // 66 = 57 (the map's own offset) + (96 - 78) / 2 so the 78px-tall control stack is
+            // centered vertically against the 96px-tall minimap instead of bottom-aligned to it.
+            style={{ marginRight: 175, marginBottom: 66 }}
+          />
+        ) : (
+          // Below 1280px (incl. 125%+ browser zoom) the bottom-right corner collides with the
+          // centered search dock, so the controls move under the top bar and the minimap hides.
+          <Controls position="top-right" showInteractive={false} style={{ marginTop: 64 }} />
+        )}
       </ReactFlow>
 
       {/* overlays */}
       <div className="pointer-events-none absolute inset-0">
         <div
-          className="absolute top-4 left-4 flex flex-col items-start gap-2"
+          className="absolute top-4 left-4 flex flex-col items-start gap-2 max-md:top-16 max-md:right-14 max-md:left-3 max-md:!max-w-none"
           style={{ maxWidth: "calc(50% - 200px)" }}
         >
           {ex.view.kind === "similar" ? (
@@ -1094,13 +1192,16 @@ function CanvasInner() {
           ) : (
             <>
               <SearchBreadcrumb />
-              <PathPanel
-                branches={graph.branches}
-                focus={focus}
-                level1={graph.level1}
-                onSearchWithin={searchWithin}
-                onReset={() => api.onBranch(focus.branchId!)}
-              />
+              {/* on phones the path panel only appears once a branch is focused */}
+              {(!isMobile || focus.branchId) && (
+                <PathPanel
+                  branches={graph.branches}
+                  focus={focus}
+                  level1={graph.level1}
+                  onSearchWithin={searchWithin}
+                  onReset={() => api.onBranch(focus.branchId!)}
+                />
+              )}
             </>
           )}
           {ex.view.kind === "board" && (
@@ -1114,59 +1215,13 @@ function CanvasInner() {
               </button>
             </Panel>
           )}
+          {isMobile && scopeControls}
         </div>
-        <div className="absolute top-4 left-1/2 flex -translate-x-1/2 flex-col items-center gap-1.5">
-          {ex.view.kind === "similar" && ex.center && (
-            <>
-              <Segmented
-                className="p-0.5"
-                label="Similar scope"
-                value={ex.simScope}
-                onChange={ex.setSimScope}
-                options={[
-                  {
-                    value: "industry",
-                    label: (
-                      <>
-                        In {ex.center.industry}{" "}
-                        <span className="font-mono text-[11px] opacity-60">
-                          {indCount}
-                        </span>
-                      </>
-                    ),
-                  },
-                  {
-                    value: "all",
-                    label: (
-                      <>
-                        All categories{" "}
-                        <span className="font-mono text-[11px] opacity-60">
-                          {ex.base.length - 1}
-                        </span>
-                      </>
-                    ),
-                  },
-                ]}
-              />
-              <div className="text-xs text-muted-foreground">
-                Exploring similar to{" "}
-                <b className="text-foreground">{ex.center.name}</b>
-              </div>
-            </>
-          )}
-          {ex.view.kind === "board" && (
-            <Segmented
-              className="p-0.5"
-              label="Group board by"
-              value={ex.boardGroup}
-              onChange={ex.setBoardGroup}
-              options={[
-                { value: "layout", label: "By layout" },
-                { value: "style", label: "By style" },
-              ]}
-            />
-          )}
-        </div>
+        {!isMobile && (
+          <div className="absolute top-4 left-1/2 flex -translate-x-1/2 flex-col items-center gap-1.5">
+            {scopeControls}
+          </div>
+        )}
         {empty && (
           <div className="absolute inset-0 grid place-items-center pb-44">
             <Panel className="max-w-sm p-5 text-center">

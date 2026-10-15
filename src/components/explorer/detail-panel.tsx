@@ -76,7 +76,7 @@ export function DetailPanel({ template: t }: { template: Template }) {
 
   return (
     <aside
-      className="thin-scroll absolute top-20 right-4 bottom-4 z-20 w-[400px] max-w-[90vw] overflow-y-auto rounded-2xl bg-background"
+      className="thin-scroll absolute top-20 right-4 bottom-4 z-20 w-[400px] max-w-[90vw] overflow-y-auto rounded-2xl bg-background max-md:inset-x-0 max-md:top-14 max-md:bottom-0 max-md:w-auto max-md:max-w-none max-md:rounded-b-none max-md:shadow-[0_-8px_24px_rgb(0_0_0/0.12)]"
       aria-label="Design details"
       data-testid="detail-panel"
     >
@@ -87,7 +87,7 @@ export function DetailPanel({ template: t }: { template: Template }) {
             {t.category} › {t.industry} › {t.topic}
           </span>
         </div>
-        <button type="button" aria-label="Close details (Esc)" onClick={() => setDetailOpen(false)} className="grid size-7 place-items-center rounded-lg bg-panel hover:bg-muted">
+        <button type="button" aria-label="Close details (Esc)" onClick={() => setDetailOpen(false)} className="grid size-7 place-items-center rounded-lg bg-panel hover:bg-muted max-md:size-9">
           <XIcon className="size-3.5" />
         </button>
       </div>

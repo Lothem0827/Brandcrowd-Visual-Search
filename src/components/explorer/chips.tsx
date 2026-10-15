@@ -133,7 +133,7 @@ function Chip({
         aria-label={`Remove ${label} ${value}`}
         onClick={onRemove}
         className={cn(
-          "grid size-5 place-items-center rounded-full",
+          "grid size-6 place-items-center rounded-full",
           dark ? "hover:bg-background/20" : "hover:bg-muted",
         )}
       >
