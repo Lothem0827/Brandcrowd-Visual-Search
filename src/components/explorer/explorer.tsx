@@ -1,12 +1,12 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { templateRepository } from "@/lib/data";
-import { applyFilters, EMPTY_FILTERS, mergeSelections, type FacetKey, type FilterState } from "@/lib/facets";
+import { applyFilters, EMPTY_FILTERS, mergeSelections, removeSelections, type FacetKey, type FacetSelection, type FilterState } from "@/lib/facets";
 import { buildVocab, chipsToSelection, parseQuery, removeChipFromQuery } from "@/lib/query";
 import { buildSearchIndex } from "@/lib/search";
 import { findAllSimilar, rankByPalette } from "@/lib/similarity";
 import { rng } from "@/lib/color";
-import { ExplorerContext, type ExplorerApi, type HoverState, type ImageQuery, type View } from "./context";
+import { ExplorerContext, type ExplorerApi, type HoverState, type ImageQuery, type SearchStep, type View } from "./context";
 import { TopBar } from "./top-bar";
 import { SearchDock } from "./search-dock";
 import { TreeCanvas } from "./tree-canvas";
@@ -49,6 +49,7 @@ export function Explorer() {
   const [hover, setHover] = useState<HoverState | null>(null);
   const [boardsOpen, setBoardsOpen] = useState(false);
   const [boardGroup, setBoardGroup] = useState<"layout" | "style">("layout");
+  const [searchPath, setSearchPath] = useState<SearchStep[]>([]);
   const searchRef = useRef<HTMLInputElement>(null);
 
   const parsed = useMemo(() => parseQuery(query, vocab), [query, vocab]);
@@ -106,10 +107,38 @@ export function Explorer() {
       return { ...f, facets: { ...f.facets, [k]: [...cur, v] } };
     });
   }, []);
+  // Canvas "search within": narrow the search and remember the step so it can be undone.
+  const searchWithin = useCallback(
+    ({ label, facets }: { label: string; facets: FacetSelection }) => {
+      setFilters((f) => ({ ...f, facets: mergeSelections(f.facets, facets) }));
+      setSearchPath((p) => [
+        ...p,
+        { id: `${p.length}:${label}`, label, facets },
+      ]);
+    },
+    [],
+  );
+  // Drop the facets of `steps` (the ones being undone), keeping any other filters.
+  const dropSteps = useCallback((steps: SearchStep[]) => {
+    setFilters((f) => steps.reduce((acc, s) => removeSelections(acc, s.facets), f));
+  }, []);
+  const backOneStep = useCallback(() => {
+    if (!searchPath.length) return;
+    dropSteps([searchPath[searchPath.length - 1]]);
+    setSearchPath(searchPath.slice(0, -1));
+  }, [searchPath, dropSteps]);
+  const jumpToStep = useCallback(
+    (index: number) => {
+      dropSteps(searchPath.slice(index + 1));
+      setSearchPath(searchPath.slice(0, index + 1));
+    },
+    [searchPath, dropSteps],
+  );
   const clearAll = useCallback(() => {
     setFilters(EMPTY_FILTERS);
     setQuery("");
     setImageQuery(null);
+    setSearchPath([]);
   }, []);
 
   const openTemplate = useCallback((id: string) => {
@@ -134,6 +163,14 @@ export function Explorer() {
     lastSearchKey.current = key;
   }, [query, filters, imageQuery, category]);
 
+  // a new query or image is a fresh search: drop the drill-down history (filters are set elsewhere)
+  const lastPathKey = useRef("");
+  useEffect(() => {
+    const key = JSON.stringify([query, imageQuery?.url]);
+    if (lastPathKey.current && key !== lastPathKey.current) setSearchPath([]);
+    lastPathKey.current = key;
+  }, [query, imageQuery?.url]);
+
   const focusSearch = useCallback(() => searchRef.current?.focus(), []);
 
   useEffect(() => {
@@ -157,6 +194,7 @@ export function Explorer() {
   const api: ExplorerApi = {
     all, base, results, byId, vocab, tagCounts, category,
     query, setQuery, parsed, filters, setFilters, effective, toggleFacet, addFacet, clearAll,
+    searchPath, searchWithin, backOneStep, jumpToStep,
     imageQuery, setImageQuery, imageScores, shuffleSeed, setShuffleSeed,
     view, setView, openTemplate, simScope, setSimScope, similar, center,
     detailOpen, setDetailOpen, hover, setHover, boardsOpen, setBoardsOpen, boardGroup, setBoardGroup, focusSearch,

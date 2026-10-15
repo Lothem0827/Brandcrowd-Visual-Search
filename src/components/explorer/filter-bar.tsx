@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import {
   CheckIcon,
   ChevronDownIcon,
@@ -85,12 +85,12 @@ export function OptionList({
             onClick={() => toggleFacet(facet, o.value)}
             title={zero ? "No results with the current filters" : undefined}
             className={cn(
-              "group flex items-center gap-1.5 rounded-lg border text-left text-[13px] transition-colors",
+              "group flex items-center gap-1.5 rounded-lg text-left text-[13px] transition-colors",
               tiles ? "flex-col items-start gap-1 p-2" : "h-7 px-2.5",
               on
-                ? "border-foreground bg-foreground text-background"
-                : "bg-panel hover:border-foreground/40",
-              zero && "cursor-not-allowed opacity-40 hover:border-border",
+                ? "bg-foreground text-background"
+                : "bg-panel hover:bg-muted",
+              zero && "cursor-not-allowed opacity-40",
             )}
           >
             {icon === "layout" && (
@@ -161,8 +161,8 @@ function QuickFilter({
           <Button
             variant="outline"
             className={cn(
-              "h-8 rounded-lg bg-panel px-3 shadow-xs",
-              active && "border-foreground ring-1 ring-foreground",
+              "h-8 rounded-lg bg-panel px-3",
+              active && "ring-2 ring-foreground",
             )}
           />
         }
@@ -247,7 +247,7 @@ function ColorFilterBody() {
       </Section>
       <Section title="Match">
         <div
-          className="grid grid-cols-2 rounded-lg border p-0.5 text-[13px]"
+          className="grid grid-cols-2 rounded-lg bg-muted p-0.5 text-[13px]"
           role="radiogroup"
           aria-label="Color match mode"
         >
@@ -306,7 +306,7 @@ function FilterGroup({
   const { effective } = useExplorer();
   const n = activeFilterCount(effective, facets);
   return (
-    <Collapsible className="border-b last:border-b-0">
+    <Collapsible>
       <CollapsibleTrigger className="group flex w-full items-center justify-between py-3 text-left text-sm font-medium">
         <span className="flex items-center gap-2">
           {title}
@@ -318,7 +318,7 @@ function FilterGroup({
         </span>
         <ChevronDownIcon className="size-4 text-muted-foreground transition-transform group-data-[panel-open]:rotate-180" />
       </CollapsibleTrigger>
-      <CollapsibleContent className="space-y-3 pb-4">
+      <CollapsibleContent className="space-y-3 pb-6">
         {children}
       </CollapsibleContent>
     </Collapsible>
@@ -349,7 +349,7 @@ function MoreFilters() {
     <>
       <Button
         variant="outline"
-        className="h-8 rounded-lg bg-panel px-3 shadow-xs"
+        className="h-8 rounded-lg bg-panel px-3"
         onClick={() => setOpen(true)}
       >
         <SlidersHorizontalIcon />
@@ -362,7 +362,7 @@ function MoreFilters() {
       </Button>
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="right" className="w-[420px]! max-w-[90vw]! gap-0">
-          <SheetHeader className="border-b">
+          <SheetHeader>
             <SheetTitle>More filters</SheetTitle>
             <SheetDescription>
               Counts update with your search. Greyed options have no results.
@@ -437,17 +437,7 @@ function MoreFilters() {
 }
 
 export function FilterBar() {
-  const { results, base, shuffleSeed, setShuffleSeed, view, center } =
-    useExplorer();
-  const hint = useMemo(() => {
-    if (view.kind === "similar" && center)
-      return (
-        <>
-          Exploring similar to <b className="text-foreground">{center.name}</b>
-        </>
-      );
-    return null;
-  }, [view.kind, center]);
+  const { results, base, shuffleSeed, setShuffleSeed } = useExplorer();
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
@@ -511,13 +501,12 @@ export function FilterBar() {
           </Section>
         </QuickFilter>
         <MoreFilters />
-        <div className="mx-1 h-5 w-px bg-border" />
         <Button
           variant="outline"
           aria-pressed={shuffleSeed !== null}
           className={cn(
-            "h-8 rounded-lg bg-panel px-3 shadow-xs",
-            shuffleSeed !== null && "border-foreground ring-1 ring-foreground",
+            "h-8 rounded-lg bg-panel px-3",
+            shuffleSeed !== null && "ring-2 ring-foreground",
           )}
           onClick={() =>
             setShuffleSeed(shuffleSeed === null ? Date.now() % 100000 : null)
@@ -537,7 +526,6 @@ export function FilterBar() {
             <RefreshCwIcon />
           </Button>
         )}
-        <div className="ml-auto text-xs text-muted-foreground">{hint}</div>
       </div>
       <div className="text-xs text-muted-foreground tabular-nums">
         <b className="text-foreground">{results.length}</b> of {base.length}{" "}

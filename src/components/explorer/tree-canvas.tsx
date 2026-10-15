@@ -141,7 +141,7 @@ function Thumb({
       onMouseLeave={() => hoverTemplate(null)}
       onFocus={(e) => hoverTemplate(t, e.currentTarget, note)}
       onBlur={() => hoverTemplate(null)}
-      className="nodrag group relative shrink-0 overflow-hidden rounded-[7px] bg-muted shadow-[0_1px_2px_rgb(0_0_0/0.12)] ring-1 ring-black/5 transition-transform duration-150 hover:z-10 hover:scale-[1.08] hover:shadow-lg hover:ring-2 hover:ring-foreground focus-visible:ring-2 focus-visible:ring-foreground focus-visible:outline-none"
+      className="nodrag group relative shrink-0 overflow-hidden rounded-[7px] bg-muted ring-1 ring-black/5 transition-transform duration-150 hover:z-10 hover:scale-[1.08] hover:ring-2 hover:ring-foreground focus-visible:ring-2 focus-visible:ring-foreground focus-visible:outline-none"
       style={{ width: size, height: size }}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -173,7 +173,7 @@ const TreeNodeView = memo(function TreeNodeView({
   if (data.kind === "root") {
     return (
       <div
-        className="flex items-center gap-3 rounded-2xl bg-foreground px-4 text-background shadow-lg"
+        className="flex items-center gap-3 rounded-2xl bg-foreground px-4 text-background"
         style={{ minWidth: SIZES.root.w, height: SIZES.root.h }}
         data-testid="tree-root"
       >
@@ -213,13 +213,12 @@ const TreeNodeView = memo(function TreeNodeView({
         type="button"
         onClick={() => canvas.onBranch(data.branchId)}
         className={cn(
-          "flex items-center gap-2 rounded-xl border-2 bg-panel px-3 text-[13px] font-semibold shadow-sm transition-shadow hover:shadow-md",
+          "flex items-center gap-2 rounded-xl bg-panel px-3 text-[13px] font-semibold transition-colors hover:bg-muted",
           active && "ring-4",
         )}
         style={{
           width: SIZES.branch.w,
           height: SIZES.branch.h,
-          borderColor: data.color,
           ["--tw-ring-color" as string]: `${data.color}33`,
         }}
         aria-label={`${data.label}, ${data.count} designs. Focus branch`}
@@ -244,8 +243,8 @@ const TreeNodeView = memo(function TreeNodeView({
         type="button"
         onClick={() => canvas.onSub(data.branchId, data.subId)}
         className={cn(
-          "flex items-center gap-2 rounded-lg border bg-panel px-2.5 text-[12.5px] shadow-xs transition-colors hover:border-foreground/40",
-          active && "border-foreground",
+          "flex items-center gap-2 rounded-lg bg-panel px-2.5 text-[12.5px] transition-colors hover:bg-muted",
+          active && "ring-2 ring-foreground",
         )}
         style={{ width: SIZES.sub.w, height: SIZES.sub.h }}
         aria-label={`${data.label}, ${data.count} designs. Focus layout group`}
@@ -286,8 +285,8 @@ const TreeNodeView = memo(function TreeNodeView({
         <button
           type="button"
           onClick={() => canvas.onMore(data.branchId, data.subId)}
-          className="nodrag grid place-items-center rounded-[7px] border border-dashed bg-panel text-xs font-medium text-muted-foreground hover:border-foreground hover:text-foreground"
-          style={{ width: thumb, height: thumb, borderColor: data.color }}
+          className="nodrag grid place-items-center rounded-[7px] bg-panel text-xs font-medium transition-colors hover:bg-muted"
+          style={{ width: thumb, height: thumb, color: data.color }}
           aria-label={`Show ${data.more} more in this group`}
           title="Search within this group"
         >
@@ -306,7 +305,7 @@ const CenterNodeView = memo(function CenterNodeView({
   const t = data.template;
   return (
     <div
-      className="rounded-2xl border-2 border-foreground bg-panel p-3 shadow-xl"
+      className="rounded-2xl bg-panel p-3 ring-2 ring-foreground"
       style={{ width: SIM_SIZES.center.w }}
       data-testid="similar-center"
     >
@@ -365,7 +364,7 @@ const SimilarNodeView = memo(function SimilarNodeView({
         )}
       >
         <span
-          className="inline-flex h-7 items-center gap-1.5 rounded-full px-3 text-[12.5px] font-semibold text-white shadow-sm"
+          className="inline-flex h-7 items-center gap-1.5 rounded-full px-3 text-[12.5px] font-semibold text-white"
           style={{ background: data.color }}
         >
           {data.label}
@@ -581,7 +580,7 @@ function Panel({
   return (
     <div
       className={cn(
-        "pointer-events-auto rounded-xl border bg-panel/95 shadow-sm backdrop-blur",
+        "pointer-events-auto rounded-xl bg-background/95 backdrop-blur",
         className,
       )}
     >
@@ -648,7 +647,7 @@ function PathPanel({
         {rows.map((r, i) => (
           <li
             key={r.k}
-            className={cn("text-[12.5px]", i > 0 && "border-t pt-2")}
+            className={cn("text-[12.5px]", i > 0 && "pt-2")}
           >
             <div className="flex gap-2 font-mono text-[9.5px] tracking-[0.14em] text-muted-foreground uppercase">
               <span>{String(i + 1).padStart(2, "0")}</span>
@@ -678,7 +677,7 @@ function PathPanel({
           <button
             type="button"
             onClick={onReset}
-            className="h-7 rounded-lg border px-2 text-[11.5px] font-medium hover:bg-muted"
+            className="h-7 rounded-lg bg-panel px-2 text-[11.5px] font-medium hover:bg-muted"
           >
             Show all
           </button>
@@ -688,7 +687,7 @@ function PathPanel({
         <button
           type="button"
           onClick={onReset}
-          className="mt-3 h-7 w-full rounded-lg border text-[11.5px] font-medium hover:bg-muted"
+          className="mt-3 h-7 w-full rounded-lg bg-panel text-[11.5px] font-medium hover:bg-muted"
         >
           Show all
         </button>
@@ -719,7 +718,7 @@ function Breadcrumb() {
         type="button"
         onClick={back}
         aria-label="Back"
-        className="grid size-7 shrink-0 place-items-center rounded-lg border hover:bg-muted"
+        className="grid size-7 shrink-0 place-items-center rounded-lg bg-panel hover:bg-muted"
       >
         <ArrowLeftIcon className="size-3.5" />
       </button>
@@ -763,19 +762,71 @@ function Breadcrumb() {
   );
 }
 
+function SearchBreadcrumb() {
+  const ex = useExplorer();
+  if (ex.view.kind !== "search" || ex.searchPath.length === 0) return null;
+  const originLabel = ex.imageQuery
+    ? "Uploaded image"
+    : ex.parsed.label || "All templates";
+  return (
+    <Panel className="flex max-w-full min-w-0 items-center gap-1 py-1 pr-3 pl-1 text-[12.5px]">
+      <button
+        type="button"
+        onClick={ex.backOneStep}
+        aria-label="Back"
+        className="grid size-7 shrink-0 place-items-center rounded-lg bg-panel hover:bg-muted"
+      >
+        <ArrowLeftIcon className="size-3.5" />
+      </button>
+      <nav aria-label="Search within breadcrumb" className="flex min-w-0 items-center gap-1">
+        <button
+          type="button"
+          className="max-w-[120px] shrink truncate px-1 text-muted-foreground hover:text-foreground"
+          onClick={() => ex.jumpToStep(-1)}
+        >
+          {originLabel}
+        </button>
+        {ex.searchPath.map((step, i) => {
+          const last = i === ex.searchPath.length - 1;
+          return (
+            <span key={step.id} className="flex min-w-0 items-center gap-1">
+              <ChevronRightIcon className="size-3 shrink-0 text-muted-foreground" />
+              <button
+                type="button"
+                aria-current={last ? "page" : undefined}
+                onClick={() => ex.jumpToStep(i)}
+                className={cn(
+                  "max-w-[160px] truncate px-1",
+                  last
+                    ? "font-semibold"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {step.label}
+              </button>
+            </span>
+          );
+        })}
+      </nav>
+    </Panel>
+  );
+}
+
 function Segmented<T extends string>({
   value,
   onChange,
   options,
   label,
+  className,
 }: {
   value: T;
   onChange: (v: T) => void;
   options: { value: T; label: ReactNode }[];
   label: string;
+  className?: string;
 }) {
   return (
-    <Panel className="flex p-1">
+    <Panel className={cn("flex p-1", className)}>
       <div role="radiogroup" aria-label={label} className="flex">
         {options.map((o) => (
           <button
@@ -787,7 +838,7 @@ function Segmented<T extends string>({
             className={cn(
               "flex h-8 items-center gap-2 rounded-lg px-3.5 text-[13px] font-medium transition-colors",
               value === o.value
-                ? "bg-foreground text-background shadow-sm"
+                ? "bg-foreground text-background"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >
@@ -814,7 +865,7 @@ function HoverTooltip() {
     <div
       role="tooltip"
       className={cn(
-        "pointer-events-none fixed z-50 w-max max-w-[280px] -translate-x-1/2 rounded-lg bg-[#1d1d1f] px-3 py-2 text-white shadow-xl dark:bg-[#f2f2f2] dark:text-[#111]",
+        "pointer-events-none fixed z-50 w-max max-w-[280px] -translate-x-1/2 rounded-lg bg-[#1d1d1f] px-3 py-2 text-white dark:bg-[#f2f2f2] dark:text-[#111]",
         !below && "-translate-y-full",
       )}
       style={style}
@@ -938,8 +989,13 @@ function CanvasInner() {
       const b = graph.branches.find((x) => x.id === branchId);
       const s = b?.subs.find((x) => x.id === subId);
       if (ex.view.kind === "search" && b?.facet) {
-        ex.addFacet(b.facet, b.value);
-        if (s?.facet) ex.addFacet(s.facet, s.value);
+        ex.searchWithin({
+          label: s ? `${b.label} · ${s.label}` : b.label,
+          facets: {
+            [b.facet]: [b.value],
+            ...(s?.facet ? { [s.facet]: [s.value] } : {}),
+          },
+        });
       } else {
         setFocus({ branchId, subId });
       }
@@ -957,9 +1013,14 @@ function CanvasInner() {
   const searchWithin = () => {
     const b = graph.branches.find((x) => x.id === focus.branchId);
     if (!b?.facet) return;
-    ex.addFacet(b.facet, b.value);
     const s = b.subs.find((x) => x.id === focus.subId);
-    if (s?.facet) ex.addFacet(s.facet, s.value);
+    ex.searchWithin({
+      label: s ? `${b.label} · ${s.label}` : b.label,
+      facets: {
+        [b.facet]: [b.value],
+        ...(s?.facet ? { [s.facet]: [s.value] } : {}),
+      },
+    });
   };
 
   const indCount = ex.center
@@ -1020,7 +1081,9 @@ function CanvasInner() {
         <Controls
           position="bottom-right"
           showInteractive={false}
-          style={{ marginRight: 175, marginBottom: 57 }}
+          // 66 = 57 (the map's own offset) + (96 - 78) / 2 so the 78px-tall control stack is
+          // centered vertically against the 96px-tall minimap instead of bottom-aligned to it.
+          style={{ marginRight: 175, marginBottom: 66 }}
         />
       </ReactFlow>
 
@@ -1033,13 +1096,16 @@ function CanvasInner() {
           {ex.view.kind === "similar" ? (
             <Breadcrumb />
           ) : (
-            <PathPanel
-              branches={graph.branches}
-              focus={focus}
-              level1={graph.level1}
-              onSearchWithin={searchWithin}
-              onReset={() => api.onBranch(focus.branchId!)}
-            />
+            <>
+              <SearchBreadcrumb />
+              <PathPanel
+                branches={graph.branches}
+                focus={focus}
+                level1={graph.level1}
+                onSearchWithin={searchWithin}
+                onReset={() => api.onBranch(focus.branchId!)}
+              />
+            </>
           )}
           {ex.view.kind === "board" && (
             <Panel className="w-[232px] p-1">
@@ -1053,40 +1119,48 @@ function CanvasInner() {
             </Panel>
           )}
         </div>
-        <div className="absolute top-20 left-1/2 -translate-x-1/2">
+        <div className="absolute top-4 left-1/2 flex -translate-x-1/2 flex-col items-center gap-1.5">
           {ex.view.kind === "similar" && ex.center && (
-            <Segmented
-              label="Similar scope"
-              value={ex.simScope}
-              onChange={ex.setSimScope}
-              options={[
-                {
-                  value: "industry",
-                  label: (
-                    <>
-                      In {ex.center.industry}{" "}
-                      <span className="font-mono text-[11px] opacity-60">
-                        {indCount}
-                      </span>
-                    </>
-                  ),
-                },
-                {
-                  value: "all",
-                  label: (
-                    <>
-                      All categories{" "}
-                      <span className="font-mono text-[11px] opacity-60">
-                        {ex.base.length - 1}
-                      </span>
-                    </>
-                  ),
-                },
-              ]}
-            />
+            <>
+              <Segmented
+                className="p-0.5"
+                label="Similar scope"
+                value={ex.simScope}
+                onChange={ex.setSimScope}
+                options={[
+                  {
+                    value: "industry",
+                    label: (
+                      <>
+                        In {ex.center.industry}{" "}
+                        <span className="font-mono text-[11px] opacity-60">
+                          {indCount}
+                        </span>
+                      </>
+                    ),
+                  },
+                  {
+                    value: "all",
+                    label: (
+                      <>
+                        All categories{" "}
+                        <span className="font-mono text-[11px] opacity-60">
+                          {ex.base.length - 1}
+                        </span>
+                      </>
+                    ),
+                  },
+                ]}
+              />
+              <div className="text-xs text-muted-foreground">
+                Exploring similar to{" "}
+                <b className="text-foreground">{ex.center.name}</b>
+              </div>
+            </>
           )}
           {ex.view.kind === "board" && (
             <Segmented
+              className="p-0.5"
               label="Group board by"
               value={ex.boardGroup}
               onChange={ex.setBoardGroup}

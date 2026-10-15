@@ -29,7 +29,7 @@ function ThemeToggle() {
   const dark = resolvedTheme === "dark";
   return (
     <div
-      className="flex items-center rounded-xl border bg-panel p-0.5"
+      className="flex items-center rounded-xl bg-panel p-0.5"
       role="group"
       aria-label="Color theme"
     >

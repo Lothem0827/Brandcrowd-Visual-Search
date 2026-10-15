@@ -14,7 +14,7 @@ export function BoardsPanel() {
   return (
     <Sheet open={boardsOpen} onOpenChange={setBoardsOpen}>
       <SheetContent side="right" className="w-[400px]! max-w-[90vw]! gap-0" data-testid="boards-panel">
-        <SheetHeader className="border-b">
+        <SheetHeader>
           <SheetTitle>Boards</SheetTitle>
           <SheetDescription>Saved on this device. Sign-in and shared boards are coming in v2.</SheetDescription>
         </SheetHeader>
@@ -31,7 +31,7 @@ export function BoardsPanel() {
                     setDetailOpen(false);
                     setBoardsOpen(false);
                   }}
-                  className="flex w-full items-center gap-3 rounded-xl border bg-panel p-2.5 text-left transition-shadow hover:shadow-md"
+                  className="flex w-full items-center gap-3 rounded-xl bg-panel p-2.5 text-left transition-colors hover:bg-muted"
                   data-testid="board-item"
                 >
                   <div className={`grid size-14 shrink-0 gap-0.5 overflow-hidden rounded-lg bg-muted ${items.length >= 4 ? "grid-cols-2" : "grid-cols-1"}`}>
@@ -64,7 +64,7 @@ export function BoardsPanel() {
           })}
         </div>
         <form
-          className="flex gap-2 border-t p-4"
+          className="flex gap-2 p-4"
           onSubmit={(e) => {
             e.preventDefault();
             if (!name.trim()) return;

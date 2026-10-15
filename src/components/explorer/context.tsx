@@ -1,7 +1,7 @@
 "use client";
 import { createContext, useContext } from "react";
 import type { Template } from "@/lib/schema";
-import type { FacetKey, FilterState } from "@/lib/facets";
+import type { FacetKey, FacetSelection, FilterState } from "@/lib/facets";
 import type { ParsedQuery, VocabTerm } from "@/lib/query";
 import type { SimilarHit, SimilarKind } from "@/lib/similarity";
 import type { RoleColor } from "@/lib/color";
@@ -23,6 +23,15 @@ export interface ImageQuery {
   name: string;
 }
 
+/** One canvas "search within" drill-down, tracked so it can be stepped back. */
+export interface SearchStep {
+  id: string;
+  /** crumb text, e.g. "Construction · Centered stack" */
+  label: string;
+  /** facets this step added to the search */
+  facets: FacetSelection;
+}
+
 export interface ExplorerApi {
   all: Template[];
   base: Template[];
@@ -40,6 +49,12 @@ export interface ExplorerApi {
   toggleFacet: (k: FacetKey, v: string) => void;
   addFacet: (k: FacetKey, v: string) => void;
   clearAll: () => void;
+  /** drill-down history created by canvas "search within" actions */
+  searchPath: SearchStep[];
+  searchWithin: (step: { label: string; facets: FacetSelection }) => void;
+  backOneStep: () => void;
+  /** jump to a step by index; -1 resets to the root search */
+  jumpToStep: (index: number) => void;
   imageQuery: ImageQuery | null;
   setImageQuery: (q: ImageQuery | null) => void;
   imageScores: Map<string, number> | null;

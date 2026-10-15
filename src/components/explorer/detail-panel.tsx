@@ -29,8 +29,8 @@ function FilterPill({ facet, value, label }: { facet: FacetKey; value: string; l
         toast(`Filter added: ${label ?? value}`);
       }}
       className={cn(
-        "h-7 rounded-full border px-2.5 text-[12px] transition-colors hover:border-foreground",
-        on ? "border-foreground bg-foreground text-background" : "bg-panel",
+        "h-7 rounded-full px-2.5 text-[12px] transition-colors",
+        on ? "bg-foreground text-background" : "bg-panel hover:bg-muted",
       )}
       title="Add as a filter"
     >
@@ -72,18 +72,18 @@ export function DetailPanel({ template: t }: { template: Template }) {
 
   return (
     <aside
-      className="thin-scroll absolute top-20 right-4 bottom-4 z-20 w-[400px] max-w-[90vw] overflow-y-auto rounded-2xl border bg-panel shadow-xl"
+      className="thin-scroll absolute top-20 right-4 bottom-4 z-20 w-[400px] max-w-[90vw] overflow-y-auto rounded-2xl bg-background"
       aria-label="Design details"
       data-testid="detail-panel"
     >
-      <div className="sticky top-0 z-10 flex items-center justify-between rounded-t-2xl border-b bg-panel/95 px-5 py-3 backdrop-blur">
+      <div className="sticky top-0 z-10 flex items-center justify-between rounded-t-2xl bg-background/95 px-5 py-3 backdrop-blur">
         <div className="flex min-w-0 items-center gap-1.5 text-[11.5px] text-muted-foreground">
           <span className="size-1.5 rounded-full bg-[#F0812F]" />
           <span className="truncate">
             {t.category} › {t.industry} › {t.topic}
           </span>
         </div>
-        <button type="button" aria-label="Close details (Esc)" onClick={() => setDetailOpen(false)} className="grid size-7 place-items-center rounded-lg border hover:bg-muted">
+        <button type="button" aria-label="Close details (Esc)" onClick={() => setDetailOpen(false)} className="grid size-7 place-items-center rounded-lg bg-panel hover:bg-muted">
           <XIcon className="size-3.5" />
         </button>
       </div>
@@ -93,7 +93,7 @@ export function DetailPanel({ template: t }: { template: Template }) {
           <img
             src={t.previewImage}
             alt={t.displayTitle}
-            className="aspect-square w-full rounded-xl bg-muted bg-cover object-cover shadow-md ring-1 ring-black/5"
+            className="aspect-square w-full rounded-xl bg-muted bg-cover object-cover ring-1 ring-black/5"
             style={{ backgroundImage: `url("${t.thumbnailImage}")` }}
           />
           <div className="mt-4 text-[10.5px] font-medium tracking-[0.12em] text-muted-foreground uppercase">{t.category}</div>
@@ -121,7 +121,7 @@ export function DetailPanel({ template: t }: { template: Template }) {
                 key={c.hex + c.role}
                 type="button"
                 onClick={() => copy(c.hex)}
-                className="group overflow-hidden rounded-xl border text-left transition-shadow hover:shadow-md"
+                className="group overflow-hidden rounded-xl bg-panel text-left ring-1 ring-black/5 transition-colors hover:bg-muted"
                 aria-label={`Copy ${c.hex} (${c.role}, ${c.name})`}
               >
                 <div className="relative h-14" style={{ background: c.hex }}>
@@ -152,7 +152,7 @@ export function DetailPanel({ template: t }: { template: Template }) {
 
         <section>
           <Label>Layout</Label>
-          <div className="flex items-center gap-3 rounded-xl border bg-muted/40 p-3">
+            <div className="flex items-center gap-3 rounded-xl bg-muted/40 p-3">
             <LayoutIcon value={t.layout.structure} className="size-10 text-foreground/70" />
             <div className="min-w-0 text-[13px]">
               <div className="font-semibold">{cap(t.layout.structure)}</div>
@@ -163,7 +163,7 @@ export function DetailPanel({ template: t }: { template: Template }) {
               </div>
             </div>
           </div>
-          <div className="mt-2 divide-y">
+          <div className="mt-2 space-y-1">
             {t.layout.focalPoint && <Row k="Focal point">{t.layout.focalPoint}</Row>}
             {t.layout.hierarchy.length > 0 && (
               <Row k="Reading order">
@@ -187,7 +187,7 @@ export function DetailPanel({ template: t }: { template: Template }) {
 
         <section>
           <Label>Typography</Label>
-          <div className="divide-y">
+          <div className="space-y-1">
             {t.typography.headline && <Row k="Headline">{t.typography.headline}</Row>}
             {t.typography.accent && <Row k="Accent">{t.typography.accent}</Row>}
             {t.typography.body && <Row k="Body">{t.typography.body}</Row>}
@@ -201,7 +201,7 @@ export function DetailPanel({ template: t }: { template: Template }) {
 
         <section>
           <Label>Imagery</Label>
-          <div className="flex items-center gap-3 rounded-xl border bg-muted/40 p-3">
+            <div className="flex items-center gap-3 rounded-xl bg-muted/40 p-3">
             <ImageIcon value={t.imagery.type === "none" ? "none" : t.imagery.placement ?? t.imagery.type} className="size-10 text-foreground/70" />
             <div className="min-w-0 text-[13px]">
               <div className="font-semibold">
@@ -244,7 +244,7 @@ export function DetailPanel({ template: t }: { template: Template }) {
                     } catch {}
                     toast("Copied text");
                   }}
-                  className="block w-full rounded-lg border bg-muted/30 px-3 py-2 text-left transition-colors hover:border-foreground/40"
+                  className="block w-full rounded-lg bg-muted/50 px-3 py-2 text-left transition-colors hover:bg-muted"
                   title="Copy text"
                 >
                   <div className="text-[10.5px] tracking-wider text-muted-foreground uppercase">{k}</div>

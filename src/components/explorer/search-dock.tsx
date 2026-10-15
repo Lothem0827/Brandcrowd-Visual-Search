@@ -3,14 +3,22 @@ import { useId, useMemo, useRef, useState, type RefObject } from "react";
 import { ImagePlusIcon, SearchIcon, XIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { completeQuery, suggest, facetLabel, type Suggestion } from "@/lib/query";
+import {
+  completeQuery,
+  suggest,
+  facetLabel,
+  type Suggestion,
+} from "@/lib/query";
 import { paletteFromFile } from "@/lib/image-search";
 import { cn } from "@/lib/utils";
 import { useExplorer } from "./context";
 import { ActiveChips } from "./chips";
 import { FilterBar } from "./filter-bar";
 
-export async function runImageSearch(file: File, setImageQuery: ReturnType<typeof useExplorer>["setImageQuery"]) {
+export async function runImageSearch(
+  file: File,
+  setImageQuery: ReturnType<typeof useExplorer>["setImageQuery"],
+) {
   if (!file.type.startsWith("image/")) {
     toast.error("Please drop an image file");
     return;
@@ -24,13 +32,28 @@ export async function runImageSearch(file: File, setImageQuery: ReturnType<typeo
   }
 }
 
-function SearchBox({ inputRef }: { inputRef: RefObject<HTMLInputElement | null> }) {
-  const { query, setQuery, vocab, tagCounts, addFacet, imageQuery, setImageQuery } = useExplorer();
+function SearchBox({
+  inputRef,
+}: {
+  inputRef: RefObject<HTMLInputElement | null>;
+}) {
+  const {
+    query,
+    setQuery,
+    vocab,
+    tagCounts,
+    addFacet,
+    imageQuery,
+    setImageQuery,
+  } = useExplorer();
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
   const listId = useId();
-  const suggestions = useMemo(() => (open ? suggest(query, vocab, tagCounts, 8) : []), [open, query, vocab, tagCounts]);
+  const suggestions = useMemo(
+    () => (open ? suggest(query, vocab, tagCounts, 8) : []),
+    [open, query, vocab, tagCounts],
+  );
   const showList = open && suggestions.length > 0 && !/\s$/.test(query);
 
   const pick = (s: Suggestion) => {
@@ -50,18 +73,29 @@ function SearchBox({ inputRef }: { inputRef: RefObject<HTMLInputElement | null> 
     <div className="relative w-full">
       <div
         className={cn(
-          "flex h-11 items-center gap-2 rounded-xl border bg-panel pr-1.5 pl-3 shadow-sm transition-shadow",
-          "focus-within:border-foreground/40 focus-within:ring-3 focus-within:ring-ring/30",
+          "flex h-11 items-center gap-2 rounded-xl bg-panel pr-1.5 pl-3 transition-shadow",
+          "focus-within:ring-3 focus-within:ring-ring/30",
         )}
       >
-        <SearchIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+        <SearchIcon
+          className="size-4 shrink-0 text-muted-foreground"
+          aria-hidden
+        />
         {imageQuery && (
-          <span className="flex shrink-0 items-center gap-1.5 rounded-lg border bg-muted/60 py-0.5 pr-1 pl-0.5 text-xs">
+          <span className="flex shrink-0 items-center gap-1.5 rounded-lg bg-muted py-0.5 pr-1 pl-0.5 text-xs">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={imageQuery.url} alt="" className="size-6 rounded object-cover" />
+            <img
+              src={imageQuery.url}
+              alt=""
+              className="size-6 rounded object-cover"
+            />
             <span className="flex gap-0.5">
               {imageQuery.palette.map((c) => (
-                <span key={c.hex} className="size-2.5 rounded-full ring-1 ring-black/10" style={{ background: c.hex }} />
+                <span
+                  key={c.hex}
+                  className="size-2.5 rounded-full ring-1 ring-black/10"
+                  style={{ background: c.hex }}
+                />
               ))}
             </span>
             <button
@@ -90,7 +124,9 @@ function SearchBox({ inputRef }: { inputRef: RefObject<HTMLInputElement | null> 
               setActive((a) => (a + 1) % suggestions.length);
             } else if (showList && e.key === "ArrowUp") {
               e.preventDefault();
-              setActive((a) => (a - 1 + suggestions.length) % suggestions.length);
+              setActive(
+                (a) => (a - 1 + suggestions.length) % suggestions.length,
+              );
             } else if (showList && (e.key === "Enter" || e.key === "Tab")) {
               e.preventDefault();
               pick(suggestions[active]);
@@ -113,7 +149,12 @@ function SearchBox({ inputRef }: { inputRef: RefObject<HTMLInputElement | null> 
           autoComplete="off"
         />
         {query && (
-          <button type="button" aria-label="Clear search" className="rounded-md p-1 text-muted-foreground hover:bg-muted" onClick={() => setQuery("")}>
+          <button
+            type="button"
+            aria-label="Clear search"
+            className="rounded-md p-1 text-muted-foreground hover:bg-muted"
+            onClick={() => setQuery("")}
+          >
             <XIcon className="size-3.5" />
           </button>
         )}
@@ -126,7 +167,7 @@ function SearchBox({ inputRef }: { inputRef: RefObject<HTMLInputElement | null> 
         >
           <ImagePlusIcon />
         </Button>
-        <kbd className="hidden h-6 min-w-6 items-center justify-center rounded-md border bg-muted/60 px-1.5 font-mono text-[11px] text-muted-foreground sm:flex">
+        <kbd className="hidden h-6 min-w-6 items-center justify-center rounded-md bg-muted px-1.5 font-mono text-[11px] text-muted-foreground sm:flex">
           /
         </kbd>
         <input
@@ -146,7 +187,7 @@ function SearchBox({ inputRef }: { inputRef: RefObject<HTMLInputElement | null> 
         <ul
           id={listId}
           role="listbox"
-          className="absolute right-0 bottom-12 left-0 z-50 overflow-hidden rounded-xl border bg-popover p-1 text-sm shadow-lg"
+          className="absolute right-0 bottom-12 left-0 z-50 overflow-hidden rounded-xl bg-popover p-1 text-sm ring-1 ring-foreground/10"
         >
           {suggestions.map((s, i) => (
             <li
@@ -159,11 +200,18 @@ function SearchBox({ inputRef }: { inputRef: RefObject<HTMLInputElement | null> 
                 pick(s);
               }}
               onMouseEnter={() => setActive(i)}
-              className={cn("flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5", i === active && "bg-muted")}
+              className={cn(
+                "flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5",
+                i === active && "bg-muted",
+              )}
             >
-              <span className="w-24 shrink-0 text-[11px] tracking-wide text-muted-foreground uppercase">{facetLabel(s.facet)}</span>
+              <span className="w-24 shrink-0 text-[11px] tracking-wide text-muted-foreground uppercase">
+                {facetLabel(s.facet)}
+              </span>
               <span className="flex-1 truncate font-medium">{s.label}</span>
-              <span className="text-xs text-muted-foreground tabular-nums">{s.count}</span>
+              <span className="text-xs text-muted-foreground tabular-nums">
+                {s.count}
+              </span>
             </li>
           ))}
         </ul>
@@ -172,7 +220,11 @@ function SearchBox({ inputRef }: { inputRef: RefObject<HTMLInputElement | null> 
   );
 }
 
-export function SearchDock({ inputRef }: { inputRef: RefObject<HTMLInputElement | null> }) {
+export function SearchDock({
+  inputRef,
+}: {
+  inputRef: RefObject<HTMLInputElement | null>;
+}) {
   const { detailOpen } = useExplorer();
   return (
     <div
@@ -181,7 +233,7 @@ export function SearchDock({ inputRef }: { inputRef: RefObject<HTMLInputElement 
         detailOpen && "pr-[432px]",
       )}
     >
-      <div className="pointer-events-auto w-full max-w-[800px] space-y-2 rounded-2xl border bg-panel/95 p-3 shadow-lg backdrop-blur">
+      <div className="pointer-events-auto w-full max-w-[800px] space-y-2 rounded-2xl bg-background/95 p-4 backdrop-blur">
         <ActiveChips />
         <SearchBox inputRef={inputRef} />
         <FilterBar />

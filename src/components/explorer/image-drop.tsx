@@ -43,7 +43,7 @@ export function ImageDropOverlay() {
   if (!over) return null;
   return (
     <div className="pointer-events-none fixed inset-0 z-[60] grid place-items-center bg-background/70 backdrop-blur-sm">
-      <div className="flex flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-foreground/40 bg-panel px-10 py-8 text-center shadow-xl">
+      <div className="flex flex-col items-center gap-2 rounded-2xl bg-panel px-10 py-8 text-center ring-1 ring-foreground/10">
         <ImagePlusIcon className="size-8" />
         <div className="text-sm font-semibold">Drop an image to find templates with similar colors</div>
         <div className="text-xs text-muted-foreground">Processed in your browser. Nothing is uploaded.</div>

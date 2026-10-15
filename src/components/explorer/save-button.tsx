@@ -32,7 +32,7 @@ export function SaveButton({ templateId, className }: { templateId: string; clas
   };
 
   return (
-    <div className={cn("flex h-10 items-stretch overflow-hidden rounded-xl border bg-panel", className)}>
+    <div className={cn("flex h-10 items-stretch overflow-hidden rounded-xl bg-panel", className)}>
       <button
         type="button"
         aria-pressed={saved}
@@ -60,7 +60,7 @@ export function SaveButton({ templateId, className }: { templateId: string; clas
         <PopoverTrigger
           aria-label="Choose boards"
           data-testid="board-picker"
-          className="grid w-10 place-items-center border-l text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          className="grid w-10 place-items-center bg-muted/40 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <ChevronDownIcon className="size-4" />
         </PopoverTrigger>
@@ -78,7 +78,7 @@ export function SaveButton({ templateId, className }: { templateId: string; clas
                   onClick={() => store.toggle(b.id, templateId)}
                   className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-muted"
                 >
-                  <span className={cn("grid size-4 place-items-center rounded border", on && "border-foreground bg-foreground text-background")}>
+                  <span className={cn("grid size-4 place-items-center rounded bg-panel", on && "bg-foreground text-background")}>
                     {on && <CheckIcon className="size-3" />}
                   </span>
                   <span className="flex-1 truncate">{b.name}</span>
@@ -88,7 +88,7 @@ export function SaveButton({ templateId, className }: { templateId: string; clas
             })}
           </div>
           <form
-            className="mt-1 flex items-center gap-1.5 border-t px-1 pt-2 pb-1"
+            className="mt-2 flex items-center gap-1.5 px-1 pb-1"
             onSubmit={(e) => {
               e.preventDefault();
               create();

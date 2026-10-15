@@ -51,14 +51,14 @@
 }
 
 :root {
-  --background: oklch(0.976 0.004 84);
-  --canvas: #f6f5f1;
-  --canvas-dot: #d6d2c8;
+  --background: oklch(0.96 0.004 84);
+  --canvas: #e6e4e0;
+  --canvas-dot: #c3c0bb;
   --panel: #ffffff;
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
+  --popover: oklch(0.96 0.004 84);
   --popover-foreground: oklch(0.145 0 0);
   --primary: oklch(0.205 0 0);
   --primary-foreground: oklch(0.985 0 0);
@@ -89,14 +89,14 @@
 }
 
 .dark {
-  --background: oklch(0.165 0.003 260);
-  --canvas: #141518;
+  --background: oklch(0.196 0.004 260);
+  --canvas: #0e0e10;
   --canvas-dot: #2c2e33;
   --panel: #1c1d21;
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
+  --popover: oklch(0.196 0.004 260);
   --popover-foreground: oklch(0.985 0 0);
   --primary: oklch(0.922 0 0);
   --primary-foreground: oklch(0.205 0 0);
@@ -144,12 +144,12 @@
   --xy-controls-button-background-color: var(--panel);
   --xy-controls-button-background-color-hover: var(--muted);
   --xy-controls-button-color: var(--foreground);
-  --xy-controls-button-border-color: var(--border);
+  --xy-controls-button-border-color: transparent;
 }
 .react-flow__node { transition: opacity 200ms ease; pointer-events: all !important; }
 .react-flow__edge-path { transition: opacity 200ms ease; }
 .react-flow__node.is-dim, .react-flow__edge.is-dim { opacity: 0.12; }
-.react-flow__controls { box-shadow: 0 1px 3px rgb(0 0 0 / 0.08); border-radius: 10px; overflow: hidden; }
-.react-flow__minimap { border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgb(0 0 0 / 0.08); border: 1px solid var(--border); }
+.react-flow__controls { border-radius: 10px; overflow: hidden; }
+.react-flow__minimap { border-radius: 10px; overflow: hidden; }
 .react-flow__attribution { display: none; }
 .thin-scroll { scrollbar-width: thin; }

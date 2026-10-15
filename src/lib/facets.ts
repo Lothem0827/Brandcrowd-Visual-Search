@@ -146,6 +146,17 @@ export function mergeSelections(a: FacetSelection, b: FacetSelection): FacetSele
   return out;
 }
 
+/** Remove the values in `b` from the facet selection of `f` (inverse of mergeSelections). */
+export function removeSelections(f: FilterState, b: FacetSelection): FilterState {
+  const facets: FacetSelection = { ...f.facets };
+  for (const [k, vs] of Object.entries(b) as [FacetKey, string[]][]) {
+    const next = (facets[k] ?? []).filter((v) => !vs.includes(v));
+    if (next.length) facets[k] = next;
+    else delete facets[k];
+  }
+  return { ...f, facets };
+}
+
 /** AND across facets, OR within a facet. `except` skips one facet (for option counts). */
 export function matchesFilters(t: Template, f: FilterState, except?: FacetKey | "color"): boolean {
   for (const [k, vs] of Object.entries(f.facets) as [FacetKey, string[]][]) {
