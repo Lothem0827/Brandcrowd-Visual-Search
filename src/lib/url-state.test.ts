@@ -17,16 +17,35 @@ describe("URL state", () => {
     const state = s({
       query: "retro serif cutout",
       facets: { industry: ["Construction", "Real Estate"], aesthetic: ["bold"], structure: ["frame/border"] },
-      color: { hex: "#F07B22", mode: "any" },
+      color: { colors: ["#F07B22"], mode: "any" },
       design: ["e3426df5-a252-4977-983c-77751087ac14", "abc"],
       board: "saved",
       scope: "all",
-      shuffle: 1234,
+      sort: "shuffle",
+      shuffleSeed: 1234,
     });
     const search = toSearch(state);
     expect(search).toContain("q=retro+serif+cutout");
     expect(search).toContain("industry=Construction&industry=Real+Estate");
     expect(fromSearch(search)).toEqual(state);
+  });
+
+  it("round-trips multiple picked colours (OR) and their shared role mode", () => {
+    const state = s({ color: { colors: ["#F07B22", "#123456"], mode: "primary" } });
+    const search = toSearch(state);
+    expect(search).toContain("color=F07B22");
+    expect(search).toContain("color=123456");
+    expect(search).toContain("cm=primary");
+    expect(fromSearch(search).color).toEqual({ colors: ["#123456", "#F07B22"], mode: "primary" });
+  });
+
+  it("encodes the focused lightbox distinctly from the similar trail", () => {
+    const focused = fromSearch(toSearch(s({ design: ["a1"], focused: true })));
+    expect(focused.focused).toBe(true);
+    expect(focused.design).toEqual(["a1"]);
+    const similar = fromSearch(toSearch(s({ design: ["a1", "b2"], focused: false })));
+    expect(similar.focused).toBe(false);
+    expect(similar.design).toEqual(["a1", "b2"]);
   });
 
   it("produces a stable order regardless of selection order", () => {
@@ -40,7 +59,8 @@ describe("URL state", () => {
     expect(st.color).toBeNull();
     expect(st.design).toEqual(["ok-id"]);
     expect(st.board).toBeNull();
-    expect(st.shuffle).toBeNull();
+    expect(st.shuffleSeed).toBe(1);
+    expect(st.sort).toBe("shuffle");
     expect(st.scope).toBe("industry");
     expect(st.facets).toEqual({});
   });

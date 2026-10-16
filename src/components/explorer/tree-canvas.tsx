@@ -25,7 +25,7 @@ import {
   type NodeProps,
 } from "@xyflow/react";
 import { useTheme } from "next-themes";
-import { ArrowLeftIcon, ChevronRightIcon, ScanSearchIcon } from "lucide-react";
+import { ChevronRightIcon, ScanSearchIcon, SearchIcon } from "lucide-react";
 import type { Template } from "@/lib/schema";
 import {
   buildSimilarGraph,
@@ -38,7 +38,8 @@ import {
   type SimilarGroupData,
   type TreeNodeData,
 } from "@/lib/tree";
-import { cap, STRUCTURE_LABEL, type FacetKey } from "@/lib/facets";
+import { cap, STRUCTURE_LABEL, titleCase, type FacetKey } from "@/lib/facets";
+import { Input } from "@/components/ui/input";
 
 const FIT_TREE = {
   padding: { top: "136px", left: "270px", right: "48px", bottom: "176px" },
@@ -49,7 +50,12 @@ const FIT_SIM = {
   padding: { top: "134px", left: "40px", right: "40px", bottom: "170px" },
   maxZoom: 1.1,
 } as const;
-const ZOOM_PADDING = { top: "90px", left: "280px", right: "60px", bottom: "80px" } as const;
+const ZOOM_PADDING = {
+  top: "90px",
+  left: "280px",
+  right: "60px",
+  bottom: "80px",
+} as const;
 // Phones: don't shrink the whole tree into 375px (6px labels, 20px tiles). Keep text
 // readable and tiles >= 44px, centred on the root; the rest is a swipe away.
 const FIT_TREE_MOBILE = {
@@ -77,7 +83,12 @@ function mobileFitNodes(nodes: Node[]): { id: string }[] {
   });
   return (pick.length ? pick : nodes).map((n) => ({ id: n.id }));
 }
-const ZOOM_PADDING_MOBILE = { top: "150px", left: "12px", right: "12px", bottom: "120px" } as const;
+const ZOOM_PADDING_MOBILE = {
+  top: "150px",
+  left: "12px",
+  right: "12px",
+  bottom: "120px",
+} as const;
 const structureLabel = (v: string) => STRUCTURE_LABEL[v] ?? cap(v);
 import { cn } from "@/lib/utils";
 import { useExplorer } from "./context";
@@ -175,7 +186,12 @@ function Thumb({
       className="nodrag group relative shrink-0 overflow-hidden rounded-[7px] bg-muted ring-1 ring-black/5 transition-transform duration-150 hover:z-10 hover:scale-[1.08] hover:ring-2 hover:ring-foreground focus-visible:ring-2 focus-visible:ring-foreground focus-visible:outline-none"
       style={{ width: size, height: size }}
     >
-      <ThumbImage key={t.thumbnailImage} src={t.thumbnailImage} alt="" className="size-full object-cover" />
+      <ThumbImage
+        key={t.thumbnailImage}
+        src={t.thumbnailImage}
+        alt=""
+        className="size-full object-cover"
+      />
       {badge && (
         <span className="absolute right-1 bottom-1 rounded bg-black/70 px-1 text-[9px] font-medium text-white tabular-nums">
           {badge}
@@ -209,8 +225,11 @@ const TreeNodeView = memo(function TreeNodeView({
           />
         )}
         <div className="min-w-0 flex-1 text-center">
-          <div className="truncate text-[15px] font-semibold" title={data.label}>
-            {data.label}
+          <div
+            className="truncate text-[15px] font-semibold"
+            title={titleCase(data.label)}
+          >
+            {titleCase(data.label)}
           </div>
           <div className="mt-0.5 font-mono text-[10.5px] tracking-tight text-background/65">
             {data.sub}
@@ -248,7 +267,7 @@ const TreeNodeView = memo(function TreeNodeView({
           ["--tw-ring-color" as string]: `${data.color}33`,
         }}
         aria-pressed={active}
-        title={data.label}
+        title={titleCase(data.label)}
       >
         {/* accessible name = visible text first ("Holidays & Seasonal 922 designs, focus branch"),
             so voice control ("click Holidays") works */}
@@ -256,7 +275,7 @@ const TreeNodeView = memo(function TreeNodeView({
           className="size-2.5 shrink-0 rounded-full"
           style={{ background: data.color }}
         />
-        <span className="truncate">{data.label}</span>{" "}
+        <span className="truncate">{titleCase(data.label)}</span>{" "}
         <span className="ml-auto text-xs font-normal text-muted-foreground tabular-nums">
           {data.count}
           <span className="sr-only"> designs, focus branch</span>
@@ -277,13 +296,13 @@ const TreeNodeView = memo(function TreeNodeView({
         )}
         style={{ width: SIZES.sub.w, height: SIZES.sub.h }}
         aria-pressed={active}
-        title={data.label}
+        title={titleCase(data.label)}
       >
         <LayoutIcon
           value={data.structure}
           className="size-[18px] shrink-0 text-muted-foreground"
         />
-        <span className="truncate">{data.label}</span>{" "}
+        <span className="truncate">{titleCase(data.label)}</span>{" "}
         <span className="ml-auto text-[11px] text-muted-foreground tabular-nums">
           {data.count}
           <span className="sr-only"> designs, focus layout group</span>
@@ -390,12 +409,7 @@ const SimilarNodeView = memo(function SimilarNodeView({
       style={{ width: SIM_SIZES.groupW }}
       data-testid={`similar-group-${data.simKind}`}
     >
-      <div
-        className={cn(
-          "mb-2.5 flex",
-          data.side === "right" ? "justify-start" : "justify-start",
-        )}
-      >
+      <div className="mb-2.5 flex items-center gap-2">
         <span
           className="inline-flex h-7 items-center gap-1.5 rounded-full px-3 text-[12.5px] font-semibold text-white"
           style={{ background: data.color }}
@@ -483,7 +497,8 @@ function useGraph() {
     simScope,
     boardGroup,
     byId,
-    results,
+    // the deferred list, so the (expensive) tree layout never blocks typing
+    browseItems: results,
     imageScores,
     textScores,
     imageQuery,
@@ -572,7 +587,9 @@ function useGraph() {
       badges,
       maxThumbs: results.length > 80 ? 3 : 6,
       maxSubs: results.length > 80 ? 4 : undefined,
-      scoreFor: textScores ? (t) => textScores.get(t.templateId) ?? 0 : undefined,
+      scoreFor: textScores
+        ? (t) => textScores.get(t.templateId) ?? 0
+        : undefined,
     });
     return {
       key: `search:${results.length}:${results
@@ -628,110 +645,37 @@ function Panel({
 function PathPanel({
   branches,
   focus,
-  level1,
   onSearchWithin,
   onReset,
 }: {
   branches: BranchInfo[];
   focus: Focus;
-  level1: string;
   onSearchWithin: () => void;
   onReset: () => void;
 }) {
   const ex = useExplorer();
-  const canHover = useMediaQuery("(hover: hover)");
   const b = branches.find((x) => x.id === focus.branchId);
-  const s = b?.subs.find((x) => x.id === focus.subId);
-  const rows: { k: string; v: ReactNode; dot?: string }[] = [
-    {
-      k: ex.view.kind === "board" ? "Board" : "Search",
-      v:
-        ex.view.kind === "board"
-          ? "Saved designs"
-          : ex.imageQuery
-            ? "Uploaded image"
-            : ex.parsed.label || "All templates",
-    },
-    {
-      k: level1 || "Branch",
-      v: b ? (
-        `${b.label} · ${b.count}`
-      ) : (
-        <span className="text-muted-foreground">Click a branch to focus</span>
-      ),
-      dot: b?.color,
-    },
-    {
-      k: ex.view.kind === "board" ? "Group" : "Layout",
-      v: s ? (
-        `${s.label} · ${s.count}`
-      ) : (
-        <span className="text-muted-foreground">—</span>
-      ),
-    },
-    {
-      k: "Design",
-      v: ex.hover ? (
-        <span className="line-clamp-1">{ex.hover.template.name}</span>
-      ) : (
-        <span className="text-muted-foreground">
-          {canHover ? "Hover or focus a design" : "Tap a design to explore"}
-        </span>
-      ),
-    },
-  ];
+  // Nothing to act on until a branch is focused, so the bar stays out of the way.
+  if (!b) return null;
   return (
-    <Panel className="w-[232px] p-3">
-      <ol className="space-y-2" aria-label="Current path">
-        {rows.map((r, i) => (
-          <li
-            key={r.k}
-            className={cn("text-[12.5px]", i > 0 && "pt-2")}
-          >
-            <div className="flex gap-2 font-mono text-[9.5px] tracking-[0.14em] text-muted-foreground uppercase">
-              <span>{String(i + 1).padStart(2, "0")}</span>
-              <span>{r.k}</span>
-            </div>
-            <div className="mt-0.5 flex min-w-0 items-center gap-1.5 pl-[22px] font-semibold [&>span:last-child]:truncate">
-              {r.dot && (
-                <span
-                  className="size-2 shrink-0 rounded-full"
-                  style={{ background: r.dot }}
-                />
-              )}
-              <span className="min-w-0">{r.v}</span>
-            </div>
-          </li>
-        ))}
-      </ol>
-      {b && ex.view.kind === "search" && (
-        <div className="mt-3 flex gap-1.5">
-          <button
-            type="button"
-            onClick={onSearchWithin}
-            className="flex h-7 flex-1 items-center justify-center gap-1 rounded-lg bg-foreground text-[11.5px] font-medium text-background"
-          >
-            <ScanSearchIcon className="size-3.5" /> Search within
-          </button>
-          <button
-            type="button"
-            onClick={onReset}
-            className="h-7 rounded-lg bg-panel px-2 text-[11.5px] font-medium hover:bg-muted"
-          >
-            Show all
-          </button>
-        </div>
-      )}
-      {b && ex.view.kind === "board" && (
+    <div className="pointer-events-auto flex items-center gap-2">
+      {ex.view.kind === "search" && (
         <button
           type="button"
-          onClick={onReset}
-          className="mt-3 h-7 w-full rounded-lg bg-panel text-[11.5px] font-medium hover:bg-muted"
+          onClick={onSearchWithin}
+          className="flex h-10 items-center justify-center gap-1.5 rounded-xl bg-foreground px-4 text-sm font-medium text-background shadow-sm"
         >
-          Show all
+          <ScanSearchIcon className="size-[18px]" /> Search within
         </button>
       )}
-    </Panel>
+      <button
+        type="button"
+        onClick={onReset}
+        className="h-10 rounded-xl bg-panel px-3.5 text-sm font-medium shadow-sm hover:bg-muted"
+      >
+        Show all
+      </button>
+    </div>
   );
 }
 
@@ -747,27 +691,17 @@ function Breadcrumb() {
       : ex.imageQuery
         ? "Uploaded image"
         : ex.parsed.label || "All templates";
-  const back = () => {
-    if (v.trail.length > 1) ex.setView({ ...v, trail: v.trail.slice(0, -1) });
-    else ex.setView(v.origin);
-  };
   return (
-    <Panel className="flex max-w-full min-w-0 items-center gap-1 py-1 pr-3 pl-1 text-[12.5px]">
-      <button
-        type="button"
-        onClick={back}
-        aria-label="Back"
-        className="grid size-7 shrink-0 place-items-center rounded-lg bg-panel hover:bg-muted"
-      >
-        <ArrowLeftIcon className="size-3.5" />
-      </button>
+    // Only the trail lives over the canvas now: the back control moved up to the header row
+    // beside the heading, so this panel is just the crumbs.
+    <Panel className="flex max-w-full min-w-0 items-center gap-1 px-3 py-1 text-[12.5px]">
       <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1">
         <button
           type="button"
           className="max-w-[120px] shrink truncate px-1 text-muted-foreground hover:text-foreground"
           onClick={() => ex.setView(v.origin)}
         >
-          {originLabel}
+          {titleCase(originLabel)}
         </button>
         {v.trail.map((id, i) => {
           const t = ex.byId(id);
@@ -791,7 +725,7 @@ function Breadcrumb() {
                     : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                {t?.name ?? "Design"}
+                {titleCase(t?.name ?? "Design")}
               </button>
             </span>
           );
@@ -808,22 +742,18 @@ function SearchBreadcrumb() {
     ? "Uploaded image"
     : ex.parsed.label || "All templates";
   return (
-    <Panel className="flex max-w-full min-w-0 items-center gap-1 py-1 pr-3 pl-1 text-[12.5px]">
-      <button
-        type="button"
-        onClick={ex.backOneStep}
-        aria-label="Back"
-        className="grid size-7 shrink-0 place-items-center rounded-lg bg-panel hover:bg-muted"
+    // Same as the similar breadcrumb: the back control is in the header row, this is the trail.
+    <Panel className="flex max-w-full min-w-0 items-center gap-1 px-3 py-1 text-[12.5px]">
+      <nav
+        aria-label="Search within breadcrumb"
+        className="flex min-w-0 items-center gap-1"
       >
-        <ArrowLeftIcon className="size-3.5" />
-      </button>
-      <nav aria-label="Search within breadcrumb" className="flex min-w-0 items-center gap-1">
         <button
           type="button"
           className="max-w-[120px] shrink truncate px-1 text-muted-foreground hover:text-foreground"
           onClick={() => ex.jumpToStep(-1)}
         >
-          {originLabel}
+          {titleCase(originLabel)}
         </button>
         {ex.searchPath.map((step, i) => {
           const last = i === ex.searchPath.length - 1;
@@ -841,7 +771,7 @@ function SearchBreadcrumb() {
                     : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                {step.label}
+                {titleCase(step.label)}
               </button>
             </span>
           );
@@ -964,7 +894,9 @@ function CanvasInner() {
         const sim = graph.key.startsWith("sim:");
         void rf.fitView({
           ...(sim ? fitRef.current.fitSim : fitRef.current.fitTree),
-          ...(fitRef.current.mobile ? { nodes: mobileFitNodes(graph.nodes) } : {}),
+          ...(fitRef.current.mobile
+            ? { nodes: mobileFitNodes(graph.nodes) }
+            : {}),
           duration: first ? 0 : 450,
         });
         readyRef.current = true;
@@ -1049,7 +981,7 @@ function CanvasInner() {
         setFocus({ branchId, subId });
       }
     },
-    openTemplate: ex.openTemplate,
+    openTemplate: ex.openSimilar,
     hoverTemplate: (t, el, note) =>
       ex.setHover(
         t && el
@@ -1077,7 +1009,8 @@ function CanvasInner() {
     : 0;
   const empty = graph.nodes.length <= 1;
   // a vague query can legitimately find nothing yet — the interpreter is on it
-  const thinking = empty && ex.view.kind === "search" && ex.aiStatus === "loading";
+  const thinking =
+    empty && ex.view.kind === "search" && ex.aiStatus === "loading";
 
   const scopeControls = (
     <>
@@ -1094,7 +1027,9 @@ function CanvasInner() {
                 label: (
                   <>
                     In {ex.center.industry}{" "}
-                    <span className="font-mono text-[11px] opacity-60">{indCount}</span>
+                    <span className="font-mono text-[11px] opacity-60">
+                      {indCount}
+                    </span>
                   </>
                 ),
               },
@@ -1103,15 +1038,18 @@ function CanvasInner() {
                 label: (
                   <>
                     All categories{" "}
-                    <span className="font-mono text-[11px] opacity-60">{ex.base.length - 1}</span>
+                    <span className="font-mono text-[11px] opacity-60">
+                      {ex.base.length - 1}
+                    </span>
                   </>
                 ),
               },
             ]}
           />
-          <div className="text-xs text-muted-foreground max-md:hidden">
-            Exploring similar to <b className="text-foreground">{ex.center.name}</b>
-          </div>
+          {/* <div className="text-xs text-muted-foreground max-md:hidden">
+            Exploring similar to{" "}
+            <b className="text-foreground">{ex.center.name}</b>
+          </div> */}
         </>
       )}
       {ex.view.kind === "board" && (
@@ -1165,21 +1103,21 @@ function CanvasInner() {
           color="var(--canvas-dot)"
         />
         {wide && (
-        <MiniMap
-          pannable
-          zoomable
-          position="bottom-right"
-          nodeColor={(n) => {
-            const d = n.data as { color?: string; kind?: string };
-            return d.kind === "root" || d.kind === "center"
-              ? "#111"
-              : (d.color ?? "#999");
-          }}
-          maskColor="rgb(120 120 120 / 0.12)"
-          // 57 centers the 96px-tall map on the search dock: dock is 170px tall at bottom-5,
-          // so its center sits 20 + 170 / 2 = 105px from the bottom => 105 - 96 / 2 = 57.
-          style={{ width: 150, height: 96, marginBottom: 57 }}
-        />
+          <MiniMap
+            pannable
+            zoomable
+            position="bottom-right"
+            nodeColor={(n) => {
+              const d = n.data as { color?: string; kind?: string };
+              return d.kind === "root" || d.kind === "center"
+                ? "#111"
+                : (d.color ?? "#999");
+            }}
+            maskColor="rgb(120 120 120 / 0.12)"
+            // 57 centers the 96px-tall map on the search dock: dock is 170px tall at bottom-5,
+            // so its center sits 20 + 170 / 2 = 105px from the bottom => 105 - 96 / 2 = 57.
+            style={{ width: 150, height: 96, marginBottom: 57 }}
+          />
         )}
         {wide ? (
           <Controls
@@ -1192,7 +1130,11 @@ function CanvasInner() {
         ) : (
           // Below 1280px (incl. 125%+ browser zoom) the bottom-right corner collides with the
           // centered search dock, so the controls move under the top bar and the minimap hides.
-          <Controls position="top-right" showInteractive={false} style={{ marginTop: 64 }} />
+          <Controls
+            position="top-right"
+            showInteractive={false}
+            style={{ marginTop: 64 }}
+          />
         )}
       </ReactFlow>
 
@@ -1207,31 +1149,33 @@ function CanvasInner() {
           ) : (
             <>
               <SearchBreadcrumb />
-              {/* on phones the path panel only appears once a branch is focused */}
-              {(!isMobile || focus.branchId) && (
+              {/* Phones keep the branch actions in this corner stack — the dock is a bottom
+                  sheet there, leaving no room above it. On desktop they float over the search
+                  dock (below), centred on it like the dock itself. */}
+              {isMobile && focus.branchId && (
                 <PathPanel
                   branches={graph.branches}
                   focus={focus}
-                  level1={graph.level1}
                   onSearchWithin={searchWithin}
                   onReset={() => api.onBranch(focus.branchId!)}
                 />
               )}
             </>
           )}
-          {ex.view.kind === "board" && (
-            <Panel className="w-[232px] p-1">
-              <button
-                type="button"
-                onClick={() => ex.setView({ kind: "search" })}
-                className="flex h-8 w-full items-center gap-2 rounded-lg px-2 text-[12.5px] font-medium hover:bg-muted"
-              >
-                <ArrowLeftIcon className="size-3.5" /> Back to search
-              </button>
-            </Panel>
-          )}
           {isMobile && scopeControls}
         </div>
+        {/* Branch actions ride directly above the search dock, centred on it. The offset clears
+            the dock's own 20px bottom inset + its 52px pill, plus the breathing room between. */}
+        {!isMobile && ex.view.kind !== "similar" && (
+          <div className="absolute inset-x-0 bottom-[100px] flex justify-center px-4">
+            <PathPanel
+              branches={graph.branches}
+              focus={focus}
+              onSearchWithin={searchWithin}
+              onReset={() => api.onBranch(focus.branchId!)}
+            />
+          </div>
+        )}
         {!isMobile && (
           <div className="absolute top-4 left-1/2 flex -translate-x-1/2 flex-col items-center gap-1.5">
             {scopeControls}
@@ -1244,23 +1188,23 @@ function CanvasInner() {
                 {thinking
                   ? "Reading your query…"
                   : ex.view.kind === "board"
-                  ? "This board is empty"
-                  : ex.unsearchable
-                    ? "We couldn't search for that"
-                    : ex.noCloseMatch
-                      ? "No close match"
-                      : "No templates match"}
+                    ? "This board is empty"
+                    : ex.unsearchable
+                      ? "We couldn't search for that"
+                      : ex.noCloseMatch
+                        ? "No close match"
+                        : "No templates match"}
               </div>
               <p className="mt-1 text-xs break-words text-muted-foreground">
                 {thinking
                   ? "Looking for designs that match what you meant, not just the words you used."
                   : ex.view.kind === "board"
-                  ? "Open any design and press Save to add it here."
-                  : ex.unsearchable
-                    ? "Search understands English keywords. Try words like “bold”, “coffee” or “minimalist”."
-                    : ex.noCloseMatch
-                      ? "Check the spelling, or try fewer or more common words."
-                      : "Remove a chip or clear the filters to widen the search."}
+                    ? "Open any design and press Save to add it here."
+                    : ex.unsearchable
+                      ? "Search understands English keywords. Try words like “bold”, “coffee” or “minimalist”."
+                      : ex.noCloseMatch
+                        ? "Check the spelling, or try fewer or more common words."
+                        : "Remove a chip or clear the filters to widen the search."}
               </p>
               {ex.view.kind !== "board" && !thinking && (
                 <button

@@ -13,6 +13,9 @@
 # testing
 /coverage
 
+# e2e screenshots (pnpm e2e)
+/screenshots
+
 # next.js
 /.next/
 /out/

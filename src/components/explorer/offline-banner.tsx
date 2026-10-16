@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef } from "react";
 import { WifiOffIcon } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/toast";
 import { useOnline } from "@/lib/use-online";
 
 /** Tells people they're offline (search keeps working on the loaded data) and when they're back. */

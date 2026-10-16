@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import fixture from "../../tests/fixtures/templates.fixture.json";
 import { parseTemplates } from "./schema";
 import { buildSearchIndex } from "./search";
-import { createLocalSearchClient } from "./search-client";
+import { createLocalSearchClient, createSearchClient } from "./search-client";
 import { smallThumbnail, withRetry } from "./images";
 
 const { templates } = parseTemplates(fixture);
@@ -56,6 +56,25 @@ describe("local search client (worker fallback)", () => {
     expect(calls).toBe(1);
     expect(a.size).toBeGreaterThan(0);
     expect(b.size).toBeGreaterThan(0);
+  });
+
+  it("reuses the cached result for a repeated query", async () => {
+    const client = createLocalSearchClient(() => templates);
+    const first = client.search("burger");
+    const second = client.search("burger");
+    expect(second).toBe(first);
+    expect((await first).size).toBeGreaterThan(0);
+  });
+
+  it("caches through the worker-less client too", async () => {
+    // In this environment there is no Worker, so createSearchClient resolves to the local
+    // (cached) client; the same query must not be recomputed.
+    const client = createSearchClient({ dataUrl: "/data/templates.json", getTemplates: () => templates });
+    const first = client.search("burger");
+    const second = client.search(" burger ");
+    expect(second).toBe(first);
+    expect((await first).size).toBeGreaterThan(0);
+    client.dispose();
   });
 });
 

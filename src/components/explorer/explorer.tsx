@@ -1,37 +1,45 @@
 "use client";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import type { TemplateRepository } from "@/lib/data";
 import { applyFilters, EMPTY_FILTERS, mergeSelections, replaceSelections, restoreSelections, type FacetKey, type FacetSelection, type FilterState } from "@/lib/facets";
 import { buildVocab, chipsToSelection, isUnsearchableQuery, parseQuery, removeChipFromQuery } from "@/lib/query";
 import { createSearchClient, type SearchClient } from "@/lib/search-client";
-import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { fromSearch, historyAction, toSearch, type UrlState } from "@/lib/url-state";
-import { findAllSimilar, rankByPalette } from "@/lib/similarity";
+import { findAllSimilar, rankByImage } from "@/lib/similarity";
 import { rng } from "@/lib/color";
 import { paletteFromFile } from "@/lib/image-search";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/toast";
 import { useAiInterpretation } from "./use-ai-interpretation";
-import { ExplorerContext, type ExplorerApi, type HoverState, type ImageQuery, type SearchStep, type View } from "./context";
-import { TopBar } from "./top-bar";
+import { ExplorerContext, type BoardSelection, type BrowseMode, type ExplorerApi, type HoverState, type ImageQuery, type Origin, type Page, type SearchStep, type SortMode, type View } from "./context";
+import { Sidebar } from "./sidebar";
 import { SearchDock } from "./search-dock";
-import { TreeCanvas } from "./tree-canvas";
+import { BrowseArea } from "./browse-area";
+import { FocusedView } from "./focused-view";
+import { FilterPanel } from "./filter-panel";
 import { DetailPanel } from "./detail-panel";
-import { BoardsPanel } from "./boards-panel";
+import { BoardSelectBar } from "./board-select-bar";
 import { ImageDropOverlay } from "./image-drop";
 import { OfflineBanner } from "./offline-banner";
 
-const IMAGE_RESULTS = 36;
-/** Typing is debounced so the 7,000-record filter + tree layout runs once per pause, not per key. */
-const QUERY_DEBOUNCE_MS = 180;
+const IMAGE_RESULTS = 60;
+const BROWSE_MODE_KEY = "template-taxonomy:browse:v1";
 
 /** View described by the URL; design ids that aren't in the dataset are dropped. */
 function viewFromUrl(u: UrlState, exists: (id: string) => boolean): View {
   const trail = u.design.filter(exists);
   if (trail.length) {
-    return { kind: "similar", trail, origin: u.board ? { kind: "board", boardId: u.board } : { kind: "search" } };
+    const origin: Origin = u.board ? { kind: "board", boardId: u.board } : { kind: "search" };
+    if (u.focused) return { kind: "focused", id: trail[trail.length - 1], origin };
+    return { kind: "similar", trail, origin };
   }
   if (u.board) return { kind: "board", boardId: u.board };
   return { kind: "search" };
+}
+
+/** Home vs Explore: an empty URL lands on the Home discovery feed. */
+function pageFromUrl(u: UrlState): Page {
+  const hasState = !!u.query.trim() || Object.keys(u.facets).length > 0 || !!u.color || u.design.length > 0 || !!u.board;
+  return hasState ? "explore" : "home";
 }
 
 const searchKey = (query: string, filters: FilterState, imageUrl: string | undefined, category: string) =>
@@ -90,17 +98,41 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
   const [query, setQuery] = useState(initialUrl.query);
   const [filters, setFilters] = useState<FilterState>({ facets: initialUrl.facets, color: initialUrl.color });
   const [imageQuery, setImageQuery] = useState<ImageQuery | null>(null);
-  const [shuffleSeed, setShuffleSeed] = useState<number | null>(initialUrl.shuffle);
+  const [sort, setSort] = useState<SortMode>(initialUrl.sort);
+  const [shuffleSeed, setShuffleSeed] = useState<number | null>(initialUrl.shuffleSeed);
   const [view, setView] = useState<View>(() => viewFromUrl(initialUrl, (id) => !!repo.byId(id)));
+  const [page, setPage] = useState<Page>(() => pageFromUrl(initialUrl));
+  const [browseMode, setBrowseMode] = useState<BrowseMode>(() => {
+    try {
+      const v = window.localStorage.getItem(BROWSE_MODE_KEY);
+      if (v === "tree" || v === "grid") return v;
+    } catch {
+      /* storage unavailable */
+    }
+    return "grid";
+  });
+  const [filterPanelOpen, setFilterPanelOpen] = useState(false);
   const [simScope, setSimScope] = useState<"industry" | "all">(initialUrl.scope);
   const [detailOpen, setDetailOpen] = useState(() => view.kind === "similar");
   const [hover, setHover] = useState<HoverState | null>(null);
-  const [boardsOpen, setBoardsOpen] = useState(false);
+  const [boardSelection, setBoardSelection] = useState<BoardSelection | null>(null);
   const [boardGroup, setBoardGroup] = useState<"layout" | "style">("layout");
   const [searchPath, setSearchPath] = useState<SearchStep[]>([]);
   const searchRef = useRef<HTMLInputElement>(null);
+  /** per-visit seed for the Home discovery feed (never URL-encoded) */
+  const [homeSeed, setHomeSeed] = useState(() => Math.floor(Math.random() * 100000));
 
-  const debouncedQuery = useDebouncedValue(query, QUERY_DEBOUNCE_MS);
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(BROWSE_MODE_KEY, browseMode);
+    } catch {
+      /* storage unavailable */
+    }
+  }, [browseMode]);
+
+  // The search dock debounces typing before it reaches `query`, so no further debounce is needed
+  // here — the whole explorer already updates once per typing pause.
+  const debouncedQuery = query;
   const parsed = useMemo(() => parseQuery(debouncedQuery, vocab), [debouncedQuery, vocab]);
   const { ai, status: aiStatus, enabled: aiEnabled, dismiss: dismissAi } = useAiInterpretation(
     debouncedQuery,
@@ -135,7 +167,7 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
     };
   }, [combinedText, aiText, parsed.text, searchClient]);
   const liveHits = combinedText ? textHits : null;
-  const searching = (!!combinedText && textHits?.text !== combinedText) || debouncedQuery !== query;
+  const searching = !!combinedText && textHits?.text !== combinedText;
   const effective = useMemo<FilterState>(
     () => ({
       facets: mergeSelections(
@@ -149,7 +181,7 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
 
   const imageScores = useMemo(() => {
     if (!imageQuery) return null;
-    return new Map(rankByPalette(imageQuery.palette, base).map((r) => [r.template.templateId, r.score]));
+    return new Map(rankByImage(imageQuery.palette, imageQuery.features, base).map((r) => [r.template.templateId, r.score]));
   }, [imageQuery, base]);
 
   // Text-relevance scores for the current free-text query, used to order tree branches.
@@ -158,6 +190,10 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
   // Emoji/CJK-only queries used to be silently ignored (all 7,000 shown); now they match nothing
   // and the empty state explains why.
   const unsearchable = useMemo(() => isUnsearchableQuery(debouncedQuery), [debouncedQuery]);
+
+  const facetActive = Object.values(effective.facets).some((v) => v?.length);
+  const hasSearch = !!query.trim() || facetActive || !!effective.color || !!imageQuery || !!parsed.text;
+
   const results = useMemo(() => {
     if (unsearchable) return [];
     let list = applyFilters(base, effective);
@@ -172,23 +208,29 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
     if (imageScores) {
       list = [...list].sort((a, b) => imageScores.get(b.templateId)! - imageScores.get(a.templateId)!).slice(0, IMAGE_RESULTS);
     }
-    if (shuffleSeed !== null) list = seededShuffle(list, shuffleSeed);
+    if (sort === "shuffle" && shuffleSeed !== null) list = seededShuffle(list, shuffleSeed);
+    // Home is a shuffled discovery feed; a search narrows it in place and keeps relevance order.
+    else if (page === "home" && !hasSearch) list = seededShuffle(list, homeSeed);
     return list;
-  }, [base, effective, liveHits, aiText, parsed.text, imageScores, shuffleSeed, unsearchable]);
+  }, [base, effective, liveHits, aiText, parsed.text, imageScores, sort, shuffleSeed, unsearchable, page, hasSearch, homeSeed]);
 
   // A free-text query that found nothing (and wasn't just filters narrowing the set)
   // is a "no close match", distinct from "remove a chip / clear the filters".
-  const filtered =
-    !!effective.color || Object.values(effective.facets).some((v) => v?.length);
+  const filtered = !!effective.color || facetActive;
   const noCloseMatch = !!combinedText && !unsearchable && results.length === 0 && !filtered;
 
+  // The browse list trails the input/chips by a frame so a commit never stalls typing.
+  const browseItems = useDeferredValue(results);
+
   const byId = useCallback((id: string) => repo.byId(id), [repo]);
+  const focused = view.kind === "focused" ? byId(view.id) ?? null : null;
   const center = view.kind === "similar" ? byId(view.trail[view.trail.length - 1]) ?? null : null;
+  const detailTemplate = focused ?? center;
   const similar = useMemo(() => {
-    if (!center) return null;
-    const pool = simScope === "industry" ? base.filter((t) => t.industry === center.industry) : base;
-    return findAllSimilar(center, pool, 6);
-  }, [center, simScope, base]);
+    if (!detailTemplate) return null;
+    const pool = simScope === "industry" ? base.filter((t) => t.industry === detailTemplate.industry) : base;
+    return findAllSimilar(detailTemplate, pool, 6);
+  }, [detailTemplate, simScope, base]);
 
   const toggleFacet = useCallback(
     (k: FacetKey, v: string) => {
@@ -297,7 +339,9 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
       setQuery("");
       setFilters(EMPTY_FILTERS);
       setSearchPath([]);
-      setImageQuery({ url: res.thumbUrl, palette: res.palette, name: file.name });
+      setPage("explore");
+      setView({ kind: "search" });
+      setImageQuery({ url: res.thumbUrl, palette: res.palette, features: res.features, name: file.name });
       toast.success("Searching by image colors", {
         id: toastId,
         description: hadSearch ? "Your previous search and filters were cleared." : undefined,
@@ -320,7 +364,24 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
     }
   }, []);
 
+  /** Grid/Home click: open the focused lightbox, remembering where we came from. */
   const openTemplate = useCallback((id: string) => {
+    setHover(null);
+    setDetailOpen(false);
+    setView((v) => {
+      const origin: Origin =
+        v.kind === "board"
+          ? { kind: "board", boardId: v.boardId }
+          : v.kind === "focused" || v.kind === "similar"
+            ? v.origin
+            : { kind: "search" };
+      if (v.kind === "focused" && v.id === id) return v;
+      return { kind: "focused", id, origin };
+    });
+  }, []);
+
+  /** Tree/board click: open the similar mind-map (keeps the four similarity buckets). */
+  const openSimilar = useCallback((id: string) => {
     setHover(null);
     setDetailOpen(true);
     setView((v) => {
@@ -332,7 +393,48 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
     });
   }, []);
 
-  // when the filters/search change while exploring similar, go back to the search tree
+  /** Clicking a related image inside the lightbox re-centers it without a new history entry. */
+  const recenter = useCallback((id: string) => {
+    setDetailOpen(false);
+    setView((v) => (v.kind === "focused" ? { ...v, id } : v));
+  }, []);
+
+  /** Clicking a thumbnail inside the detail panel re-centers it, keeping the panel open. */
+  const recenterDetail = useCallback((id: string) => {
+    setView((v) => {
+      if (v.kind === "focused") return { ...v, id };
+      if (v.kind === "similar")
+        return { ...v, trail: v.trail.length ? [...v.trail.slice(0, -1), id] : [id] };
+      return v;
+    });
+  }, []);
+
+  /** Board multi-select: a sticky mode inside one board, cleared whenever the board changes. */
+  const startBoardSelect = useCallback((boardId: string) => {
+    setBoardSelection({ boardId, ids: [] });
+  }, []);
+  const stopBoardSelect = useCallback(() => setBoardSelection(null), []);
+  const toggleBoardSelect = useCallback((id: string) => {
+    setBoardSelection((sel) => {
+      if (!sel) return sel;
+      const ids = sel.ids.includes(id) ? sel.ids.filter((x) => x !== id) : [...sel.ids, id];
+      return { ...sel, ids };
+    });
+  }, []);
+
+  // Leaving the board (or switching to the mind-map or the Boards page) ends selection. Reset
+  // during render — the same derived-state pattern ThumbImage uses for a src change — so the
+  // toolbar can never paint a selection that belongs to a board that's no longer on screen.
+  const selectionLive =
+    !!boardSelection &&
+    page === "explore" &&
+    view.kind === "board" &&
+    view.boardId === boardSelection.boardId &&
+    browseMode === "grid";
+  if (boardSelection && !selectionLive) setBoardSelection(null);
+  const activeBoardSelection = selectionLive ? boardSelection : null;
+
+  // when the filters/search change while exploring a design, go back to the browse view
   const lastSearchKey = useRef("");
   useEffect(() => {
     const key = searchKey(query, filters, imageQuery?.url, category);
@@ -356,13 +458,21 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
       query,
       facets: filters.facets,
       color: filters.color,
-      design: view.kind === "similar" ? view.trail : [],
+      design: view.kind === "focused" ? [view.id] : view.kind === "similar" ? view.trail : [],
+      focused: view.kind === "focused",
       board:
-        view.kind === "board" ? view.boardId : view.kind === "similar" && view.origin.kind === "board" ? view.origin.boardId : null,
+        view.kind === "board"
+          ? view.boardId
+          : view.kind === "focused" || view.kind === "similar"
+            ? view.origin.kind === "board"
+              ? view.origin.boardId
+              : null
+            : null,
       scope: simScope,
-      shuffle: shuffleSeed,
+      sort,
+      shuffleSeed,
     }),
-    [query, filters, view, simScope, shuffleSeed],
+    [query, filters, view, simScope, sort, shuffleSeed],
   );
   const lastUrl = useRef<UrlState | null>(null);
   const typingRun = useRef(false);
@@ -398,8 +508,10 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
       setQuery(u.query);
       setFilters(nextFilters);
       setView(nextView);
+      setPage((p) => (u.design.length || u.board ? "explore" : p));
       setSimScope(u.scope);
-      setShuffleSeed(u.shuffle);
+      setSort(u.sort);
+      setShuffleSeed(u.shuffleSeed);
       setSearchPath([]);
       setHover(null);
       setDetailOpen(nextView.kind === "similar");
@@ -410,6 +522,19 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
 
   const focusSearch = useCallback(() => searchRef.current?.focus(), []);
 
+  /** Home nav: a clean, shuffled discovery feed. */
+  const goHome = useCallback(() => {
+    setView({ kind: "search" });
+    clearAll();
+    setPage("home");
+    setHomeSeed(Math.floor(Math.random() * 100000));
+  }, [clearAll]);
+
+  /** Explore nav: keeps the current search so switches are non-destructive. */
+  const goExplore = useCallback(() => {
+    setPage("explore");
+  }, []);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null;
@@ -419,30 +544,36 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
         searchRef.current?.focus();
         searchRef.current?.select();
       } else if (e.key === "Escape" && !typing) {
-        if (document.querySelector("[data-slot=sheet-content], [role=menu], [data-slot=popover-content]")) return;
-        if (detailOpen) setDetailOpen(false);
+        if (document.querySelector("[data-slot=dialog-content], [role=menu], [data-slot=popover-content]")) return;
+        if (activeBoardSelection) stopBoardSelect();
+        else if (detailOpen) setDetailOpen(false);
+        else if (filterPanelOpen) setFilterPanelOpen(false);
+        else if (page === "boards") setPage("explore");
         else setHover(null);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [detailOpen]);
+  }, [activeBoardSelection, stopBoardSelect, detailOpen, filterPanelOpen, page]);
 
   const api: ExplorerApi = {
-    all, base, results, byId, vocab, tagCounts, category,
-    query, setQuery, parsed, searching, unsearchable, noCloseMatch, filters, setFilters, effective, toggleFacet, addFacet, clearAll,
+    all, base, results, browseItems, byId, vocab, tagCounts, category,
+    query, setQuery, parsed, searching, unsearchable, noCloseMatch, hasSearch, filters, setFilters, effective, toggleFacet, addFacet, clearAll,
     ai, aiStatus, aiEnabled, dismissAi,
     searchPath, searchWithin, backOneStep, jumpToStep,
-    imageQuery, setImageQuery, imageScores, textScores, imageBusy, searchByImage, shuffleSeed, setShuffleSeed,
-    view, setView, openTemplate, simScope, setSimScope, similar, center,
+    imageQuery, setImageQuery, imageScores, textScores, imageBusy, searchByImage,
+    page, setPage, browseMode, setBrowseMode, sort, setSort, shuffleSeed, setShuffleSeed,
+    filterPanelOpen, setFilterPanelOpen,
+    view, setView, openTemplate, openSimilar, recenter, recenterDetail, focused, simScope, setSimScope, similar, center,
     detailsReady, detailsError, loadDetails,
-    detailOpen, setDetailOpen, hover, setHover, boardsOpen, setBoardsOpen, boardGroup, setBoardGroup, focusSearch,
+    detailOpen, setDetailOpen, hover, setHover, boardGroup, setBoardGroup, focusSearch,
+    boardSelection: activeBoardSelection, startBoardSelect, stopBoardSelect, toggleBoardSelect,
   };
 
   return (
     <ExplorerContext.Provider value={api}>
-      <div className="relative h-full overflow-hidden bg-background text-foreground">
-        {/* Keyboard users reach the search before the hundreds of tree buttons. */}
+      <div className="flex h-full overflow-hidden bg-background text-foreground">
+        {/* Keyboard users reach the search before the hundreds of grid/tree buttons. */}
         <a
           href="#template-search"
           onClick={(e) => {
@@ -454,16 +585,20 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
           Skip to search
         </a>
         <h1 className="sr-only">Template Taxonomy: explore design.com Instagram post templates</h1>
-        <TopBar />
-        <SearchDock inputRef={searchRef} />
-        <main className="absolute inset-0" aria-label="Template tree">
-          <TreeCanvas />
-        </main>
-        {center && detailOpen && <DetailPanel template={center} />}
-        <BoardsPanel />
-        <ImageDropOverlay />
-        <OfflineBanner />
+        <Sidebar onHome={goHome} onExplore={goExplore} />
+        <div className="relative flex min-w-0 flex-1 flex-col">
+          <main className="relative flex-1 overflow-hidden" aria-label="Template browser">
+            <BrowseArea />
+            {focused && <FocusedView />}
+          </main>
+          {page !== "boards" &&
+            (activeBoardSelection ? <BoardSelectBar /> : <SearchDock inputRef={searchRef} />)}
+        </div>
+        <FilterPanel />
+        {detailTemplate && <DetailPanel template={detailTemplate} />}
       </div>
+      <ImageDropOverlay />
+      <OfflineBanner />
     </ExplorerContext.Provider>
   );
 }

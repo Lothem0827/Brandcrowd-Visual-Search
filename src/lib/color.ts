@@ -91,12 +91,26 @@ export function paletteSimilarity(a: RoleColor[], b: RoleColor[]): number {
   return total / wsum;
 }
 
-/** Smallest distance from `hex` to the template palette, background-only or any colour. */
-export function colorMatchDistance(hex: string, colors: RoleColor[], mode: "background" | "any"): number {
+/** Which palette role a colour picker matches against. */
+export type ColorMatchMode = "background" | "primary" | "accent" | "any";
+
+export const COLOR_MATCH_MODES: ColorMatchMode[] = ["background", "primary", "accent", "any"];
+
+/** Smallest distance from `hex` to the matching role(s) of the template palette. */
+export function colorMatchDistance(hex: string, colors: RoleColor[], mode: ColorMatchMode): number {
   const target = hexToOklab(hex);
-  const pool = mode === "background" ? colors.filter((c) => c.role === "background").slice(0, 1) : colors;
-  const list = pool.length ? pool : colors.slice(0, 1);
+  const pool = mode === "any" ? colors : colors.filter((c) => c.role === mode);
+  const list = pool.length ? pool : mode === "background" ? colors.slice(0, 1) : colors;
   return Math.min(...list.map((c) => labDistance(target, hexToOklab(c.hex))));
+}
+
+/**
+ * OR across several picked colours: the template matches if ANY of `hexes` is within
+ * `threshold` of the template palette (under `mode`). An empty pick list matches everything.
+ */
+export function paletteMatchesColors(hexes: string[], colors: RoleColor[], mode: ColorMatchMode, threshold: number): boolean {
+  if (!hexes.length) return true;
+  return hexes.some((h) => colorMatchDistance(h, colors, mode) <= threshold);
 }
 
 /** Basic named swatches used for color-name lookup and the Color filter. */
@@ -129,6 +143,51 @@ export function nearestColorName(hex: string): string {
     }
   }
   return best.name;
+}
+
+export interface Hsv {
+  /** 0..360 */
+  h: number;
+  /** 0..1 */
+  s: number;
+  /** 0..1 */
+  v: number;
+}
+
+export function rgbToHsv(r: number, g: number, b: number): Hsv {
+  const rn = r / 255, gn = g / 255, bn = b / 255;
+  const max = Math.max(rn, gn, bn);
+  const min = Math.min(rn, gn, bn);
+  const d = max - min;
+  let h = 0;
+  if (d !== 0) {
+    if (max === rn) h = ((gn - bn) / d) % 6;
+    else if (max === gn) h = (bn - rn) / d + 2;
+    else h = (rn - gn) / d + 4;
+    h *= 60;
+    if (h < 0) h += 360;
+  }
+  return { h, s: max === 0 ? 0 : d / max, v: max };
+}
+
+export function hexToHsv(hex: string): Hsv {
+  const [r, g, b] = hexToRgb(hex);
+  return rgbToHsv(r, g, b);
+}
+
+export function hsvToHex(h: number, s: number, v: number): string {
+  const c = v * s;
+  const hh = ((h % 360) + 360) % 360 / 60;
+  const x = c * (1 - Math.abs((hh % 2) - 1));
+  const m = v - c;
+  let rgb: [number, number, number];
+  if (hh < 1) rgb = [c, x, 0];
+  else if (hh < 2) rgb = [x, c, 0];
+  else if (hh < 3) rgb = [0, c, x];
+  else if (hh < 4) rgb = [0, x, c];
+  else if (hh < 5) rgb = [x, 0, c];
+  else rgb = [c, 0, x];
+  return rgbToHex((rgb[0] + m) * 255, (rgb[1] + m) * 255, (rgb[2] + m) * 255);
 }
 
 /** Deterministic PRNG (mulberry32). */

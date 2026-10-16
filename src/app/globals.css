@@ -51,7 +51,7 @@
 }
 
 :root {
-  --background: oklch(0.96 0.004 84);
+  --background: oklch(95.815% 0.00011 271.152);
   --canvas: #e6e4e0;
   --canvas-dot: #c3c0bb;
   --panel: #ffffff;
@@ -89,8 +89,8 @@
 }
 
 .dark {
-  --background: oklch(0.196 0.004 260);
-  --canvas: #0e0e10;
+  --background: oklch(17.808% 0.00205 286.051);
+  --canvas: oklch(17.808% 0.00205 286.051);
   --canvas-dot: #2c2e33;
   --panel: #1c1d21;
   --foreground: oklch(0.985 0 0);
@@ -140,16 +140,29 @@
 .react-flow {
   --xy-background-color: var(--canvas);
   --xy-edge-stroke-default: var(--border);
-  --xy-minimap-background-color: var(--panel);
   --xy-controls-button-background-color: var(--panel);
   --xy-controls-button-background-color-hover: var(--muted);
   --xy-controls-button-color: var(--foreground);
   --xy-controls-button-border-color: transparent;
 }
-.react-flow__node { transition: opacity 200ms ease; pointer-events: all !important; }
-.react-flow__edge-path { transition: opacity 200ms ease; }
-.react-flow__node.is-dim, .react-flow__edge.is-dim { opacity: 0.12; }
-.react-flow__controls { border-radius: 10px; overflow: hidden; }
-.react-flow__minimap { border-radius: 10px; overflow: hidden; }
-.react-flow__attribution { display: none; }
-.thin-scroll { scrollbar-width: thin; }
+.react-flow__node {
+  transition: opacity 200ms ease;
+  pointer-events: all !important;
+}
+.react-flow__edge-path {
+  transition: opacity 200ms ease;
+}
+.react-flow__node.is-dim,
+.react-flow__edge.is-dim {
+  opacity: 0.12;
+}
+.react-flow__controls {
+  border-radius: 10px;
+  overflow: hidden;
+}
+.react-flow__attribution {
+  display: none;
+}
+.thin-scroll {
+  scrollbar-width: thin;
+}

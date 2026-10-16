@@ -1,6 +1,7 @@
 import type { Template } from "./schema";
 import { paletteSimilarity, type RoleColor } from "./color";
 import { STRUCTURE_LABEL } from "./facets";
+import { lookBuckets, type ImageFeatures } from "./image-features";
 
 /** Pure similarity functions. All scores are in 0..1. */
 
@@ -125,25 +126,66 @@ export function similarityScore(kind: SimilarKind, a: Template, b: Template) {
 }
 
 /** Top-n most similar candidates (target excluded). Ties broken by overall score, then id for stability. */
-export function findSimilar(target: Template, candidates: Template[], kind: SimilarKind, n = 6): SimilarHit[] {
+export function findSimilar(target: Template, candidates: Template[], kind: SimilarKind, n = 6, exclude?: Set<string>): SimilarHit[] {
   return candidates
-    .filter((c) => c.templateId !== target.templateId)
+    .filter((c) => c.templateId !== target.templateId && !exclude?.has(c.templateId))
     .map((c) => ({ c, s: SCORERS[kind](target, c), o: kind === "overall" ? 0 : overallSimilarity(target, c) }))
     .sort((x, y) => y.s - x.s || y.o - x.o || x.c.templateId.localeCompare(y.c.templateId))
     .slice(0, n)
     .map(({ c, s }) => ({ template: c, score: s, reason: reasonFor(kind, target, c) }));
 }
 
+/** Fixed priority used to keep a design from appearing in more than one similar row. */
+const SIMILAR_PRIORITY: SimilarKind[] = ["overall", "colors", "layout", "style"];
+
+/**
+ * The four similar groups, deduped so a design shows in only its strongest row
+ * (resolved in `SIMILAR_PRIORITY` order).
+ */
 export function findAllSimilar(target: Template, candidates: Template[], n = 6): Record<SimilarKind, SimilarHit[]> {
-  return {
-    colors: findSimilar(target, candidates, "colors", n),
-    layout: findSimilar(target, candidates, "layout", n),
-    style: findSimilar(target, candidates, "style", n),
-    overall: findSimilar(target, candidates, "overall", n),
-  };
+  const used = new Set<string>();
+  const out = {} as Record<SimilarKind, SimilarHit[]>;
+  for (const kind of SIMILAR_PRIORITY) {
+    out[kind] = findSimilar(target, candidates, kind, n, used);
+    for (const h of out[kind]) used.add(h.template.templateId);
+  }
+  return out;
 }
 
-/** Rank templates by palette similarity to an arbitrary palette (image search). */
+/** Full flat ranking by overall similarity (target excluded), most similar first. */
+export function rankByOverall(target: Template, candidates: Template[]): { template: Template; score: number }[] {
+  return candidates
+    .filter((c) => c.templateId !== target.templateId)
+    .map((c) => ({ template: c, score: overallSimilarity(target, c) }))
+    .sort((a, b) => b.score - a.score || a.template.templateId.localeCompare(b.template.templateId));
+}
+
+/** How well an uploaded image's look (bucketed) matches a template's structural metadata. */
+export function imageLookSimilarity(features: ImageFeatures, t: Template): number {
+  const b = lookBuckets(features);
+  const eq = (a: string, x: string | null | undefined) => (x && a === x ? 1 : 0);
+  const typeScore =
+    b.imageType === t.imagery.type ? 1 : b.imageType === "none" || t.imagery.type === "none" ? 0.25 : 0.35;
+  return (
+    0.4 * typeScore +
+    0.25 * eq(b.whitespace, t.layout.whitespace) +
+    0.2 * eq(b.textDensity, t.layout.textDensity) +
+    0.15 * eq(b.balance, t.layout.balance)
+  );
+}
+
+/** Rank templates by a blend of palette similarity and look (layout/imagery) similarity. */
+export function rankByImage(
+  palette: RoleColor[],
+  features: ImageFeatures,
+  candidates: Template[],
+): { template: Template; score: number }[] {
+  return candidates
+    .map((t) => ({ template: t, score: 0.6 * paletteSimilarity(palette, t.colors) + 0.4 * imageLookSimilarity(features, t) }))
+    .sort((a, b) => b.score - a.score || a.template.templateId.localeCompare(b.template.templateId));
+}
+
+/** Rank templates by palette similarity to an arbitrary palette (kept for tests/back-compat). */
 export function rankByPalette(palette: RoleColor[], candidates: Template[]): { template: Template; score: number }[] {
   return candidates
     .map((t) => ({ template: t, score: paletteSimilarity(palette, t.colors) }))

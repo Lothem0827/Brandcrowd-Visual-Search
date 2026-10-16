@@ -14,10 +14,18 @@ import {
   XIcon,
 } from "lucide-react";
 import { displayValue, FACET_MAP, type FacetKey } from "@/lib/facets";
+import type { ColorMatchMode } from "@/lib/color";
 import { ignoredQueryText } from "@/lib/query";
 import { useIsMobile } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
 import { useExplorer } from "./context";
+
+const COLOR_LABEL: Record<ColorMatchMode, string> = {
+  background: "Background",
+  primary: "Primary",
+  accent: "Accent",
+  any: "Colour",
+};
 
 // useLayoutEffect warns when a client component is server-rendered.
 const useIsoLayoutEffect =
@@ -76,7 +84,7 @@ export function ActiveChips() {
   const any =
     detected.length ||
     committed.length ||
-    filters.color ||
+    filters.color?.colors.length ||
     imageQuery ||
     showAi ||
     query.trim();
@@ -87,7 +95,8 @@ export function ActiveChips() {
     committed.length,
     aiChips.length,
     ai?.text ?? "",
-    filters.color?.hex ?? "",
+    (filters.color?.colors ?? []).join(","),
+    filters.color?.mode ?? "",
     imageQuery?.url ?? "",
     query.trim(),
   ].join("|");
@@ -139,11 +148,12 @@ export function ActiveChips() {
     );
   }, [signature]);
 
-  // Re-measure after every render: chips can reflow without a container resize
-  // (async AI text, "Searching…", font swap), and the clamp hides those reflows.
+  // Re-measure when the chip set changes: `measure` keeps a stable identity until `signature`
+  // changes, so keystrokes/renders that don't alter the chips no longer force layout reads.
+  // Width changes (the panel opening, a resize) are handled by the ResizeObserver below.
   useIsoLayoutEffect(() => {
     if (!isMobile) measure();
-  });
+  }, [isMobile, measure]);
 
   // Width changes re-wrap the chips, so re-measure on container resize.
   useEffect(() => {
@@ -197,9 +207,6 @@ export function ActiveChips() {
           onRemove={() => toggleFacet(c.facet, c.value)}
         />
       ))}
-      {(showAi || aiStatus === "loading") && (
-        <span className="mx-0.5 h-4 w-px shrink-0 bg-border" aria-hidden />
-      )}
       {aiStatus === "loading" && (
         <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <WandSparklesIcon className="size-3 animate-pulse text-primary" />
@@ -239,14 +246,18 @@ export function ActiveChips() {
           )}
         </>
       )}
-      {filters.color && (
+      {(filters.color?.colors ?? []).map((hex, i) => (
         <Chip
-          label={filters.color.mode === "background" ? "Background" : "Color"}
-          value={filters.color.hex}
-          swatch={filters.color.hex}
-          onRemove={() => setFilters((f) => ({ ...f, color: null }))}
+          key={hex}
+          label={i === 0 ? (filters.color?.mode === "background" ? "Background" : COLOR_LABEL[filters.color?.mode ?? "any"]) : ""}
+          value={hex}
+          swatch={hex}
+          onRemove={() => {
+            const rest = (filters.color?.colors ?? []).filter((c) => c !== hex);
+            setFilters((f) => ({ ...f, color: rest.length ? { colors: rest, mode: f.color?.mode ?? "background" } : null }));
+          }}
         />
-      )}
+      ))}
       {imageQuery && (
         <Chip
           label="Image"
@@ -330,7 +341,7 @@ function Chip({
       className={cn(
         "inline-flex h-7 items-center gap-1.5 rounded-full pr-1 pl-2.5 text-xs",
         dark ? "bg-foreground text-background" : "bg-panel",
-        ai && "border border-dashed border-primary/50 bg-primary/5",
+        ai && "bg-primary/5",
       )}
     >
       {ai && <WandSparklesIcon className="size-3 text-primary" aria-hidden />}
@@ -340,9 +351,11 @@ function Chip({
           style={{ background: swatch }}
         />
       )}
-      <span className={dark ? "text-background/65" : "text-muted-foreground"}>
-        {label}:
-      </span>
+      {label && (
+        <span className={dark ? "text-background/65" : "text-muted-foreground"}>
+          {label}:
+        </span>
+      )}
       <span className="font-medium">{value}</span>
       <button
         type="button"

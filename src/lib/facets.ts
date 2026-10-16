@@ -1,6 +1,6 @@
 import type { Template } from "./schema";
 import { VOCAB } from "./vocab";
-import { colorMatchDistance, normalizeHex } from "./color";
+import { paletteMatchesColors, type ColorMatchMode, normalizeHex } from "./color";
 
 export type FacetKey =
   | "industry"
@@ -77,6 +77,89 @@ export const STRUCTURE_LABEL: Record<string, string> = {
 
 export const cap = (s: string) => (s === "y2k" ? "Y2K" : s.charAt(0).toUpperCase() + s.slice(1));
 
+/** Tokens that stay uppercase even when the dataset stores them in lower case. */
+const ACRONYMS = new Set(["y2k", "diy", "seo", "ui", "ux"]);
+
+/** Words that stay lower-case inside a title unless they lead or end it. */
+const TITLE_MINOR = new Set([
+  "a",
+  "an",
+  "and",
+  "as",
+  "at",
+  "but",
+  "by",
+  "for",
+  "from",
+  "in",
+  "into",
+  "nor",
+  "of",
+  "on",
+  "onto",
+  "or",
+  "over",
+  "per",
+  "the",
+  "to",
+  "up",
+  "via",
+  "with",
+  "vs",
+]);
+
+/**
+ * Title Case for crumb and tree-node labels. Display only — the raw label keeps driving state
+ * and facet values, so searches and filters stay identical to the data.
+ * e.g. "full-bleed photo" -> "Full-Bleed Photo", "y2k poster" -> "Y2K Poster",
+ * "Back to School" -> "Back to School" (the trailing "School" is a title word, "to" is minor).
+ */
+export function titleCase(s: string): string {
+  const words = s.split(/\s+/);
+  return words
+    .map((w, i) => {
+      if (!/[A-Za-z]/.test(w)) return w; // numbers, "&", "·"
+      const lower = w.toLowerCase();
+      // Acronyms and tokens the data already shrank from shouting keep their caps.
+      if (ACRONYMS.has(lower) || w === w.toUpperCase()) return w.toUpperCase();
+      if (i > 0 && i < words.length - 1 && TITLE_MINOR.has(lower)) return lower;
+      // Each hyphenated part is its own word: "full-bleed" -> "Full-Bleed".
+      return lower
+        .split("-")
+        .map((p) => (p ? p.charAt(0).toUpperCase() + p.slice(1) : p))
+        .join("-");
+    })
+    .join(" ");
+}
+
+/**
+ * Sentence case for chip labels: lower-case everything and capitalise the first letter, while
+ * keeping tokens that are already all-caps (or known acronyms) uppercase. Display only — the raw
+ * value must keep driving state, so searches and facet values stay identical to the data.
+ * e.g. "Construction Services" -> "Construction services", "Y2K" -> "Y2K", "y2k poster" -> "Y2K poster".
+ */
+export function sentenceCase(s: string): string {
+  const lower = s.toLowerCase();
+  const out = lower.charAt(0).toUpperCase() + lower.slice(1);
+  // A whole all-caps label is shouting, not an acronym: only known acronyms survive it.
+  const wholeCaps = s === s.toUpperCase();
+  const caps = new Set(
+    s
+      .split(/\s+/)
+      .filter(
+        (w) =>
+          w.length > 1 &&
+          /[A-Za-z]/.test(w) &&
+          (ACRONYMS.has(w.toLowerCase()) || (!wholeCaps && w === w.toUpperCase())),
+      )
+      .map((w) => w.toUpperCase()),
+  );
+  if (!caps.size) return out;
+  return out.replace(/\S+/g, (w) =>
+    caps.has(w.toUpperCase()) ? w.toUpperCase() : w,
+  );
+}
+
 export const FACETS: FacetDef[] = [
   { key: "industry", label: "Industry", get: (t) => [t.industry], parse: true },
   { key: "topic", label: "Topic", get: (t) => [t.topic], parse: true },
@@ -127,8 +210,9 @@ export function displayValue(key: FacetKey, v: string) {
 export type FacetSelection = Partial<Record<FacetKey, string[]>>;
 
 export interface ColorFilter {
-  hex: string;
-  mode: "background" | "any";
+  /** one or more picked hexes; a template matches if ANY of them matches (OR) */
+  colors: string[];
+  mode: ColorMatchMode;
 }
 
 export interface FilterState {
@@ -205,8 +289,8 @@ export function matchesFilters(t: Template, f: FilterState, except?: FacetKey | 
     if (!vs.some((v) => have.includes(v))) return false;
   }
   if (f.color && except !== "color") {
-    const hex = normalizeHex(f.color.hex);
-    if (hex && colorMatchDistance(hex, t.colors, f.color.mode) > COLOR_MATCH_THRESHOLD) return false;
+    const hexes = f.color.colors.map((h) => normalizeHex(h)).filter((h): h is string => !!h);
+    if (hexes.length && !paletteMatchesColors(hexes, t.colors, f.color.mode, COLOR_MATCH_THRESHOLD)) return false;
   }
   return true;
 }
@@ -215,13 +299,37 @@ export function applyFilters(list: Template[], f: FilterState): Template[] {
   return list.filter((t) => matchesFilters(t, f));
 }
 
+/**
+ * Per-facet option lists are expensive (a full pass over the dataset calling `matchesFilters`
+ * for each of ~20 facets, ~180k iterations on the 9k-row dataset once details finish merging)
+ * and deterministic in `(all, key, f, limit)`. Caching by the caller's memoized `all` array and
+ * `FilterState` object makes repeat renders free; entries are collected with their keys, so a
+ * superseded filter state is never retained.
+ */
+type FacetOption = { value: string; label: string; count: number; total: number };
+const facetOptionsCache = new WeakMap<Template[], WeakMap<FilterState, Map<string, FacetOption[]>>>();
+
 /** Option values for a facet: vocab ∪ values in data, with counts under the other active filters. */
 export function facetOptions(
   all: Template[],
   key: FacetKey,
   f: FilterState,
   opts: { limit?: number } = {},
-): { value: string; label: string; count: number; total: number }[] {
+): FacetOption[] {
+  let byFilter = facetOptionsCache.get(all);
+  if (!byFilter) {
+    byFilter = new WeakMap();
+    facetOptionsCache.set(all, byFilter);
+  }
+  let byKey = byFilter.get(f);
+  if (!byKey) {
+    byKey = new Map();
+    byFilter.set(f, byKey);
+  }
+  const cacheKey = `${key}|${opts.limit ?? ""}`;
+  const cached = byKey.get(cacheKey);
+  if (cached) return cached;
+
   const def = FACET_MAP[key];
   const counts = new Map<string, number>();
   const totals = new Map<string, number>();
@@ -245,6 +353,7 @@ export function facetOptions(
     const selected = new Set(f.facets[key] ?? []);
     list = list.filter((o, i) => i < opts.limit! || selected.has(o.value));
   }
+  byKey.set(cacheKey, list);
   return list;
 }
 
