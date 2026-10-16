@@ -73,9 +73,10 @@ as before. The key stays server-side; the browser only ever calls `/api/interpre
   the breadcrumb lets you step back.
 - **Details panel**: big preview, colors (click to copy hex), layout, typography, imagery, copy ideas, tags.
   Every label is clickable and adds a filter. *Open on design.com* and *Save*.
-- **Boards**: *Save* quick-saves to "Saved"; the chevron (or press-and-hold on Save) opens the board picker with
-  **+ New board**. A design can be in several boards. **Boards** (top bar) lists boards; opening one shows it
-  as a tree grouped by layout or by style.
+- **Boards**: *Save* quick-saves to the last board you used (the *Saved* board until you pick another in the
+  board picker). A design can be in several boards. **Boards** (top bar) lists boards; the dashed **New board**
+  card at the end of the list opens a dialog for a board name and optional description, which then shows in
+  place of the design count. Opening a board shows it as a tree grouped by layout or by style.
 - **Image search**: click the image button in the search box, or drop an image anywhere. Three dominant colors are
   extracted in the browser (k-means in OKLab on a 72×72 canvas, background = largest cluster) and templates are
   ranked by palette similarity. Nothing is uploaded.

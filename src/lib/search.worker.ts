@@ -10,6 +10,10 @@ import type { SearchRequest, SearchResponse } from "./search-client";
 
 const ctx = self as unknown as Worker;
 let ready: Promise<SearchIndex> | null = null;
+// Second layer behind the client cache: repeated queries (e.g. across tabs/failovers) don't
+// re-run MiniSearch. Bounded so a long session can't grow without limit.
+const results = new Map<string, [string, number][]>();
+const RESULT_CACHE_MAX = 64;
 
 ctx.onmessage = async (e: MessageEvent<SearchRequest>) => {
   const msg = e.data;
@@ -35,7 +39,17 @@ ctx.onmessage = async (e: MessageEvent<SearchRequest>) => {
     if (!ready) return;
     try {
       const index = await ready;
-      ctx.postMessage({ type: "result", id: msg.id, entries: [...index.search(msg.text)] } satisfies SearchResponse);
+      const key = msg.text.trim();
+      let entries = results.get(key);
+      if (!entries) {
+        entries = [...index.search(msg.text)];
+        if (results.size >= RESULT_CACHE_MAX) {
+          const oldest = results.keys().next().value;
+          if (oldest !== undefined) results.delete(oldest);
+        }
+        results.set(key, entries);
+      }
+      ctx.postMessage({ type: "result", id: msg.id, entries } satisfies SearchResponse);
     } catch {
       /* the init error has already been reported */
     }

@@ -1,13 +1,18 @@
 import type { RoleColor } from "./color";
+import { imageFeatures, type ImageFeatures } from "./image-features";
 import { decodeErrorMessage, paletteFromPixels, validateImageFile, validateImageSize } from "./image-validation";
 
 /**
  * Client-side image search: decode the image from an object URL (no base64 copy of the
  * file), draw it onto a 72×72 canvas and run k-means in OKLab to get 3 dominant colours
- * (background = largest cluster). Only a 96px thumbnail is kept for display.
+ * (background = largest cluster). The same pixels also yield cheap "look" features
+ * (whitespace/edges/colourfulness/symmetry) so ranking blends layout, not just colour.
+ * Only a 96px thumbnail is kept for display.
  * Upgrade path: replace with CLIP/SigLIP embeddings (see README).
  */
-export type ImagePaletteResult = { ok: true; thumbUrl: string; palette: RoleColor[] } | { ok: false; message: string };
+export type ImagePaletteResult =
+  | { ok: true; thumbUrl: string; palette: RoleColor[]; features: ImageFeatures }
+  | { ok: false; message: string };
 
 const SAMPLE = 72;
 const THUMB = 96;
@@ -37,8 +42,10 @@ export async function paletteFromFile(file: File): Promise<ImagePaletteResult> {
     const ctx = canvas.getContext("2d", { willReadFrequently: true });
     if (!ctx) return { ok: false, message: "Your browser can't analyse images (canvas unavailable)." };
     ctx.drawImage(img, 0, 0, SAMPLE, SAMPLE);
-    const result = paletteFromPixels(ctx.getImageData(0, 0, SAMPLE, SAMPLE).data);
+    const pixels = ctx.getImageData(0, 0, SAMPLE, SAMPLE).data;
+    const result = paletteFromPixels(pixels);
     if (!result.ok) return result;
+    const features = imageFeatures(pixels, SAMPLE, result.palette);
 
     // small square thumbnail (center crop) for the search chip and tree root
     const thumb = document.createElement("canvas");
@@ -51,7 +58,7 @@ export async function paletteFromFile(file: File): Promise<ImagePaletteResult> {
       tctx.drawImage(img, (w - side) / 2, (h - side) / 2, side, side, 0, 0, THUMB, THUMB);
       thumbUrl = thumb.toDataURL("image/png");
     }
-    return { ok: true, thumbUrl, palette: result.palette };
+    return { ok: true, thumbUrl, palette: result.palette, features };
   } finally {
     URL.revokeObjectURL(objectUrl);
   }

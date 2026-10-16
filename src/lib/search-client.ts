@@ -18,13 +18,33 @@ export interface SearchClient {
 /** Main-thread index, built lazily on first use. Used in tests and when workers are unavailable. */
 export function createLocalSearchClient(getTemplates: () => Template[] | Promise<Template[]>): SearchClient {
   let index: Promise<SearchIndex> | null = null;
+  // Recent queries are re-served without re-running MiniSearch (backspacing, re-typing, the AI
+  // keyword pass all repeat the same strings). Bounded so a long session can't grow forever.
+  const cache = new Map<string, Promise<Map<string, number>>>();
+  const CACHE_MAX = 64;
+  const remember = (key: string, value: Promise<Map<string, number>>) => {
+    if (cache.size >= CACHE_MAX) {
+      const oldest = cache.keys().next().value;
+      if (oldest !== undefined) cache.delete(oldest);
+    }
+    cache.set(key, value);
+    value.catch(() => cache.delete(key));
+    return value;
+  };
   return {
-    async search(text) {
+    search(text) {
+      const key = text.trim();
+      const hit = cache.get(key);
+      if (hit) return hit;
       index ??= Promise.resolve(getTemplates()).then(buildSearchIndex);
-      return (await index).search(text);
+      return remember(
+        key,
+        Promise.resolve(index).then((idx) => idx.search(text)),
+      );
     },
     dispose() {
       index = null;
+      cache.clear();
     },
   };
 }
@@ -80,19 +100,41 @@ export function createSearchClient(opts: {
     category: opts.category,
   } satisfies SearchRequest);
 
+  // Avoids a worker round-trip for a query already answered this session (backspacing, retyping,
+  // the typed-words fallback next to the AI keywords). Promises are cached so duplicate in-flight
+  // queries also share one round-trip.
+  const cache = new Map<string, Promise<Map<string, number>>>();
+  const CACHE_MAX = 64;
+  const remember = (key: string, value: Promise<Map<string, number>>) => {
+    if (cache.size >= CACHE_MAX) {
+      const oldest = cache.keys().next().value;
+      if (oldest !== undefined) cache.delete(oldest);
+    }
+    cache.set(key, value);
+    value.catch(() => cache.delete(key));
+    return value;
+  };
+
   return {
     search(text) {
+      const key = text.trim();
+      const hit = cache.get(key);
+      if (hit) return hit;
       if (!worker) return getFallback().search(text);
       const id = nextId++;
-      return new Promise((resolve, reject) => {
-        pending.set(id, { text, resolve, reject });
-        worker!.postMessage({ type: "search", id, text } satisfies SearchRequest);
-      });
+      return remember(
+        key,
+        new Promise((resolve, reject) => {
+          pending.set(id, { text, resolve, reject });
+          worker!.postMessage({ type: "search", id, text } satisfies SearchRequest);
+        }),
+      );
     },
     dispose() {
       worker?.terminate();
       worker = null;
       pending.clear();
+      cache.clear();
       fallback?.dispose();
     },
   };

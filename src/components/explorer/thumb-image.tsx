@@ -26,6 +26,14 @@ export function ThumbImage({
 }) {
   const [attempt, setAttempt] = useState(0);
   const [status, setStatus] = useState<"loading" | "loaded" | "error">("loading");
+  // Reset the skeleton for a new src. Done in the render phase (not an effect) so the skeleton
+  // paints with the new src instead of a frame later. Matters in the lightbox, where details
+  // swap the cached thumbnail for the full preview after mount.
+  const [loadedSrc, setLoadedSrc] = useState(src);
+  if (loadedSrc !== src) {
+    setLoadedSrc(src);
+    setStatus("loading");
+  }
   const retry = () => {
     setStatus("loading");
     setAttempt((a) => a + 1);
@@ -45,8 +53,8 @@ export function ThumbImage({
   }, [status, attempt]);
 
   return (
-    <span className="relative block size-full">
-      {status === "loading" && !style?.backgroundImage && (
+    <span className="relative flex size-full items-center justify-center">
+      {status === "loading" && src && !style?.backgroundImage && (
         <span aria-hidden className="absolute inset-0 animate-pulse bg-muted" />
       )}
       {status === "error" && (
@@ -64,19 +72,22 @@ export function ThumbImage({
           )}
         </span>
       )}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        key={attempt}
-        src={withRetry(src, attempt)}
-        alt={alt}
-        loading={eager ? "eager" : "lazy"}
-        decoding="async"
-        draggable={false}
-        onLoad={() => setStatus("loaded")}
-        onError={() => setStatus("error")}
-        className={cn(className, status === "error" && "invisible")}
-        style={style}
-      />
+      {/* An empty src makes the browser re-request the page, so skip the <img> entirely. */}
+      {src && (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          key={attempt}
+          src={withRetry(src, attempt)}
+          alt={alt}
+          loading={eager ? "eager" : "lazy"}
+          decoding="async"
+          draggable={false}
+          onLoad={() => setStatus("loaded")}
+          onError={() => setStatus("error")}
+          className={cn(className, status === "error" && "invisible")}
+          style={style}
+        />
+      )}
     </span>
   );
 }
