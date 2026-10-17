@@ -6,6 +6,7 @@ import {
   MoonIcon,
   RotateCcwIcon,
   SettingsIcon,
+  SparklesIcon,
   SunIcon,
 } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -256,7 +257,7 @@ export function Sidebar({
   onHome: () => void;
   onExplore: () => void;
 }) {
-  const { page, setPage } = useExplorer();
+  const { page, setPage, setBriefOpen } = useExplorer();
   const { boards } = useBoards();
   const savedCount = new Set(boards.flatMap((b) => b.templateIds)).size;
   return (
@@ -287,6 +288,11 @@ export function Sidebar({
             active={page === "boards"}
             badge={savedCount}
             onClick={() => setPage("boards")}
+          />
+          <RailButton
+            icon={SparklesIcon}
+            label="Design brief"
+            onClick={() => setBriefOpen(true)}
           />
         </nav>
         <div className="flex flex-col items-center gap-1.5">

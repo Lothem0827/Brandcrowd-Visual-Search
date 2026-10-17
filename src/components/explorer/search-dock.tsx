@@ -12,6 +12,7 @@ import {
   ImagePlusIcon,
   LoaderCircleIcon,
   SearchIcon,
+  SparklesIcon,
   XIcon,
 } from "lucide-react";
 import { useIsMobile } from "@/lib/use-media-query";
@@ -51,6 +52,7 @@ function SearchBox({
     setImageQuery,
     imageBusy,
     searchByImage,
+    setBriefOpen,
   } = useExplorer();
   const [open, setOpen] = useState(false);
   // -1 means "no suggestion highlighted", so a plain Enter searches the typed text.
@@ -216,6 +218,15 @@ function SearchBox({
             <XIcon className="size-4" />
           </button>
         )}
+        <button
+          type="button"
+          aria-label="Generate a design brief"
+          title="Generate a design brief (palette, title and tags)"
+          onClick={() => setBriefOpen(true)}
+          className="grid size-10 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <SparklesIcon className="size-[18px]" />
+        </button>
         <button
           type="button"
           aria-label={imageBusy ? "Reading image colors" : "Search by image"}

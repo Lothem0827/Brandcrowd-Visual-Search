@@ -17,6 +17,7 @@ import { BrowseArea } from "./browse-area";
 import { FocusedView } from "./focused-view";
 import { FilterPanel } from "./filter-panel";
 import { DetailPanel } from "./detail-panel";
+import { BriefDialog } from "./brief-dialog";
 import { BoardSelectBar } from "./board-select-bar";
 import { ImageDropOverlay } from "./image-drop";
 import { OfflineBanner } from "./offline-banner";
@@ -112,6 +113,7 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
     return "grid";
   });
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
+  const [briefOpen, setBriefOpen] = useState(false);
   const [simScope, setSimScope] = useState<"industry" | "all">(initialUrl.scope);
   const [detailOpen, setDetailOpen] = useState(() => view.kind === "similar");
   const [hover, setHover] = useState<HoverState | null>(null);
@@ -564,6 +566,7 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
     imageQuery, setImageQuery, imageScores, textScores, imageBusy, searchByImage,
     page, setPage, browseMode, setBrowseMode, sort, setSort, shuffleSeed, setShuffleSeed,
     filterPanelOpen, setFilterPanelOpen,
+    briefOpen, setBriefOpen,
     view, setView, openTemplate, openSimilar, recenter, recenterDetail, focused, simScope, setSimScope, similar, center,
     detailsReady, detailsError, loadDetails,
     detailOpen, setDetailOpen, hover, setHover, boardGroup, setBoardGroup, focusSearch,
@@ -595,6 +598,7 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
             (activeBoardSelection ? <BoardSelectBar /> : <SearchDock inputRef={searchRef} />)}
         </div>
         <FilterPanel />
+        <BriefDialog />
         {detailTemplate && <DetailPanel template={detailTemplate} />}
       </div>
       <ImageDropOverlay />

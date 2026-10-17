@@ -117,6 +117,9 @@ export interface ExplorerApi {
   /** side filter panel (Style / Color / Layout / Image / More / Sort) visibility */
   filterPanelOpen: boolean;
   setFilterPanelOpen: (o: boolean) => void;
+  /** "Design brief" dialog: scans an industry for a palette, title and tags */
+  briefOpen: boolean;
+  setBriefOpen: (o: boolean) => void;
   view: View;
   setView: (v: View) => void;
   /** open a design from the grid/Home (focused lightbox) */
