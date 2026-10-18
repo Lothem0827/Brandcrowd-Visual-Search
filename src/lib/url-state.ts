@@ -1,18 +1,24 @@
 import { FACETS, type ColorFilter, type FacetKey, type FacetSelection } from "./facets";
 import { normalizeHex, type ColorMatchMode } from "./color";
 
+/** Which top-level page the URL names. */
+export type Page = "home" | "explore" | "boards" | "brief";
+
 /**
- * The shareable part of the explorer state, mirrored in the URL so searches can be
- * bookmarked/shared and Back/Forward step through them:
+ * The shareable part of the explorer state, mirrored in the URL so pages can be refreshed,
+ * bookmarked/shared and Back/Forward can step through them:
  *
- *   ?q=retro+serif&industry=Construction&aesthetic=bold&color=F07B22&cm=any
- *    &design=<id>&view=focus&board=<id>&scope=all&sort=shuffle
+ *   /explore?q=retro+serif&industry=Construction&aesthetic=bold&color=F07B22&cm=any
+ *   /explore?design=<id>&view=focus&scope=all&sort=shuffle
+ *   /boards/<id>?design=<id>&view=focus
  *
  * (An uploaded image can't be put in a URL; it stays local.)
  */
 export type SortMode = "relevance" | "shuffle";
 
 export interface UrlState {
+  /** which top-level page (also the pathname: /, /explore, /boards, /brief) */
+  page: Page;
   query: string;
   facets: FacetSelection;
   color: ColorFilter | null;
@@ -20,7 +26,7 @@ export interface UrlState {
   design: string[];
   /** true when `design` describes the grid lightbox rather than the similar mind-map */
   focused: boolean;
-  /** board view, or the board a similar trail started from */
+  /** board open on the Boards page (/boards/<id>), or the board a similar trail started from */
   board: string | null;
   scope: "industry" | "all";
   sort: SortMode;
@@ -29,6 +35,7 @@ export interface UrlState {
 }
 
 export const EMPTY_URL_STATE: UrlState = {
+  page: "home",
   query: "",
   facets: {},
   color: null,
@@ -40,13 +47,20 @@ export const EMPTY_URL_STATE: UrlState = {
   shuffleSeed: null,
 };
 
+const PAGE_PATH: Record<Page, string> = {
+  home: "/",
+  explore: "/explore",
+  boards: "/boards",
+  brief: "/brief",
+};
+
 const FACET_KEYS = FACETS.map((f) => f.key);
 const FACET_SET = new Set<string>(FACET_KEYS);
 export const MAX_QUERY_LENGTH = 200;
 const MAX_TRAIL = 20;
 const ID = /^[A-Za-z0-9_-]{1,64}$/;
 
-/** Serialise to a query string ("" or "?…") with a stable parameter order. */
+/** Serialise the query string ("" or "?…") with a stable parameter order. */
 export function toSearch(s: UrlState): string {
   const p = new URLSearchParams();
   const q = s.query.trim();
@@ -62,7 +76,6 @@ export function toSearch(s: UrlState): string {
       p.set("cm", s.color.mode);
     }
   }
-  if (s.board) p.set("board", s.board);
   if (s.design.length) {
     p.set("design", s.design.join(","));
     if (s.focused) p.set("view", "focus");
@@ -74,6 +87,58 @@ export function toSearch(s: UrlState): string {
   }
   const str = p.toString();
   return str ? `?${str}` : "";
+}
+
+/** Drop a trailing slash ("/explore/" → "/explore"), leaving the root alone. */
+function trimPath(pathname: string): string {
+  return pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
+}
+
+/** Map a pathname to the page it names; anything unknown is Home. */
+export function pageFromPath(pathname: string): Page {
+  const path = trimPath(pathname);
+  if (path === "/boards" || path.startsWith("/boards/")) return "boards";
+  if (path === "/explore") return "explore";
+  if (path === "/brief") return "brief";
+  return "home";
+}
+
+/** `/boards/<id>` → id; null for the index and for ids that fail validation. */
+export function boardFromPath(pathname: string): string | null {
+  const match = /^\/boards\/([^/]+)$/.exec(trimPath(pathname));
+  if (!match) return null;
+  let id: string;
+  try {
+    id = decodeURIComponent(match[1]);
+  } catch {
+    return null;
+  }
+  return ID.test(id) ? id : null;
+}
+
+/**
+ * The canonical URL for a state: pathname derived from the page, query from the rest.
+ * The Boards index and the Brief drop the query entirely — they have no searchable view.
+ */
+export function toUrl(s: UrlState): string {
+  if (s.page === "boards") {
+    if (!s.board) return PAGE_PATH.boards;
+    // A board is a fixed set of designs: only what it can show (an opened design, the
+    // similarity scope, its ordering) belongs in the URL — a search's query and filters don't.
+    const shown: UrlState = {
+      ...EMPTY_URL_STATE,
+      page: "boards",
+      board: s.board,
+      design: s.design,
+      focused: s.focused,
+      scope: s.scope,
+      sort: s.sort,
+      shuffleSeed: s.shuffleSeed,
+    };
+    return `/boards/${encodeURIComponent(s.board)}${toSearch(shown)}`;
+  }
+  if (s.page === "brief") return PAGE_PATH.brief;
+  return `${PAGE_PATH[s.page]}${toSearch(s)}`;
 }
 
 /** Parse a query string, ignoring anything unknown or malformed. */
@@ -97,11 +162,13 @@ export function fromSearch(search: string): UrlState {
     .split(",")
     .filter((id) => ID.test(id))
     .slice(-MAX_TRAIL);
+  // `?board=` is only read for links made before the Boards page had its own route.
   const board = p.get("board");
   const sort: SortMode = p.get("sort") === "shuffle" || p.has("shuffle") ? "shuffle" : "relevance";
   const seedNum = Number(p.get("shuffle"));
   const shuffleSeed = sort === "shuffle" ? (Number.isInteger(seedNum) ? seedNum : 1) : null;
   return {
+    page: "home",
     query: (p.get("q") ?? "").slice(0, MAX_QUERY_LENGTH),
     facets,
     color: colors.length ? { colors, mode } : null,
@@ -114,9 +181,26 @@ export function fromSearch(search: string): UrlState {
   };
 }
 
+/**
+ * Parse a URL into the full state. The page comes from the pathname, and links made before
+ * pages had routes (`/?q=…`, `?board=<id>`) are folded into their canonical route so the
+ * first render can rewrite the address.
+ */
+export function fromUrl(pathname: string, search = ""): UrlState {
+  const state = fromSearch(search);
+  const page = pageFromPath(pathname);
+  const board = boardFromPath(pathname) ?? state.board;
+  if (board) return { ...state, page: "boards", board };
+  if (page === "boards") return { ...state, page, board: null };
+  const hasSearch =
+    !!state.query.trim() || Object.keys(state.facets).length > 0 || !!state.color || state.design.length > 0;
+  // A search used to live on "/", so an old search link still opens Explore.
+  return { ...state, page: page === "home" && hasSearch ? "explore" : page };
+}
+
 /** True when only the free-text query differs (i.e. the user is typing). */
 export function onlyQueryChanged(a: UrlState, b: UrlState): boolean {
-  return a.query !== b.query && toSearch({ ...a, query: "" }) === toSearch({ ...b, query: "" });
+  return a.query !== b.query && toUrl({ ...a, query: "" }) === toUrl({ ...b, query: "" });
 }
 
 /**
@@ -128,7 +212,7 @@ export function historyAction(
   next: UrlState,
   lastWasTyping: boolean,
 ): { action: "none" | "push" | "replace"; typing: boolean } {
-  if (toSearch(prev) === toSearch(next)) return { action: "none", typing: lastWasTyping };
+  if (toUrl(prev) === toUrl(next)) return { action: "none", typing: lastWasTyping };
   if (onlyQueryChanged(prev, next)) return { action: lastWasTyping ? "replace" : "push", typing: true };
   return { action: "push", typing: false };
 }

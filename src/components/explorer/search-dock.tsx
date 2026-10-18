@@ -52,7 +52,6 @@ function SearchBox({
     setImageQuery,
     imageBusy,
     searchByImage,
-    setBriefOpen,
   } = useExplorer();
   const [open, setOpen] = useState(false);
   // -1 means "no suggestion highlighted", so a plain Enter searches the typed text.
@@ -220,9 +219,9 @@ function SearchBox({
         )}
         <button
           type="button"
-          aria-label="Generate a design brief"
-          title="Generate a design brief (palette, title and tags)"
-          onClick={() => setBriefOpen(true)}
+          aria-label="Open the design brief workspace"
+          title="Open the design brief (palette, title and tags)"
+          onClick={() => setPage("brief")}
           className="grid size-10 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <SparklesIcon className="size-[18px]" />

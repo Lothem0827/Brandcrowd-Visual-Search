@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { EMPTY_URL_STATE, fromSearch, historyAction, toSearch, type UrlState } from "./url-state";
+import {
+  EMPTY_URL_STATE,
+  boardFromPath,
+  fromSearch,
+  fromUrl,
+  historyAction,
+  pageFromPath,
+  toSearch,
+  toUrl,
+  type UrlState,
+} from "./url-state";
 
 const s = (over: Partial<UrlState>): UrlState => ({ ...EMPTY_URL_STATE, ...over });
 
@@ -19,7 +29,6 @@ describe("URL state", () => {
       facets: { industry: ["Construction", "Real Estate"], aesthetic: ["bold"], structure: ["frame/border"] },
       color: { colors: ["#F07B22"], mode: "any" },
       design: ["e3426df5-a252-4977-983c-77751087ac14", "abc"],
-      board: "saved",
       scope: "all",
       sort: "shuffle",
       shuffleSeed: 1234,
@@ -88,5 +97,58 @@ describe("history policy", () => {
   it("pushes discrete changes like filters or opening a design", () => {
     expect(historyAction(base, s({ query: "bold", facets: { mood: ["calm"] } }), true)).toEqual({ action: "push", typing: false });
     expect(historyAction(base, s({ query: "bold", design: ["x"] }), true).action).toBe("push");
+  });
+});
+
+describe("routes", () => {
+  it("maps a pathname to its page", () => {
+    expect(pageFromPath("/")).toBe("home");
+    expect(pageFromPath("/explore")).toBe("explore");
+    expect(pageFromPath("/explore/")).toBe("explore");
+    expect(pageFromPath("/boards")).toBe("boards");
+    expect(pageFromPath("/boards/saved")).toBe("boards");
+    expect(pageFromPath("/brief")).toBe("brief");
+    expect(pageFromPath("/nope")).toBe("home");
+  });
+
+  it("reads a board id from the path only when it is valid", () => {
+    expect(boardFromPath("/boards/saved")).toBe("saved");
+    expect(boardFromPath("/boards")).toBeNull();
+    expect(boardFromPath("/boards/../../etc")).toBeNull();
+    expect(boardFromPath("/explore/boards/x")).toBeNull();
+  });
+
+  it("builds one URL per page", () => {
+    expect(toUrl(s({}))).toBe("/");
+    expect(toUrl(s({ page: "explore", query: "bold" }))).toBe("/explore?q=bold");
+    expect(toUrl(s({ page: "explore" }))).toBe("/explore");
+    expect(toUrl(s({ page: "boards" }))).toBe("/boards");
+    expect(toUrl(s({ page: "boards", board: "saved" }))).toBe("/boards/saved");
+    expect(toUrl(s({ page: "brief", query: "ignored" }))).toBe("/brief");
+  });
+
+  it("round-trips a board with a design opened from it", () => {
+    const state = s({ page: "boards", board: "saved", design: ["a1"], focused: true });
+    expect(toUrl(state)).toBe("/boards/saved?design=a1&view=focus");
+    expect(fromUrl("/boards/saved", "?design=a1&view=focus")).toEqual(state);
+  });
+
+  it("keeps Explore's search state on its own path", () => {
+    const state = s({ page: "explore", query: "retro", facets: { industry: ["Fitness"] } });
+    expect(fromUrl("/explore", toSearch(state))).toEqual(state);
+  });
+
+  it("folds pre-route links into the canonical route", () => {
+    expect(fromUrl("/", "?q=retro").page).toBe("explore");
+    expect(fromUrl("/", "?industry=Fitness").page).toBe("explore");
+    expect(fromUrl("/", "?board=saved")).toEqual(s({ page: "boards", board: "saved" }));
+    expect(fromUrl("/explore", "?board=saved")).toEqual(s({ page: "boards", board: "saved" }));
+    expect(fromUrl("/explore", "")).toEqual(s({ page: "explore" }));
+  });
+
+  it("pushes a page change as a single history entry", () => {
+    expect(historyAction(s({}), s({ page: "boards" }), false).action).toBe("push");
+    expect(historyAction(s({ page: "boards" }), s({ page: "brief" }), false).action).toBe("push");
+    expect(historyAction(s({ page: "boards", board: "saved" }), s({ page: "boards" }), false).action).toBe("push");
   });
 });

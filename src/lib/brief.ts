@@ -8,8 +8,8 @@ import { titleCase } from "./facets";
  * Give it an industry (or any search phrase) and it reads the matching slice of the
  * dataset to produce three things a designer would otherwise research by hand:
  *
- *  - a complementary 3-colour palette, anchored on the most common colour in that
- *    industry and harmonised (main / analogous secondary / complementary accent);
+ *  - a four-colour palette, anchored on the most common colour in that industry and
+ *    harmonised (saturated main / analogous secondary / complementary accent / ink);
  *  - a title assembled from the industry's most popular title patterns, then checked
  *    against every existing title so it is genuinely new;
  *  - the six most common tags for that industry.
@@ -18,7 +18,10 @@ import { titleCase } from "./facets";
  * already loaded) and can be unit tested without a network.
  */
 
-export type BriefColorRole = "main" | "secondary" | "accent";
+export type BriefColorRole = "main" | "secondary" | "accent" | "ink";
+
+/** Main, secondary, accent, ink. */
+export const PALETTE_SIZE = 4;
 
 export interface BriefColor {
   hex: string;
@@ -37,11 +40,16 @@ export interface BriefMatch {
 
 /** One palette + title pairing. Several are returned when the user asks for options. */
 export interface BriefOption {
-  /** exactly three colours, in main -> secondary -> accent order */
+  /** exactly four colours, in main -> secondary -> accent -> ink order */
   palette: BriefColor[];
   /** the dominant colour this option is built from, before harmonising */
   anchor: { hex: string; name: string; share: number };
   title: string;
+  /**
+   * True when the industry ran out of distinct hue families and this palette is a
+   * seeded variation of an existing colour story rather than new data.
+   */
+  variation?: boolean;
 }
 
 export interface DesignBrief {
@@ -325,6 +333,19 @@ interface UsedColors {
 }
 
 /**
+ * Seeded variation knobs.
+ *
+ * A seed of 0 is today's canonical answer. Larger seeds nudge the analogous offset,
+ * pick a different (still complementary) data hue and start the title ranking further
+ * down, so "Add more" can append fresh cards deterministically.
+ */
+function secondaryOffsetFor(seed: number): number {
+  if (seed <= 0) return SECONDARY_OFFSET;
+  // 27..41°, i.e. ±7° around the canonical 34°, in 3.5° steps cycling every 5 seeds.
+  return SECONDARY_OFFSET + (((seed % 5) - 2) * 3.5);
+}
+
+/**
  * The data's hue closest to a true complement of `dominant`.
  *
  * Searching by "most complementary" rather than "first hue far enough away" matters:
@@ -335,9 +356,10 @@ function findComplement(
   dominant: HueFamily,
   families: HueFamily[],
   used: UsedColors,
+  seed = 0,
 ): HueFamily | undefined {
   const usedAccentHues = used.accents.map((hex) => hexToHsv(hex).h);
-  return families
+  const candidates = families
     .filter(
       (family) =>
         hueDistance(family.hue, dominant.hue) >= ACCENT_TOLERANCE &&
@@ -349,23 +371,27 @@ function findComplement(
       (a, b) =>
         Math.abs(hueDistance(a.hue, dominant.hue) - ACCENT_TARGET) -
           Math.abs(hueDistance(b.hue, dominant.hue) - ACCENT_TARGET) || b.weight - a.weight,
-    )[0];
+    );
+  if (!candidates.length) return undefined;
+  return candidates[seed > 0 ? seed % candidates.length : 0];
 }
 
 /**
- * Build one main/secondary/accent set around a dominant hue family.
+ * Build one main/secondary/accent/ink set around a dominant hue family.
  *
  * Main keeps the industry's own intensity and then pushes it up. The secondary is a
- * saturated analogous hue (not a tint), and the accent is the closest available
- * complement — a real secondary hue family from the data when one is strong enough,
- * otherwise a synthesized 180° rotation. `anchor` stays the *raw* data colour so the
- * summary line keeps describing the dataset rather than the tuned palette.
+ * saturated analogous hue (not a tint), the accent is the closest available complement
+ * — a real secondary hue family from the data when one is strong enough, otherwise a
+ * synthesized 180° rotation — and the ink is the same hue taken almost to black so
+ * copy on the palette reads as part of the brand. `anchor` stays the *raw* data colour
+ * so the summary line keeps describing the dataset rather than the tuned palette.
  */
 function buildPaletteFor(
   dominant: HueFamily,
   families: HueFamily[],
   total: number,
   used: UsedColors,
+  seed = 0,
 ): BriefOption {
   const anchorHex = hsvToHex(dominant.hue, dominant.s, dominant.v);
   const mainHsv = tune(
@@ -378,7 +404,7 @@ function buildPaletteFor(
 
   const secondaryHsv = tune(
     {
-      h: mainHsv.h + SECONDARY_OFFSET,
+      h: mainHsv.h + secondaryOffsetFor(seed),
       s: mainHsv.s * 0.82,
       v: mainHsv.v + 0.16,
     },
@@ -388,7 +414,7 @@ function buildPaletteFor(
   const secondaryHex = separated(secondaryHsv, taken);
   taken.push(secondaryHex);
 
-  const complement = findComplement(dominant, families, used);
+  const complement = findComplement(dominant, families, used, seed);
   const accentHsv = tune(
     {
       h: complement ? complement.hue : (dominant.hue + ACCENT_TARGET) % 360,
@@ -399,12 +425,19 @@ function buildPaletteFor(
     ACCENT_V,
   );
   const accentHex = separated(accentHsv, taken);
+  taken.push(accentHex);
+
+  // Ink: the same hue family, taken almost to black. Copy on the palette then reads as
+  // part of the brand instead of a generic grey.
+  const inkHsv = tune({ h: mainHsv.h, s: dominant.s * 0.35, v: 0.2 }, [0.08, 0.3], [0.12, 0.24]);
+  const inkHex = separated(inkHsv, taken, 0.1);
 
   return {
     palette: [
       { hex: mainHex, name: nearestColorName(mainHex), role: "main" },
       { hex: secondaryHex, name: nearestColorName(secondaryHex), role: "secondary" },
       { hex: accentHex, name: nearestColorName(accentHex), role: "accent" },
+      { hex: inkHex, name: nearestColorName(inkHex), role: "ink" },
     ],
     anchor: {
       hex: anchorHex,
@@ -415,30 +448,52 @@ function buildPaletteFor(
   };
 }
 
+/** Build parameters shared by a batch of options. */
+interface BatchOptions {
+  seed: number;
+  minShare: number;
+}
+
 /**
  * Ranked palette options for one slice.
  *
  * Families are already 30° bins ordered by weight, so option 2 is the industry's
  * second-strongest colour story. A family is only accepted when its main is
- * perceptually distinct from every earlier main, and the list degrades to fewer
- * options rather than inventing near-duplicate palettes.
+ * perceptually distinct from every earlier main. When the data runs out, later
+ * batches fall back to a seeded hue rotation of the strongest family, flagged as a
+ * `variation` so the UI never implies it found a new colour story.
  */
 function buildPalettes(
   families: HueFamily[],
   total: number,
   count: number,
+  batch: BatchOptions = { seed: 0, minShare: MIN_FAMILY_SHARE },
 ): BriefOption[] {
   const used: UsedColors = { mains: [], accents: [] };
   const out: BriefOption[] = [];
   for (const family of families) {
     if (out.length >= count) break;
-    if (family.weight < total * MIN_FAMILY_SHARE) continue;
-    const built = buildPaletteFor(family, families, total, used);
+    if (family.weight < total * batch.minShare) continue;
+    const built = buildPaletteFor(family, families, total, used, batch.seed);
     const mainHex = built.palette[0].hex;
     if (!used.mains.every((hex) => deltaE(hex, mainHex) >= MIN_MAIN_DISTANCE)) continue;
     used.mains.push(mainHex);
     used.accents.push(built.palette[2].hex);
     out.push(built);
+  }
+
+  // Seeded variation: rotate the strongest family's hue far enough to read as a new
+  // option, keeping the same data anchor. Clearly flagged as derived, never as data.
+  const anchorFamily = families.find((f) => f.weight >= total * batch.minShare) ?? families[0];
+  for (let i = 0; out.length < count && anchorFamily && i < count + families.length; i++) {
+    const shift = (24 + batch.seed * 11 + i * 17) % 360;
+    const rotated: HueFamily = { ...anchorFamily, hue: (anchorFamily.hue + shift) % 360 };
+    const built = buildPaletteFor(rotated, families, total, used, batch.seed + i + 1);
+    const mainHex = built.palette[0].hex;
+    if (!used.mains.every((hex) => deltaE(hex, mainHex) >= MIN_MAIN_DISTANCE)) continue;
+    used.mains.push(mainHex);
+    used.accents.push(built.palette[2].hex);
+    out.push({ ...built, variation: true });
   }
   return out;
 }
@@ -662,6 +717,7 @@ function generateTitles(
   subject: string,
   corpus: TitleCorpus,
   limit = TITLES_LIMIT,
+  offset = 0,
 ): string[] {
   const subjectWords = tokensOf(subject, true);
   const subjectNorm = subjectWords.join(" ");
@@ -729,7 +785,7 @@ function generateTitles(
   for (const { candidate } of scored) {
     if (out.some((other) => titleSimilarity(norm(other), norm(candidate)) >= 0.9)) continue;
     out.push(candidate);
-    if (out.length >= limit) break;
+    if (out.length >= offset + limit) break;
   }
 
   // Extremely defensive fallback: every natural candidate collided with a real title.
@@ -738,12 +794,23 @@ function generateTitles(
     const fallback = titleCase(`${modifier} ${subjectNorm} Concept`);
     out.push(fallback);
   }
-  return out;
+  // Later batches start further down the ranking so "Add more" brings new titles.
+  const sliced = out.slice(offset, offset + Math.max(limit, 1));
+  // A seed past the end of the ranking still needs a usable title.
+  return sliced.length ? sliced : out.slice(0, Math.max(limit, 1));
 }
 
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
+
+/** Seeded batch controls. Omit for the canonical, data-only answer. */
+export interface BriefOptions {
+  /** deterministic variation index used by "Add more" batches */
+  seed?: number;
+  /** override the 6% hue-family floor, e.g. 0.02 when asking for more options */
+  minShare?: number;
+}
 
 /**
  * Build a creative brief for `query` from the supplied templates.
@@ -752,12 +819,17 @@ function generateTitles(
  * rather than throws, and returns fewer options when the industry has too few
  * distinct hue families to make them visibly different.
  *
+ * `options.seed` produces a different but equally deterministic batch for "Add more";
+ * `options.minShare` lowers the family floor so later batches can surface weaker
+ * colour stories. Both default to today's canonical behaviour.
+ *
  * Returns null when the query matches nothing (the UI shows a "try another industry" hint).
  */
 export function generateBrief(
   templates: Template[],
   query: string,
   count = 1,
+  options: BriefOptions = {},
 ): DesignBrief | null {
   const text = query.trim();
   if (!text || !templates.length) return null;
@@ -781,7 +853,9 @@ export function generateBrief(
   if (!families.length || total <= 0) return null;
 
   const wanted = clamp(Math.round(count), 1, MAX_BRIEF_OPTIONS);
-  const palettes = buildPalettes(families, total, wanted);
+  const seed = Math.max(0, Math.round(options.seed ?? 0));
+  const minShare = clamp(options.minShare ?? MIN_FAMILY_SHARE, 0.001, 1);
+  const palettes = buildPalettes(families, total, wanted, { seed, minShare });
   if (!palettes.length) return null;
 
   const tagWeights = new Map<string, number>();
@@ -796,20 +870,20 @@ export function generateBrief(
   const corpus = buildTitleCorpus(resolved.templates);
   const subject = subjectForTitle(resolved.match.label);
   // Generate a couple of spares: they feed "Another" when only one card is shown.
-  const titles = generateTitles(subject, corpus, Math.max(wanted, TITLES_LIMIT));
+  const titles = generateTitles(subject, corpus, Math.max(wanted, TITLES_LIMIT), seed * wanted);
 
-  const options = palettes
+  const pairs = palettes
     .slice(0, Math.min(palettes.length, titles.length))
     .map((option, index) => ({ ...option, title: titles[index] ?? subject }));
-  if (!options.length) return null;
+  if (!pairs.length) return null;
 
   return {
     query: text,
     match: resolved.match,
-    options,
-    palette: options[0].palette,
-    anchor: options[0].anchor,
-    title: options[0].title,
+    options: pairs,
+    palette: pairs[0].palette,
+    anchor: pairs[0].anchor,
+    title: pairs[0].title,
     titles,
     tags,
   };
