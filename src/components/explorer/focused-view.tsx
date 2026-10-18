@@ -4,6 +4,7 @@ import { InfoIcon } from "lucide-react";
 import { rankByOverall } from "@/lib/similarity";
 import { cn } from "@/lib/utils";
 import { BackButton } from "./back-button";
+import { AddToBriefButton } from "./add-to-brief";
 import { useExplorer } from "./context";
 import { GridView } from "./grid-view";
 import { HEADER_CONTROL, HEADER_CONTROL_IDLE, HEADER_CONTROL_ON } from "./header";
@@ -76,6 +77,7 @@ export function FocusedView() {
         <div className="pointer-events-none absolute inset-x-0 top-4 flex items-center justify-between px-4">
           <BackButton onClick={goBack} className="pointer-events-auto" />
           <div className="pointer-events-auto flex items-center gap-2">
+            <AddToBriefButton template={focused} />
             <SaveButton templateId={focused.templateId} />
             <button
               type="button"

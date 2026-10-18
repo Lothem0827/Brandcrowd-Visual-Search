@@ -7,9 +7,10 @@ import type { SimilarHit, SimilarKind } from "@/lib/similarity";
 import type { AiInterpretation } from "@/lib/llm";
 import type { RoleColor } from "@/lib/color";
 import type { ImageFeatures } from "@/lib/image-features";
+import type { Page } from "@/lib/url-state";
 
-/** Which top-level page the sidebar has selected. */
-export type Page = "home" | "explore" | "boards";
+/** Which top-level page the sidebar has selected (defined with the URL state it mirrors). */
+export type { Page } from "@/lib/url-state";
 /** Grid vs mind-map for the Explore browse area. */
 export type BrowseMode = "grid" | "tree";
 /** Result ordering. */
@@ -102,6 +103,11 @@ export interface ExplorerApi {
   imageScores: Map<string, number> | null;
   /** id -> text-relevance score for the current free-text query (null when no text) */
   textScores: Map<string, number> | null;
+  /**
+   * Ad-hoc free-text search against the same worker index, without touching the Explore
+   * query or filters. Used by the brief's inspiration panel.
+   */
+  designSearch: (text: string) => Promise<Map<string, number>>;
   /** an uploaded image is being analysed */
   imageBusy: boolean;
   /** validate + analyse an image and search by its colors + look */
@@ -117,9 +123,6 @@ export interface ExplorerApi {
   /** side filter panel (Style / Color / Layout / Image / More / Sort) visibility */
   filterPanelOpen: boolean;
   setFilterPanelOpen: (o: boolean) => void;
-  /** "Design brief" dialog: scans an industry for a palette, title and tags */
-  briefOpen: boolean;
-  setBriefOpen: (o: boolean) => void;
   view: View;
   setView: (v: View) => void;
   /** open a design from the grid/Home (focused lightbox) */

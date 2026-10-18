@@ -18,7 +18,8 @@ import type { Template } from "@/lib/schema";
 import { cn } from "@/lib/utils";
 import { BackButton } from "./back-button";
 import { BoardsPage } from "./boards-page";
-import { useExplorer } from "./context";
+import { BriefPage } from "./brief-page";
+import { useExplorer, type View } from "./context";
 import {
   HEADER_CONTROL,
   HEADER_CONTROL_IDLE,
@@ -426,6 +427,18 @@ function BoardName({ id, name }: { id: string; name: string }) {
 }
 
 /**
+ * The board a view belongs to: the board itself, or the origin of a design opened from one.
+ * The boards route keeps the board grid underneath the lightbox/mind-map for exactly this.
+ */
+function boardIdOf(view: View): string | null {
+  if (view.kind === "board") return view.boardId;
+  if (view.kind === "focused" || view.kind === "similar") {
+    return view.origin.kind === "board" ? view.origin.boardId : null;
+  }
+  return null;
+}
+
+/**
  * Board: one saved board's designs, rendered in the browse area so boards open in grid mode
  * (and from Home), not only as the tree mind-map. The tree canvas keeps its own board layout
  * (grouping + scope controls), so the back button here is grid-only to avoid duplicating it.
@@ -442,10 +455,10 @@ function BoardArea() {
     stopBoardSelect,
   } = useExplorer();
   const { boards } = useBoards();
-  const board =
-    view.kind === "board"
-      ? boards.find((b) => b.id === view.boardId)
-      : undefined;
+  const boardId = boardIdOf(view);
+  const board = boardId
+    ? boards.find((b) => b.id === boardId)
+    : undefined;
   const items = (board?.templateIds ?? [])
     .map((id) => byId(id))
     .filter((t): t is Template => !!t);
@@ -457,7 +470,7 @@ function BoardArea() {
           label="Back to boards"
           side="top"
           // Boards open from the full-page index now, so Back returns there. Clearing the view
-          // too drops ?board= and stops the index's Esc from bouncing back into this board.
+          // too rewrites /boards/<id> to /boards and stops the index's Esc bouncing back in.
           // Not gated on grid mode: the tree view wants the same control in its header row.
           onClick={() => {
             setView({ kind: "search" });
@@ -521,7 +534,9 @@ function BoardArea() {
 
 export function BrowseArea() {
   const { page, view } = useExplorer();
-  if (page === "boards") return <BoardsPage />;
+  if (page === "brief") return <BriefPage />;
+  // /boards is the index; /boards/<id> is one board, which stays behind a design opened in it.
+  if (page === "boards") return boardIdOf(view) ? <BoardArea /> : <BoardsPage />;
   if (view.kind === "board") return <BoardArea />;
   return page === "home" ? <HomeFeed /> : <ExploreArea />;
 }

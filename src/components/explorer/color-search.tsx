@@ -1,11 +1,12 @@
 "use client";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { CheckIcon, PaletteIcon, PlusIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { COLOR_MATCH_MODES, NAMED_SWATCHES, hexToHsv, hsvToHex, normalizeHex, type ColorMatchMode } from "@/lib/color";
 import { cn } from "@/lib/utils";
 import { useExplorer } from "./context";
+import { HueSlider, SpectrumSquare } from "./color-spectrum";
 
 const MODE_LABEL: Record<ColorMatchMode, string> = {
   background: "Background",
@@ -13,109 +14,6 @@ const MODE_LABEL: Record<ColorMatchMode, string> = {
   accent: "Accent",
   any: "Any",
 };
-
-const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
-
-/** Saturation/value square for the current hue. Drag anywhere inside to pick. */
-function SpectrumSquare({ hsv, onChange }: { hsv: { h: number; s: number; v: number }; onChange: (s: number, v: number) => void }) {
-  const ref = useRef<HTMLDivElement | null>(null);
-  const [dragging, setDragging] = useState(false);
-  const update = useCallback(
-    (clientX: number, clientY: number) => {
-      const el = ref.current;
-      if (!el) return;
-      const r = el.getBoundingClientRect();
-      onChange(clamp01((clientX - r.left) / r.width), 1 - clamp01((clientY - r.top) / r.height));
-    },
-    [onChange],
-  );
-  useEffect(() => {
-    if (!dragging) return;
-    const move = (e: PointerEvent) => update(e.clientX, e.clientY);
-    const up = () => setDragging(false);
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
-    return () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
-    };
-  }, [dragging, update]);
-  return (
-    <div
-      ref={ref}
-      role="slider"
-      aria-label="Saturation and brightness"
-      aria-valuenow={Math.round(hsv.v * 100)}
-      aria-valuetext={`${Math.round(hsv.s * 100)}% saturation, ${Math.round(hsv.v * 100)}% brightness`}
-      tabIndex={0}
-      onPointerDown={(e) => {
-        e.preventDefault();
-        setDragging(true);
-        update(e.clientX, e.clientY);
-      }}
-      className="relative h-36 w-full cursor-crosshair touch-none rounded-lg ring-1 ring-foreground/10"
-      style={{
-        background: `linear-gradient(to top, #000, rgba(0,0,0,0)), linear-gradient(to right, #fff, hsl(${hsv.h} 100% 50%))`,
-      }}
-    >
-      <span
-        aria-hidden
-        className="pointer-events-none absolute size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-[0_0_0_1px_rgba(0,0,0,0.5)]"
-        style={{ left: `${hsv.s * 100}%`, top: `${(1 - hsv.v) * 100}%`, background: hsvToHex(hsv.h, hsv.s, hsv.v) }}
-      />
-    </div>
-  );
-}
-
-/** Rainbow hue slider. Drag to change hue. */
-function HueSlider({ hue, onChange }: { hue: number; onChange: (h: number) => void }) {
-  const ref = useRef<HTMLDivElement | null>(null);
-  const [dragging, setDragging] = useState(false);
-  const update = useCallback(
-    (clientX: number) => {
-      const el = ref.current;
-      if (!el) return;
-      const r = el.getBoundingClientRect();
-      onChange(clamp01((clientX - r.left) / r.width) * 360);
-    },
-    [onChange],
-  );
-  useEffect(() => {
-    if (!dragging) return;
-    const move = (e: PointerEvent) => update(e.clientX);
-    const up = () => setDragging(false);
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
-    return () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
-    };
-  }, [dragging, update]);
-  return (
-    <div
-      ref={ref}
-      role="slider"
-      aria-label="Hue"
-      aria-valuemin={0}
-      aria-valuemax={360}
-      aria-valuenow={Math.round(hue)}
-      tabIndex={0}
-      onPointerDown={(e) => {
-        e.preventDefault();
-        setDragging(true);
-        update(e.clientX);
-      }}
-      className="relative h-3 w-full cursor-pointer touch-none rounded-full ring-1 ring-foreground/10"
-      style={{ background: "linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)" }}
-    >
-      <span
-        aria-hidden
-        className="pointer-events-none absolute top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-[0_0_0_1px_rgba(0,0,0,0.4)]"
-        style={{ left: `${(hue / 360) * 100}%`, background: hsvToHex(hue, 1, 1) }}
-      />
-    </div>
-  );
-}
 
 /** Bottom-center dock button: multi-colour search popover (swatches + spectrum + hex). */
 export function ColorSearchButton() {

@@ -35,6 +35,7 @@ const assert = (cond, msg) => {
 };
 
 const rail = page.locator('aside[aria-label="Primary"]');
+const at = () => new URL(page.url()).pathname;
 const tilesIn = (scope = page) => scope.locator('[data-testid="grid-view"] [aria-label^="Open "]');
 const gridCount = async (scope = page) => Number(await scope.getByTestId("grid-view").getAttribute("data-count"));
 const popover = page.locator('[data-slot="popover-content"]');
@@ -46,6 +47,7 @@ await page.getByTestId("grid-view").waitFor();
 await settle(2400);
 assert((await page.locator("html.dark").count()) === 1, "dark theme is the default");
 assert((await page.locator('#rail-home[aria-pressed="true"]').count()) === 1, "Home is the active sidebar entry");
+assert(at() === "/", "Home lives at /");
 const homeTotal = await gridCount();
 assert(homeTotal > 500, `home feed shows the whole catalogue (${homeTotal})`);
 const mountedTop = await tilesIn().count();
@@ -74,6 +76,7 @@ await settle(2400);
 const narrowed = await gridCount();
 assert(narrowed > 0 && narrowed < homeTotal, `search narrowed the feed to ${narrowed}`);
 assert((await page.locator('#rail-explore[aria-pressed="true"]').count()) === 1, "searching switched to Explore");
+assert(at() === "/explore" && /q=sale/.test(page.url()), "searching moves to /explore?q=…");
 assert((await page.getByRole("heading", { name: /Showing results for/ }).count()) === 1, "results heading is shown");
 await shot("02-home-search");
 await page.getByRole("button", { name: "Clear search", exact: true }).click();
@@ -98,7 +101,15 @@ const heading = (await page.locator("h2").first().innerText()).replace(/\n/g, " 
 console.log("   tag:", tagName, "| heading:", heading);
 assert(/Filtered results|Showing results for/.test(heading), "results heading is shown");
 assert((await gridCount()) < homeTotal, "tag filter narrowed the results");
+assert(at() === "/explore" && /tag=/.test(page.url()), "explore search lives in /explore?tag=…");
 await shot("04-explore-tag-results");
+
+step("explore: refresh keeps the tagged search");
+await page.reload({ waitUntil: "domcontentloaded" });
+await page.getByTestId("grid-view").waitFor();
+await settle(2400);
+assert(at() === "/explore" && /tag=/.test(page.url()), "refresh keeps /explore?tag=…");
+assert(/Filtered results|Showing results for/.test((await page.locator("h2").first().innerText()).replace(/\n/g, " ")), "results are still filtered after refresh");
 
 step("filter panel: sort + clear all");
 await page.getByRole("button", { name: "Filters", exact: true }).click();
@@ -277,6 +288,7 @@ await page.getByTestId("boards-page").waitFor();
 await settle(1000);
 assert((await page.getByTestId("board-card").count()) > 0, "boards page lists at least one board");
 assert((await page.getByTestId("new-board-placeholder").count()) === 1, "New board placeholder is present");
+assert(at() === "/boards", "boards index lives at /boards");
 await shot("17-boards-page");
 await page.getByRole("tab", { name: /^Saves/ }).click();
 await settle(900);
@@ -287,6 +299,9 @@ await page.getByRole("tab", { name: /^Boards/ }).click();
 await settle(600);
 await page.getByTestId("board-card").first().click();
 await settle(1400);
+const boardPath = at();
+assert(/^\/boards\/[A-Za-z0-9_-]+$/.test(boardPath), `a board lives at ${boardPath}`);
+assert((await page.locator('#rail-boards[aria-pressed="true"]').count()) === 1, "the rail stays on Boards");
 await page.getByRole("button", { name: "Select designs" }).click();
 await settle(400);
 await page.getByTestId("grid-view").locator("button[aria-pressed]").first().click();
@@ -296,6 +311,37 @@ assert(/1 selected/.test(await page.getByTestId("board-select-bar").innerText())
 await shot("17c-board-select");
 await page.keyboard.press("Escape");
 await settle(500);
+
+// ---------------------------------------------------------------- Routing
+step("routing: refresh keeps the board open");
+await page.reload({ waitUntil: "domcontentloaded" });
+await page.getByTestId("grid-view").waitFor();
+await settle(2200);
+assert(at() === boardPath, `refresh keeps ${boardPath}`);
+assert((await page.getByRole("button", { name: "Select designs" }).count()) === 1, "board detail is still open after refresh");
+
+step("routing: brief route and Back/Forward between pages");
+await rail.getByRole("button", { name: "Design brief", exact: true }).click();
+await page.getByTestId("brief-page").waitFor();
+assert(at() === "/brief", "brief lives at /brief");
+await page.reload({ waitUntil: "domcontentloaded" });
+await page.getByTestId("brief-page").waitFor();
+await settle(800);
+assert(at() === "/brief", "refresh keeps /brief");
+await rail.getByRole("button", { name: "Explore", exact: true }).click();
+await settle(900);
+assert(at() === "/explore", "explore lives at /explore");
+await page.goBack();
+await page.getByTestId("brief-page").waitFor();
+assert(at() === "/brief", "Back returns to /brief");
+await page.goBack();
+await page.getByTestId("grid-view").waitFor();
+await settle(1800);
+assert(at() === boardPath, `Back returns to ${boardPath}`);
+await page.goForward();
+await page.getByTestId("brief-page").waitFor();
+assert(at() === "/brief", "Forward returns to /brief");
+await shot("19-routing-brief");
 
 step("theme toggle");
 await page.getByRole("button", { name: "Light mode" }).click();

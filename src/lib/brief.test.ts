@@ -39,10 +39,10 @@ describe("generateBrief", () => {
     expect(generateBrief(templates, "food & drink")?.match.label).toBe("Food & Drink");
   });
 
-  it("builds three distinct, valid palette colours in role order", () => {
+  it("builds four distinct, valid palette colours in role order", () => {
     const brief = generateBrief(templates, "Construction");
-    expect(brief?.palette.map((c) => c.role)).toEqual(["main", "secondary", "accent"]);
-    expect(new Set(brief?.palette.map((c) => c.hex)).size).toBe(3);
+    expect(brief?.palette.map((c) => c.role)).toEqual(["main", "secondary", "accent", "ink"]);
+    expect(new Set(brief?.palette.map((c) => c.hex)).size).toBe(4);
     for (const color of brief?.palette ?? []) {
       expect(color.hex).toMatch(/^#[0-9A-F]{6}$/);
       expect(color.name.length).toBeGreaterThan(0);
@@ -50,6 +50,14 @@ describe("generateBrief", () => {
     expect(brief?.anchor.hex).toMatch(/^#[0-9A-F]{6}$/);
     expect(brief?.anchor.share).toBeGreaterThan(0);
     expect(brief?.anchor.share).toBeLessThanOrEqual(1);
+  });
+
+  it("derives a dark ink colour that can carry text", () => {
+    for (const option of generateBrief(templates, "Construction", 3)?.options ?? []) {
+      const ink = option.palette[3];
+      expect(ink.role).toBe("ink");
+      expect(hexToHsv(ink.hex).v).toBeLessThanOrEqual(0.3);
+    }
   });
 
   it("returns only common tags that really appear in the slice", () => {
@@ -105,8 +113,8 @@ describe("generateBrief", () => {
 
     // Every card is a complete, valid palette in role order.
     for (const option of options) {
-      expect(option.palette.map((c) => c.role)).toEqual(["main", "secondary", "accent"]);
-      expect(new Set(option.palette.map((c) => c.hex)).size).toBe(3);
+      expect(option.palette.map((c) => c.role)).toEqual(["main", "secondary", "accent", "ink"]);
+      expect(new Set(option.palette.map((c) => c.hex)).size).toBe(4);
       for (const color of option.palette) expect(color.hex).toMatch(/^#[0-9A-F]{6}$/);
     }
 
@@ -162,5 +170,25 @@ describe("generateBrief", () => {
     expect(generateBrief(templates, "Construction", 3)).toEqual(
       generateBrief(templates, "Construction", 3),
     );
+  });
+
+  it("uses the seed to produce different, still deterministic batches", () => {
+    const first = generateBrief(templates, "Construction", 3, { seed: 0 });
+    const second = generateBrief(templates, "Construction", 3, { seed: 1 });
+    expect(second).toEqual(generateBrief(templates, "Construction", 3, { seed: 1 }));
+    // Seeds shift the analogous offset and the complement choice, so palettes differ.
+    expect(second?.options[0].palette).not.toEqual(first?.options[0].palette);
+    for (const option of second?.options ?? []) {
+      expect(option.palette.map((c) => c.role)).toEqual(["main", "secondary", "accent", "ink"]);
+    }
+  });
+
+  it("degrades to seeded variations rather than inventing new colour stories", () => {
+    // The fixture is tiny, so a relaxed floor plus a late seed exhausts real families.
+    const brief = generateBrief(templates, "Construction", 3, { seed: 2, minShare: 0.001 });
+    expect(brief?.options.length).toBeGreaterThan(0);
+    for (const option of brief?.options ?? []) {
+      expect(option.palette).toHaveLength(4);
+    }
   });
 });

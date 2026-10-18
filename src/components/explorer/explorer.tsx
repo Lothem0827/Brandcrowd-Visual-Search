@@ -4,20 +4,20 @@ import type { TemplateRepository } from "@/lib/data";
 import { applyFilters, EMPTY_FILTERS, mergeSelections, replaceSelections, restoreSelections, type FacetKey, type FacetSelection, type FilterState } from "@/lib/facets";
 import { buildVocab, chipsToSelection, isUnsearchableQuery, parseQuery, removeChipFromQuery } from "@/lib/query";
 import { createSearchClient, type SearchClient } from "@/lib/search-client";
-import { fromSearch, historyAction, toSearch, type UrlState } from "@/lib/url-state";
+import { fromUrl, historyAction, toUrl, type Page, type UrlState } from "@/lib/url-state";
 import { findAllSimilar, rankByImage } from "@/lib/similarity";
 import { rng } from "@/lib/color";
+import { SITE_NAME, SITE_TITLE } from "@/lib/site";
 import { paletteFromFile } from "@/lib/image-search";
 import { toast } from "@/components/ui/toast";
 import { useAiInterpretation } from "./use-ai-interpretation";
-import { ExplorerContext, type BoardSelection, type BrowseMode, type ExplorerApi, type HoverState, type ImageQuery, type Origin, type Page, type SearchStep, type SortMode, type View } from "./context";
+import { ExplorerContext, type BoardSelection, type BrowseMode, type ExplorerApi, type HoverState, type ImageQuery, type Origin, type SearchStep, type SortMode, type View } from "./context";
 import { Sidebar } from "./sidebar";
 import { SearchDock } from "./search-dock";
 import { BrowseArea } from "./browse-area";
 import { FocusedView } from "./focused-view";
 import { FilterPanel } from "./filter-panel";
 import { DetailPanel } from "./detail-panel";
-import { BriefDialog } from "./brief-dialog";
 import { BoardSelectBar } from "./board-select-bar";
 import { ImageDropOverlay } from "./image-drop";
 import { OfflineBanner } from "./offline-banner";
@@ -35,12 +35,6 @@ function viewFromUrl(u: UrlState, exists: (id: string) => boolean): View {
   }
   if (u.board) return { kind: "board", boardId: u.board };
   return { kind: "search" };
-}
-
-/** Home vs Explore: an empty URL lands on the Home discovery feed. */
-function pageFromUrl(u: UrlState): Page {
-  const hasState = !!u.query.trim() || Object.keys(u.facets).length > 0 || !!u.color || u.design.length > 0 || !!u.board;
-  return hasState ? "explore" : "home";
 }
 
 const searchKey = (query: string, filters: FilterState, imageUrl: string | undefined, category: string) =>
@@ -94,15 +88,15 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
     return m;
   }, [base]);
 
-  // Initial state comes from the URL (?q=…&industry=…&design=…), see lib/url-state.ts.
-  const [initialUrl] = useState(() => fromSearch(window.location.search));
+  // Initial state comes from the URL (/explore?q=…&design=…, /boards/<id>), see lib/url-state.ts.
+  const [initialUrl] = useState(() => fromUrl(window.location.pathname, window.location.search));
   const [query, setQuery] = useState(initialUrl.query);
   const [filters, setFilters] = useState<FilterState>({ facets: initialUrl.facets, color: initialUrl.color });
   const [imageQuery, setImageQuery] = useState<ImageQuery | null>(null);
   const [sort, setSort] = useState<SortMode>(initialUrl.sort);
   const [shuffleSeed, setShuffleSeed] = useState<number | null>(initialUrl.shuffleSeed);
   const [view, setView] = useState<View>(() => viewFromUrl(initialUrl, (id) => !!repo.byId(id)));
-  const [page, setPage] = useState<Page>(() => pageFromUrl(initialUrl));
+  const [page, setPageState] = useState<Page>(() => initialUrl.page);
   const [browseMode, setBrowseMode] = useState<BrowseMode>(() => {
     try {
       const v = window.localStorage.getItem(BROWSE_MODE_KEY);
@@ -113,7 +107,6 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
     return "grid";
   });
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
-  const [briefOpen, setBriefOpen] = useState(false);
   const [simScope, setSimScope] = useState<"industry" | "all">(initialUrl.scope);
   const [detailOpen, setDetailOpen] = useState(() => view.kind === "similar");
   const [hover, setHover] = useState<HoverState | null>(null);
@@ -124,6 +117,21 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
   /** per-visit seed for the Home discovery feed (never URL-encoded) */
   const [homeSeed, setHomeSeed] = useState(() => Math.floor(Math.random() * 100000));
 
+  /**
+   * Every page change goes through here: the URL follows `page`, so a stale view from the
+   * previous page (a board, a lightbox, the mind-map) must not leak into the new one. Staying
+   * on the same page is a no-op, which lets a board open by setting the view afterwards.
+   */
+  const setPage = useCallback((next: Page) => {
+    if (next === page) return;
+    setPageState(next);
+    setDetailOpen(false);
+    setHover(null);
+    // The filter panel belongs to Explore; leaving it must not leave the panel over another page.
+    setFilterPanelOpen(false);
+    setView((v) => (v.kind === "search" ? v : { kind: "search" }));
+  }, [page]);
+
   useEffect(() => {
     try {
       window.localStorage.setItem(BROWSE_MODE_KEY, browseMode);
@@ -131,6 +139,13 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
       /* storage unavailable */
     }
   }, [browseMode]);
+
+  // Navigation is a history push rather than a Next route change, so the title the route
+  // metadata set on load would otherwise stick to every page after it.
+  useEffect(() => {
+    const title = page === "boards" ? (view.kind === "board" ? "Board" : "Boards") : page === "brief" ? "Design brief" : null;
+    document.title = title ? `${title} | ${SITE_NAME}` : SITE_TITLE;
+  }, [page, view]);
 
   // The search dock debounces typing before it reaches `query`, so no further debounce is needed
   // here — the whole explorer already updates once per typing pause.
@@ -364,7 +379,7 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
     } finally {
       if (token === imageToken.current) setImageBusy(false);
     }
-  }, []);
+  }, [setPage]);
 
   /** Grid/Home click: open the focused lightbox, remembering where we came from. */
   const openTemplate = useCallback((id: string) => {
@@ -429,7 +444,6 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
   // toolbar can never paint a selection that belongs to a board that's no longer on screen.
   const selectionLive =
     !!boardSelection &&
-    page === "explore" &&
     view.kind === "board" &&
     view.boardId === boardSelection.boardId &&
     browseMode === "grid";
@@ -457,6 +471,7 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
   // ---- URL sync: state -> URL (push for discrete changes, replace while typing) ----
   const urlState = useMemo<UrlState>(
     () => ({
+      page,
       query,
       facets: filters.facets,
       color: filters.color,
@@ -474,16 +489,19 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
       sort,
       shuffleSeed,
     }),
-    [query, filters, view, simScope, sort, shuffleSeed],
+    [page, query, filters, view, simScope, sort, shuffleSeed],
   );
   const lastUrl = useRef<UrlState | null>(null);
   const typingRun = useRef(false);
   useEffect(() => {
-    const url = (s: UrlState) => window.location.pathname + toSearch(s) + window.location.hash;
+    const url = (s: UrlState) => toUrl(s) + window.location.hash;
     if (!lastUrl.current) {
-      // first render: normalise the address (e.g. drop unknown design ids) without a new entry
+      // first render: normalise the address (drop unknown design ids, move old links to their
+      // route) without adding a history entry
       lastUrl.current = urlState;
-      if (window.location.search !== toSearch(urlState)) window.history.replaceState(null, "", url(urlState));
+      if (window.location.pathname + window.location.search !== toUrl(urlState)) {
+        window.history.replaceState(null, "", url(urlState));
+      }
       return;
     }
     const { action, typing } = historyAction(lastUrl.current, urlState, typingRun.current);
@@ -500,7 +518,7 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
   }, [imageQuery]);
   useEffect(() => {
     const onPop = () => {
-      const u = fromSearch(window.location.search);
+      const u = fromUrl(window.location.pathname, window.location.search);
       const nextFilters: FilterState = { facets: u.facets, color: u.color };
       const nextView = viewFromUrl(u, (id) => !!byId(id));
       lastUrl.current = u;
@@ -510,7 +528,8 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
       setQuery(u.query);
       setFilters(nextFilters);
       setView(nextView);
-      setPage((p) => (u.design.length || u.board ? "explore" : p));
+      // raw setter: the URL already decided the page, so no view normalising here
+      setPageState(u.page);
       setSimScope(u.scope);
       setSort(u.sort);
       setShuffleSeed(u.shuffleSeed);
@@ -524,18 +543,23 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
 
   const focusSearch = useCallback(() => searchRef.current?.focus(), []);
 
+  /** Ad-hoc search for the inspiration panel; never mutates Explore's query or filters. */
+  const designSearch = useCallback(
+    (text: string) => (searchClient ? searchClient.search(text) : Promise.resolve(new Map<string, number>())),
+    [searchClient],
+  );
+
   /** Home nav: a clean, shuffled discovery feed. */
   const goHome = useCallback(() => {
-    setView({ kind: "search" });
     clearAll();
     setPage("home");
     setHomeSeed(Math.floor(Math.random() * 100000));
-  }, [clearAll]);
+  }, [clearAll, setPage]);
 
   /** Explore nav: keeps the current search so switches are non-destructive. */
   const goExplore = useCallback(() => {
     setPage("explore");
-  }, []);
+  }, [setPage]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -550,23 +574,26 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
         if (activeBoardSelection) stopBoardSelect();
         else if (detailOpen) setDetailOpen(false);
         else if (filterPanelOpen) setFilterPanelOpen(false);
-        else if (page === "boards") setPage("explore");
+        // Escape leaves one level: a board goes back to the Boards index (/boards), the
+        // index and the Brief go back to Explore (/explore).
+        else if (page === "boards" && (view.kind === "board" || view.kind === "focused" || view.kind === "similar")) {
+          setView({ kind: "search" });
+        } else if (page === "boards" || page === "brief") setPage("explore");
         else setHover(null);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [activeBoardSelection, stopBoardSelect, detailOpen, filterPanelOpen, page]);
+  }, [activeBoardSelection, stopBoardSelect, detailOpen, filterPanelOpen, page, view, setPage]);
 
   const api: ExplorerApi = {
     all, base, results, browseItems, byId, vocab, tagCounts, category,
     query, setQuery, parsed, searching, unsearchable, noCloseMatch, hasSearch, filters, setFilters, effective, toggleFacet, addFacet, clearAll,
     ai, aiStatus, aiEnabled, dismissAi,
     searchPath, searchWithin, backOneStep, jumpToStep,
-    imageQuery, setImageQuery, imageScores, textScores, imageBusy, searchByImage,
+    imageQuery, setImageQuery, imageScores, textScores, imageBusy, searchByImage, designSearch,
     page, setPage, browseMode, setBrowseMode, sort, setSort, shuffleSeed, setShuffleSeed,
     filterPanelOpen, setFilterPanelOpen,
-    briefOpen, setBriefOpen,
     view, setView, openTemplate, openSimilar, recenter, recenterDetail, focused, simScope, setSimScope, similar, center,
     detailsReady, detailsError, loadDetails,
     detailOpen, setDetailOpen, hover, setHover, boardGroup, setBoardGroup, focusSearch,
@@ -594,11 +621,15 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
             <BrowseArea />
             {focused && <FocusedView />}
           </main>
-          {page !== "boards" &&
-            (activeBoardSelection ? <BoardSelectBar /> : <SearchDock inputRef={searchRef} />)}
+          {/* The board selection toolbar belongs to whichever page shows the board grid;
+              the search dock only makes sense on Home and Explore. */}
+          {activeBoardSelection ? (
+            <BoardSelectBar />
+          ) : page === "home" || page === "explore" ? (
+            <SearchDock inputRef={searchRef} />
+          ) : null}
         </div>
         <FilterPanel />
-        <BriefDialog />
         {detailTemplate && <DetailPanel template={detailTemplate} />}
       </div>
       <ImageDropOverlay />

@@ -257,7 +257,7 @@ export function Sidebar({
   onHome: () => void;
   onExplore: () => void;
 }) {
-  const { page, setPage, setBriefOpen } = useExplorer();
+  const { page, setPage, setView } = useExplorer();
   const { boards } = useBoards();
   const savedCount = new Set(boards.flatMap((b) => b.templateIds)).size;
   return (
@@ -283,16 +283,23 @@ export function Sidebar({
             onClick={onExplore}
           />
           <RailButton
+            id="rail-boards"
             icon={BookmarkIcon}
             label="Boards"
             active={page === "boards"}
             badge={savedCount}
-            onClick={() => setPage("boards")}
+            // Always the index: clearing the view turns /boards/<id> into /boards.
+            onClick={() => {
+              setView({ kind: "search" });
+              setPage("boards");
+            }}
           />
           <RailButton
+            id="rail-brief"
             icon={SparklesIcon}
             label="Design brief"
-            onClick={() => setBriefOpen(true)}
+            active={page === "brief"}
+            onClick={() => setPage("brief")}
           />
         </nav>
         <div className="flex flex-col items-center gap-1.5">
