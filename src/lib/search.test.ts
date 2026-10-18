@@ -3,7 +3,7 @@ import fixture from "../../tests/fixtures/templates.fixture.json";
 import { parseTemplates } from "./schema";
 import { buildSearchIndex } from "./search";
 import { createLocalSearchClient, createSearchClient } from "./search-client";
-import { smallThumbnail, withRetry } from "./images";
+import { IMAGE_BASE, imageBaseOrigin, normalizeImageBase, templateImageUrl, withRetry } from "./images";
 
 const { templates } = parseTemplates(fixture);
 const nameOf = (id: string) => templates.find((t) => t.templateId === id)?.name;
@@ -78,17 +78,24 @@ describe("local search client (worker fallback)", () => {
   });
 });
 
-describe("thumbnail URLs", () => {
-  const big =
-    "https://dynamic.design.com/template/preview/design/abc?v=4&designTemplateVersion=1&size=design-preview-tall-2x&layout=auto";
-  it("swaps the 600px rendering for the 200px one", () => {
-    expect(smallThumbnail(big)).toBe(
-      "https://dynamic.design.com/template/preview/design/abc?v=4&designTemplateVersion=1&size=design-preview-tall&layout=auto",
-    );
+describe("template image URLs", () => {
+  const id = "31347748-881c-4053-a849-18ccd44709ed";
+  it("defaults to self-hosted /images/<templateId>.webp", () => {
+    expect(IMAGE_BASE).toBe("/images");
+    expect(templateImageUrl(id)).toBe(`/images/${id}.webp`);
   });
-  it("leaves other URLs untouched", () => {
-    expect(smallThumbnail("https://example.com/a.png?size=huge")).toBe("https://example.com/a.png?size=huge");
-    expect(smallThumbnail("https://dynamic.design.com/x.png")).toBe("https://dynamic.design.com/x.png");
+  it("uses a configurable base (e.g. Cloudflare R2), ignoring trailing slashes", () => {
+    expect(templateImageUrl(id, "https://img.example.com/templates/")).toBe(`https://img.example.com/templates/${id}.webp`);
+    expect(templateImageUrl(id, "  ")).toBe(`/images/${id}.webp`);
+    expect(normalizeImageBase(undefined)).toBe("/images");
+  });
+  it("never points at design.com", () => {
+    expect(templateImageUrl(id)).not.toMatch(/design\.com/);
+  });
+  it("reports the origin of an absolute base only", () => {
+    expect(imageBaseOrigin("https://img.example.com/templates")).toBe("https://img.example.com");
+    expect(imageBaseOrigin("/images")).toBeNull();
+    expect(imageBaseOrigin(undefined)).toBeNull();
   });
   it("adds a cache-busting retry counter", () => {
     expect(withRetry("https://a.com/x.png", 0)).toBe("https://a.com/x.png");

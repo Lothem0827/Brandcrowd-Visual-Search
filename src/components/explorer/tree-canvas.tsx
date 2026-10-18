@@ -95,6 +95,7 @@ import { useExplorer } from "./context";
 import { useBoards } from "./use-boards";
 import { useMediaQuery, useIsMobile, WIDE_QUERY } from "@/lib/use-media-query";
 import { LayoutIcon } from "./icons";
+import { templateImageUrl } from "@/lib/images";
 import { ThumbImage } from "./thumb-image";
 
 /* ------------------------------------------------------------------ */
@@ -187,8 +188,8 @@ function Thumb({
       style={{ width: size, height: size }}
     >
       <ThumbImage
-        key={t.thumbnailImage}
-        src={t.thumbnailImage}
+        key={t.templateId}
+        src={templateImageUrl(t.templateId)}
         alt=""
         className="size-full object-cover"
       />
@@ -366,12 +367,11 @@ const CenterNodeView = memo(function CenterNodeView({
       >
         <span className="block aspect-square w-full">
           <ThumbImage
-            key={t.previewImage || t.thumbnailImage}
-            src={t.previewImage || t.thumbnailImage}
+            key={t.templateId}
+            src={templateImageUrl(t.templateId)}
             alt={t.displayTitle}
             eager
-            className="aspect-square w-full bg-muted bg-cover object-cover"
-            style={{ backgroundImage: `url("${t.thumbnailImage}")` }}
+            className="aspect-square w-full bg-muted object-cover"
           />
         </span>
       </button>

@@ -8,6 +8,7 @@ import { useExplorer } from "./context";
 import { GridView } from "./grid-view";
 import { HEADER_CONTROL, HEADER_CONTROL_IDLE, HEADER_CONTROL_ON } from "./header";
 import { SaveButton } from "./save-button";
+import { templateImageUrl } from "@/lib/images";
 import { ThumbImage } from "./thumb-image";
 import { useGridSettings } from "./use-grid-settings";
 
@@ -101,7 +102,7 @@ export function FocusedView() {
         {/* A flex (not grid) centre: the ThumbImage wrapper takes its height from this
             definite box, so `max-h-full` actually constrains the picture. */}
         <div className="relative flex h-full w-full items-center justify-center">
-          {/* A definite square (design.com post previews are 1:1) so the loading skeleton is the
+          {/* A definite square (template images are 1:1) so the loading skeleton is the
               size of the picture and the layout doesn't jump when it arrives. Sized off the
               smaller container axis so it stays square on narrow viewports too, where width (not
               height) is the binding constraint. Radius/shadow live here, which also clips the
@@ -112,7 +113,7 @@ export function FocusedView() {
           >
             <ThumbImage
               key={focused.templateId}
-              src={focused.previewImage || focused.thumbnailImage}
+              src={templateImageUrl(focused.templateId)}
               alt={focused.displayTitle || focused.slug}
               eager
               retryButton

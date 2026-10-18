@@ -1,6 +1,7 @@
 "use client";
 import type { Template } from "@/lib/schema";
 import { cn } from "@/lib/utils";
+import { templateImageUrl } from "@/lib/images";
 import { ThumbImage } from "./thumb-image";
 
 /**
@@ -56,7 +57,7 @@ function CoverCell({ template, className }: { template?: Template; className?: s
   if (!template) return <span className={cn("block size-full bg-muted", className)} />;
   return (
     <span className={cn("block size-full overflow-hidden", className)}>
-      <ThumbImage src={template.thumbnailImage} alt="" className="size-full object-cover" />
+      <ThumbImage src={templateImageUrl(template.templateId)} alt="" className="size-full object-cover" />
     </span>
   );
 }

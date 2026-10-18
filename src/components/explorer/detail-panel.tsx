@@ -11,6 +11,7 @@ import { SIMILAR_META } from "@/lib/tree";
 import { useExplorer } from "./context";
 import { SaveButton } from "./save-button";
 import { ImageIcon, LayoutIcon } from "./icons";
+import { templateImageUrl } from "@/lib/images";
 import { ThumbImage } from "./thumb-image";
 import { useGridSettings } from "./use-grid-settings";
 
@@ -96,7 +97,7 @@ function SimilarGroup({
                 style={{ borderRadius: radius }}
               >
                 <ThumbImage
-                  src={h.template.thumbnailImage}
+                  src={templateImageUrl(h.template.templateId)}
                   alt=""
                   className="size-full object-cover"
                 />
