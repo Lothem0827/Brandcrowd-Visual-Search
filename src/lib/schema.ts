@@ -108,6 +108,8 @@ export const TemplateSchema = z.object({
       offer: null,
       placeholders: [],
     }),
+  /** Source design.com URLs, kept in the dataset for reference only. The app never loads them:
+   *  images are self-hosted and derived from templateId (see templateImageUrl in images.ts). */
   previewImage: str,
   thumbnailImage: str.optional(),
 });

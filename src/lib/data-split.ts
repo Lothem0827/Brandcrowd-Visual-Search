@@ -5,7 +5,7 @@ import type { Template } from "./schema";
  *  - core: everything needed to filter, group, rank and draw the tree (~half the bytes)
  *  - details: long text only shown in the details panel or used by the text index
  *    (description, hashtags, copy lines, typography notes, focal point, reading order,
- *    the 600px preview URL and the design.com link).
+ *    the source preview URL and the design.com link).
  */
 export interface TemplateDetails {
   url: string;

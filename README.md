@@ -117,7 +117,28 @@ Record shape (see `../schema.md` for the full spec and controlled vocabularies):
 ```
 
 Only templates **without a logo** belong in the file (preview URL has a single GUID; logo templates have a second
-GUID and `logoTemplateVersion`). Images load directly from `dynamic.design.com`.
+GUID and `logoTemplateVersion`). `previewImage` / `thumbnailImage` are kept for reference only; the app never
+loads them (see *Template images* below).
+
+### Template images (self-hosted)
+
+The app never requests images from design.com. Every template has one self-hosted image, `<templateId>.webp`
+(1200×1200 WebP, ~76 KB), used for both thumbnails and previews. The URL is built from the record's `templateId`
+in one place (`templateImageUrl` in `src/lib/images.ts`): `${NEXT_PUBLIC_IMAGE_BASE}/${templateId}.webp`.
+
+**Local:** copy all the `.webp` files into `public/images/` (e.g. on Windows
+`copy C:\Users\CARL\Projects\template-images\full\*.webp public\images\`). They are served at
+`/images/<templateId>.webp`. The folder is gitignored (~1 GB), so the images never go to GitHub.
+
+**Cloudflare R2 (or any CDN):** upload the same files to the bucket root (or a folder), then set the public base
+URL in `.env.local` / your host's env and rebuild:
+
+```bash
+NEXT_PUBLIC_IMAGE_BASE=https://images.example.com/templates   # default: /images
+```
+
+That is the only change needed. The value is inlined at build time, and when it is an absolute URL its origin is
+added to the Content-Security-Policy `img-src` automatically.
 
 ### Replacing the dataset
 

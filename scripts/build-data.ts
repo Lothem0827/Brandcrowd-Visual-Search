@@ -1,7 +1,7 @@
 /**
- * Build step: validate data/templates.json with the Zod schema ONCE, normalise it, swap the
- * 600px thumbnails for the small rendering, and write a minified, content-hashed copy to
- * public/data/ (served as a static, compressed, long-cached file). The browser no longer
+ * Build step: validate data/templates.json with the Zod schema ONCE, normalise it, drop the
+ * design.com image URLs (images are self-hosted and derived from templateId, see
+ * src/lib/images.ts), and write a minified, content-hashed copy to public/data/ (served as a static, compressed, long-cached file). The browser no longer
  * bundles or validates the dataset.
  *
  *   pnpm data        (also runs automatically before `pnpm dev` and `pnpm build`)
@@ -10,7 +10,6 @@ import { createHash } from "node:crypto";
 import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { parseTemplates } from "../src/lib/schema";
-import { smallThumbnail } from "../src/lib/images";
 import { splitTemplate, type DetailsMap } from "../src/lib/data-split";
 import type { DataManifest } from "../src/lib/data-manifest";
 
@@ -28,7 +27,9 @@ if (!templates.length) {
 if (errors.length) {
   console.warn(`[data] skipped ${errors.length} invalid record(s):\n` + errors.slice(0, 10).join("\n"));
 }
-const slim = templates.map((t) => ({ ...t, thumbnailImage: smallThumbnail(t.thumbnailImage) }));
+// The app builds every image URL from templateId (`${NEXT_PUBLIC_IMAGE_BASE}/${templateId}.webp`),
+// so the design.com URLs are not shipped to the browser at all.
+const slim = templates.map((t) => ({ ...t, thumbnailImage: "", previewImage: "" }));
 const cores: typeof slim = [];
 const details: DetailsMap = {};
 for (const t of slim) {

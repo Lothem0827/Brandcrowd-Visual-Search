@@ -8,6 +8,7 @@ import { useExplorer } from "./context";
 import { useBoards, useLastUsedBoardId } from "./use-boards";
 import { useGridSettings } from "./use-grid-settings";
 import { computeWindow } from "./use-windowed-grid";
+import { templateImageUrl } from "@/lib/images";
 import { ThumbImage } from "./thumb-image";
 
 /** Compact quick-save toggle shown on a tile while hovering or focused. */
@@ -64,7 +65,7 @@ const GridTile = memo(function GridTile({
         style={{ borderRadius: radius }}
       >
         <ThumbImage
-          src={template.thumbnailImage}
+          src={templateImageUrl(template.templateId)}
           alt={label}
           eager={eager}
           className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
