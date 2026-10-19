@@ -1,5 +1,7 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { connection } from "next/server";
 import { notFound } from "next/navigation";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { getProfileByHandle, getPublicBoard } from "@/lib/social";
@@ -9,6 +11,7 @@ type Props = { params: Promise<{ handle: string; slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { handle, slug } = await params;
+  if (!isSupabaseConfigured()) return { title: "Board" };
   const profile = await getProfileByHandle(handle);
   if (!profile) return { title: "Board" };
   const board = await getPublicBoard(profile.id, slug);
@@ -19,13 +22,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function PublicBoardPage({ params }: Props) {
+async function BoardBody({ params }: Props) {
+  await connection();
   if (!isSupabaseConfigured()) notFound();
   const { handle, slug } = await params;
   const profile = await getProfileByHandle(handle);
   if (!profile) notFound();
   const board = await getPublicBoard(profile.id, slug);
   if (!board) notFound();
+
+  const imageBase = process.env.NEXT_PUBLIC_IMAGE_BASE?.replace(/\/$/, "") || "/images";
 
   return (
     <div className="space-y-6">
@@ -45,11 +51,11 @@ export default async function PublicBoardPage({ params }: Props) {
             <li key={id}>
               <Link
                 href={`/explore?design=${encodeURIComponent(id)}`}
-                className="block overflow-hidden rounded-md border border-border bg-muted/30 aspect-square"
+                className="block aspect-square overflow-hidden rounded-md border border-border bg-muted/30"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={`${process.env.NEXT_PUBLIC_IMAGE_BASE?.replace(/\/$/, "") || "/images"}/${id}.webp`}
+                  src={`${imageBase}/${id}.webp`}
                   alt=""
                   className="size-full object-cover"
                   loading="lazy"
@@ -60,5 +66,13 @@ export default async function PublicBoardPage({ params }: Props) {
         </ul>
       )}
     </div>
+  );
+}
+
+export default function PublicBoardPage({ params }: Props) {
+  return (
+    <Suspense fallback={<p className="text-sm text-muted-foreground">Loading board…</p>}>
+      <BoardBody params={params} />
+    </Suspense>
   );
 }

@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { SITE_NAME } from "@/lib/site";
 
+/** Auth/cookies + public Supabase reads — allow request-time rendering under Cache Components. */
+export const instant = false;
+
 export default function SocialLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-full flex-col overflow-y-auto bg-canvas">

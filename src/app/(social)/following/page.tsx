@@ -1,5 +1,7 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { connection } from "next/server";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -7,12 +9,17 @@ import { getFollowingFeed } from "@/lib/social";
 
 export const metadata: Metadata = { title: "Following" };
 
-export default async function FollowingPage() {
+async function FollowingBody() {
+  // Defer to request time — auth cookies must not run during prerender.
+  await connection();
+
   if (!isSupabaseConfigured()) {
     return (
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold">Following</h1>
-        <p className="text-sm text-muted-foreground">Connect Supabase to follow people and see their public boards.</p>
+        <p className="text-sm text-muted-foreground">
+          Connect Supabase to follow people and see their public boards.
+        </p>
       </div>
     );
   }
@@ -53,5 +60,20 @@ export default async function FollowingPage() {
         </ul>
       )}
     </div>
+  );
+}
+
+export default function FollowingPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="space-y-2">
+          <h1 className="text-2xl font-semibold tracking-tight">Following</h1>
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        </div>
+      }
+    >
+      <FollowingBody />
+    </Suspense>
   );
 }

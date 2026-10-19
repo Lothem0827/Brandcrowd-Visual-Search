@@ -1,5 +1,7 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { connection } from "next/server";
 import { notFound } from "next/navigation";
 import { FollowButton } from "@/components/social/follow-button";
 import { createClient } from "@/lib/supabase/server";
@@ -11,6 +13,7 @@ type Props = { params: Promise<{ handle: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { handle } = await params;
+  if (!isSupabaseConfigured()) return { title: "Profile" };
   const profile = await getProfileByHandle(handle);
   if (!profile) return { title: "Profile" };
   return {
@@ -19,8 +22,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function ProfilePage({ params }: Props) {
+async function ProfileBody({ params }: Props) {
+  await connection();
   if (!isSupabaseConfigured()) notFound();
+
   const { handle } = await params;
   const profile = await getProfileByHandle(handle);
   if (!profile) notFound();
@@ -105,5 +110,13 @@ export default async function ProfilePage({ params }: Props) {
         )}
       </section>
     </div>
+  );
+}
+
+export default function ProfilePage({ params }: Props) {
+  return (
+    <Suspense fallback={<p className="text-sm text-muted-foreground">Loading profile…</p>}>
+      <ProfileBody params={params} />
+    </Suspense>
   );
 }

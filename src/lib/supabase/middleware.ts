@@ -6,9 +6,12 @@ import type { Database } from "./database.types";
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  // Direct property access so Next inlines NEXT_PUBLIC_* into the proxy bundle.
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
   const key =
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    "";
   if (!url || !key) return supabaseResponse;
 
   const supabase = createServerClient<Database>(url, key, {

@@ -1,17 +1,17 @@
-import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { createPublicClient } from "@/lib/supabase/public";
 import type { BoardRow, MoodboardRow, Profile } from "@/lib/supabase/database.types";
 
 export async function getProfileByHandle(handle: string): Promise<Profile | null> {
   if (!isSupabaseConfigured()) return null;
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase.from("profiles").select("*").eq("handle", handle.toLowerCase()).maybeSingle();
   return data;
 }
 
 export async function getPublicBoards(ownerId: string): Promise<(BoardRow & { template_ids: string[] })[]> {
   if (!isSupabaseConfigured()) return [];
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase
     .from("boards")
     .select("*, board_items(template_id, position)")
@@ -29,7 +29,7 @@ export async function getPublicBoards(ownerId: string): Promise<(BoardRow & { te
 
 export async function getPublicBoard(ownerId: string, slug: string) {
   if (!isSupabaseConfigured()) return null;
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase
     .from("boards")
     .select("*, board_items(template_id, position)")
@@ -48,7 +48,7 @@ export async function getPublicBoard(ownerId: string, slug: string) {
 
 export async function getPublicMoodboards(ownerId: string): Promise<MoodboardRow[]> {
   if (!isSupabaseConfigured()) return [];
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase
     .from("moodboards")
     .select("*")
@@ -61,7 +61,7 @@ export async function getPublicMoodboards(ownerId: string): Promise<MoodboardRow
 
 export async function getPublicMoodboard(ownerId: string, slug: string): Promise<MoodboardRow | null> {
   if (!isSupabaseConfigured()) return null;
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase
     .from("moodboards")
     .select("*")
@@ -75,7 +75,7 @@ export async function getPublicMoodboard(ownerId: string, slug: string): Promise
 
 export async function getFollowCounts(userId: string): Promise<{ followers: number; following: number }> {
   if (!isSupabaseConfigured()) return { followers: 0, following: 0 };
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const [{ count: followers }, { count: following }] = await Promise.all([
     supabase.from("follows").select("*", { count: "exact", head: true }).eq("following_id", userId),
     supabase.from("follows").select("*", { count: "exact", head: true }).eq("follower_id", userId),
@@ -85,7 +85,7 @@ export async function getFollowCounts(userId: string): Promise<{ followers: numb
 
 export async function isFollowing(followerId: string, followingId: string): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase
     .from("follows")
     .select("follower_id")
@@ -97,7 +97,7 @@ export async function isFollowing(followerId: string, followingId: string): Prom
 
 export async function getFollowingFeed(userId: string, limit = 40) {
   if (!isSupabaseConfigured()) return [];
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data: follows } = await supabase.from("follows").select("following_id").eq("follower_id", userId);
   const ids = (follows ?? []).map((f) => f.following_id);
   if (!ids.length) return [];
