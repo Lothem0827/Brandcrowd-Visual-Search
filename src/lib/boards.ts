@@ -173,6 +173,17 @@ export class LocalBoardStore implements BoardStore {
     this.listeners.add(cb);
     return () => this.listeners.delete(cb);
   }
+  /** Drop all guest boards/saves (after they've been copied to the account). */
+  reset() {
+    this.pinnedId = null;
+    this.activeId = SAVED_BOARD_ID;
+    try {
+      this.storage?.setItem(ACTIVE_KEY, SAVED_BOARD_ID);
+    } catch {
+      /* storage full / unavailable */
+    }
+    this.commit(defaultBoards());
+  }
 }
 
 let localSingleton: LocalBoardStore | null = null;
@@ -268,6 +279,23 @@ export function getLocalBoardsSnapshot(): Board[] {
     ...b,
     templateIds: [...b.templateIds],
   }));
+}
+
+/** True when the guest store holds anything worth syncing to an account. */
+export function hasLocalBoardData(): boolean {
+  return getLocalBoardStore()
+    .list()
+    .some((b) => b.templateIds.length > 0 || b.id !== SAVED_BOARD_ID);
+}
+
+/**
+ * Empty the guest store once its contents live in the account. Without this the
+ * guest copy lingers in localStorage and can resurrect items the user later
+ * removes while signed in (shown on reload before the cloud store loads, and
+ * merged back into the account on the next sign-in).
+ */
+export function clearLocalBoards() {
+  getLocalBoardStore().reset();
 }
 
 /** Swap in a cloud store while signed in; pass null to return to guest local. */

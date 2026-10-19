@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { SAVED_BOARD_ID, type Board } from "@/lib/boards";
+import { SAVED_BOARD_ID, clearLocalBoards, type Board } from "@/lib/boards";
 import type { MoodboardDraft } from "@/lib/moodboards";
 import type { GridSettings } from "@/components/explorer/use-grid-settings";
 import type { Database, Json } from "@/lib/supabase/database.types";
@@ -36,41 +36,46 @@ function uniqueSlug(base: string, used: Set<string>): string {
   return next;
 }
 
-/** Push guest local boards / moodboards / grid into the signed-in account once. */
-export async function migrateLocalToCloud(
-  supabase: SupabaseClient<Database>,
-  userId: string,
-  opts: {
-    boards: Board[];
-    moodboards: MoodboardDraft[];
-    draft: MoodboardDraft | null;
-    grid: GridSettings;
-  },
-): Promise<void> {
-  if (wasMigrated(userId)) return;
+/**
+ * Copy guest boards (incl. "Saved") into the account, then empty the guest copy.
+ * Runs on every sign-in, not just the first: it's a no-op when there's nothing
+ * local, and a set-difference merge so it never duplicates. Throws on failure
+ * so the local copy is kept for the next attempt instead of being lost.
+ */
+async function migrateLocalBoards(supabase: SupabaseClient<Database>, userId: string, localBoards: Board[]) {
+  const hasData = localBoards.some((b) => b.templateIds.length > 0 || b.id !== SAVED_BOARD_ID);
+  if (!hasData) return;
 
-  const { data: existingBoards } = await supabase.from("boards").select("id, kind, slug, name").eq("owner_id", userId);
+  const { data: existingBoards, error: listErr } = await supabase
+    .from("boards")
+    .select("id, kind, slug, name")
+    .eq("owner_id", userId);
+  if (listErr) throw listErr;
   const boards = existingBoards ?? [];
   const saved = boards.find((b) => b.kind === "saved");
   const usedSlugs = new Set(boards.map((b) => b.slug));
 
   // Merge "Saved" template ids
-  const localSaved = opts.boards.find((b) => b.id === SAVED_BOARD_ID);
-  if (saved && localSaved?.templateIds.length) {
-    const { data: items } = await supabase.from("board_items").select("template_id").eq("board_id", saved.id);
+  const localSaved = localBoards.find((b) => b.id === SAVED_BOARD_ID);
+  if (localSaved?.templateIds.length) {
+    if (!saved) throw new Error("Cloud Saved board missing; keeping local saves for next sign-in");
+    const { data: items, error } = await supabase.from("board_items").select("template_id").eq("board_id", saved.id);
+    if (error) throw error;
     const have = new Set((items ?? []).map((i) => i.template_id));
     const rows = localSaved.templateIds
       .filter((id) => !have.has(id))
       .map((template_id, i) => ({ board_id: saved.id, template_id, position: i }));
-    if (rows.length) await supabase.from("board_items").upsert(rows);
+    if (rows.length) {
+      const { error: upErr } = await supabase.from("board_items").upsert(rows);
+      if (upErr) throw upErr;
+    }
   }
 
   // Custom boards (skip empty duplicates of existing names)
   const existingNames = new Set(boards.map((b) => b.name.toLowerCase()));
-  for (const board of opts.boards) {
+  for (const board of localBoards) {
     if (board.id === SAVED_BOARD_ID) continue;
     if (!board.templateIds.length && existingNames.has(board.name.toLowerCase())) continue;
-    if (existingNames.has(board.name.toLowerCase()) && board.templateIds.length === 0) continue;
 
     const slug = uniqueSlug(board.name, usedSlugs);
     const { data: created, error } = await supabase
@@ -85,18 +90,38 @@ export async function migrateLocalToCloud(
       })
       .select("id")
       .single();
-    if (error || !created) continue;
+    if (error || !created) throw error ?? new Error("Board insert failed");
     existingNames.add(board.name.toLowerCase());
     if (board.templateIds.length) {
-      await supabase.from("board_items").insert(
+      const { error: itemsErr } = await supabase.from("board_items").insert(
         board.templateIds.map((template_id, position) => ({
           board_id: created.id,
           template_id,
           position,
         })),
       );
+      if (itemsErr) throw itemsErr;
     }
   }
+
+  clearLocalBoards();
+}
+
+/** Push guest local data into the signed-in account. */
+export async function migrateLocalToCloud(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  opts: {
+    boards: Board[];
+    moodboards: MoodboardDraft[];
+    draft: MoodboardDraft | null;
+    grid: GridSettings;
+  },
+): Promise<void> {
+  await migrateLocalBoards(supabase, userId, opts.boards);
+
+  // Moodboards / grid: first sign-in only (unchanged behaviour).
+  if (wasMigrated(userId)) return;
 
   // Moodboards
   const { data: existingMb } = await supabase.from("moodboards").select("id").eq("owner_id", userId);

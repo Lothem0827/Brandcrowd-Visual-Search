@@ -235,7 +235,19 @@ export class SupabaseBoardStore implements BoardStore {
     this.patchLocal(boardId, (b) => ({ ...b, templateIds: b.templateIds.filter((x) => x !== templateId) }));
     const cloud = this.cloudId(boardId);
     if (cloud) {
-      void this.supabase.from("board_items").delete().eq("board_id", cloud).eq("template_id", templateId);
+      void this.supabase
+        .from("board_items")
+        .delete()
+        .eq("board_id", cloud)
+        .eq("template_id", templateId)
+        .then(({ error }) => {
+          if (!error) return;
+          console.error("Failed to remove board item", error);
+          // Don't pretend it's gone: restore so the UI matches the server.
+          this.patchLocal(boardId, (b) =>
+            b.templateIds.includes(templateId) ? b : { ...b, templateIds: [templateId, ...b.templateIds] },
+          );
+        });
     }
   }
 
