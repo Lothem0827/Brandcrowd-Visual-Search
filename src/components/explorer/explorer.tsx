@@ -12,11 +12,12 @@ import { paletteFromFile } from "@/lib/image-search";
 import { toast } from "@/components/ui/toast";
 import { useAiInterpretation } from "./use-ai-interpretation";
 import { ExplorerContext, type BoardSelection, type ExplorerApi, type HoverState, type ImageQuery, type Origin, type SearchStep, type SortMode, type View } from "./context";
-import { Sidebar } from "./sidebar";
+import { BottomNav, Sidebar } from "./sidebar";
 import { SearchDock } from "./search-dock";
 import { BrowseArea } from "./browse-area";
 import { FocusedView } from "./focused-view";
 import { FilterPanel } from "./filter-panel";
+import { SettingsPanel } from "./settings-panel";
 import { DetailPanel } from "./detail-panel";
 import { BoardPanel } from "./board-panel";
 import { MoodboardPanel } from "./moodboard-panel";
@@ -110,7 +111,16 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
       ? initialUrl.design[0]
       : null,
   );
-  const [filterPanelOpen, setFilterPanelOpen] = useState(false);
+  const [filterPanelOpen, setFilterPanelOpenState] = useState(false);
+  const [settingsOpen, setSettingsOpenState] = useState(false);
+  const setFilterPanelOpen = useCallback((o: boolean) => {
+    setFilterPanelOpenState(o);
+    if (o) setSettingsOpenState(false);
+  }, []);
+  const setSettingsOpen = useCallback((o: boolean) => {
+    setSettingsOpenState(o);
+    if (o) setFilterPanelOpenState(false);
+  }, []);
   const [simScope, setSimScope] = useState<"industry" | "all">(initialUrl.scope);
   const [detailOpen, setDetailOpen] = useState(() => view.kind === "similar");
   const [hover, setHover] = useState<HoverState | null>(null);
@@ -133,6 +143,7 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
     setHover(null);
     // The filter panel belongs to Explore; leaving it must not leave the panel over another page.
     setFilterPanelOpen(false);
+    setSettingsOpen(false);
     setView((v) => (v.kind === "search" ? v : { kind: "search" }));
     if (next !== "home") setHomePivotId(null);
   }, [page]);
@@ -591,6 +602,7 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
         else if (detailOpen) setDetailOpen(false);
         else if (homePivotId && page === "home") setHomePivotId(null);
         else if (pinnedBoardId) unpinBoard();
+        else if (settingsOpen) setSettingsOpen(false);
         else if (filterPanelOpen) setFilterPanelOpen(false);
         // Escape leaves one level: a board goes back to the Boards index (/boards), the
         // index and the Moodboard go back to Explore.
@@ -607,6 +619,7 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
     stopBoardSelect,
     detailOpen,
     filterPanelOpen,
+    settingsOpen,
     page,
     view,
     setPage,
@@ -624,6 +637,7 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
     imageQuery, setImageQuery, imageScores, textScores, imageBusy, searchByImage,
     page, setPage, sort, setSort, shuffleSeed, setShuffleSeed,
     filterPanelOpen, setFilterPanelOpen,
+    settingsOpen, setSettingsOpen,
     view, setView, openTemplate, openSimilar, recenter, recenterDetail, focused, simScope, setSimScope, similar, center,
     detailsReady, detailsError, loadDetails,
     detailOpen, setDetailOpen, hover, setHover, boardGroup, setBoardGroup, focusSearch,
@@ -649,22 +663,29 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
         <h1 className="sr-only">Template Taxonomy: explore design.com Instagram post templates</h1>
         <Sidebar onHome={goHome} />
         <div className="relative flex min-w-0 flex-1 flex-col">
-          <main className="relative flex-1 overflow-hidden" aria-label="Template browser">
-            <BrowseArea />
-            {focused && <FocusedView />}
-          </main>
-          {/* The board selection toolbar belongs to whichever page shows the board grid;
-              the search dock belongs to Home and Explore. */}
-          {activeBoardSelection ? (
-            <BoardSelectBar />
-          ) : page === "explore" || page === "home" ? (
-            <SearchDock inputRef={searchRef} />
-          ) : null}
+          <div className="relative flex min-h-0 flex-1 overflow-hidden">
+            <div className="relative flex min-w-0 flex-1 flex-col">
+              <main className="relative flex-1 overflow-hidden" aria-label="Template browser">
+                <BrowseArea />
+                {focused && <FocusedView />}
+              </main>
+              {/* The board selection toolbar belongs to whichever page shows the board grid;
+                  the search dock belongs to Home and Explore. Absolute in this column so they
+                  sit above the in-flow bottom nav on compact. */}
+              {activeBoardSelection ? (
+                <BoardSelectBar />
+              ) : page === "explore" || page === "home" ? (
+                <SearchDock inputRef={searchRef} />
+              ) : null}
+            </div>
+            <FilterPanel />
+            <SettingsPanel />
+            {pinnedBoardId && <BoardPanel />}
+            {moodboardPinned && page === "explore" && <MoodboardPanel />}
+            {detailTemplate && <DetailPanel template={detailTemplate} />}
+          </div>
+          <BottomNav onHome={goHome} />
         </div>
-        <FilterPanel />
-        {pinnedBoardId && <BoardPanel />}
-        {moodboardPinned && page === "explore" && <MoodboardPanel />}
-        {detailTemplate && <DetailPanel template={detailTemplate} />}
       </div>
       <ImageDropOverlay />
       <OfflineBanner />

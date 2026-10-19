@@ -2,34 +2,22 @@
 import {
   BookmarkIcon,
   CompassIcon,
-  RotateCcwIcon,
+  HomeIcon,
   SettingsIcon,
   SparklesIcon,
 } from "lucide-react";
 import { LogoMark } from "./logo";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  GRID_DEFAULTS,
-  GRID_LIMITS,
-  resetGridSettings,
-  setGridSettings,
-  useGridSettings,
-  type GridSettings,
-} from "./use-grid-settings";
 import { cn } from "@/lib/utils";
 import { useExplorer } from "./context";
 import { getMoodboardStore } from "@/lib/moodboards";
 import { useBoards } from "./use-boards";
+import { BOTTOM_NAV_HEIGHT_PX } from "./header";
 
 function Brand({ onHome }: { onHome: () => void }) {
   const { page } = useExplorer();
@@ -46,24 +34,22 @@ function Brand({ onHome }: { onHome: () => void }) {
   );
 }
 
-function RailButton({
+function NavButton({
   id,
   icon: Icon,
   label,
   active,
-  disabled,
   badge,
   onClick,
-  children,
+  tooltipSide = "right",
 }: {
   id?: string;
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   active?: boolean;
-  disabled?: boolean;
   badge?: number;
   onClick?: () => void;
-  children?: React.ReactNode;
+  tooltipSide?: "right" | "top";
 }) {
   const button = (
     <button
@@ -72,15 +58,12 @@ function RailButton({
       aria-label={label}
       aria-current={active ? "page" : undefined}
       aria-pressed={active}
-      disabled={disabled}
       onClick={onClick}
       className={cn(
         "relative grid size-10 place-items-center rounded-xl transition-colors",
-        disabled
-          ? "cursor-not-allowed text-muted-foreground/40"
-          : active
-            ? "bg-foreground/[0.06] text-foreground"
-            : "text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground",
+        active
+          ? "bg-foreground/[0.06] text-foreground"
+          : "text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground",
       )}
     >
       <Icon className="size-[18px]" />
@@ -89,177 +72,156 @@ function RailButton({
           {badge > 99 ? "99+" : badge}
         </span>
       ) : null}
-      {children}
     </button>
   );
   return (
     <Tooltip>
       <TooltipTrigger render={button} />
-      <TooltipContent side="right">{label}</TooltipContent>
+      <TooltipContent side={tooltipSide}>{label}</TooltipContent>
     </Tooltip>
   );
 }
 
-function Slider({
-  label,
-  value,
-  min,
-  max,
-  suffix,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  suffix?: string;
-  onChange: (v: number) => void;
-}) {
-  return (
-    <label className="block space-y-1.5">
-      <span className="flex items-center justify-between text-xs">
-        <span className="text-muted-foreground">{label}</span>
-        <span className="font-medium tabular-nums">
-          {value}
-          {suffix}
-        </span>
-      </span>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={1}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-muted accent-foreground [&::-webkit-slider-thumb]:size-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-foreground"
-      />
-    </label>
-  );
-}
-
-function GridSettingsButton() {
-  const g = useGridSettings();
-  const patch = (p: Partial<GridSettings>) => setGridSettings(p);
-  const dirty =
-    g.columns !== GRID_DEFAULTS.columns ||
-    g.gap !== GRID_DEFAULTS.gap ||
-    g.radius !== GRID_DEFAULTS.radius;
-  return (
-    <Popover>
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <PopoverTrigger
-              aria-label="Grid settings"
-              className="grid size-10 place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-foreground/[0.06] hover:text-foreground"
-            />
-          }
-        >
-          <SettingsIcon className="size-[18px]" />
-        </TooltipTrigger>
-        <TooltipContent side="right">Grid settings</TooltipContent>
-      </Tooltip>
-      <PopoverContent side="right" align="start" className="w-64 gap-3.5 p-3.5">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-semibold">Grid</span>
-          <button
-            type="button"
-            disabled={!dirty}
-            onClick={resetGridSettings}
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-40"
-          >
-            <RotateCcwIcon className="size-3" /> Reset
-          </button>
-        </div>
-        <Slider
-          label="Columns per row"
-          value={g.columns}
-          min={GRID_LIMITS.columns.min}
-          max={GRID_LIMITS.columns.max}
-          onChange={(columns) => patch({ columns })}
-        />
-        <Slider
-          label="Spacing"
-          value={g.gap}
-          min={GRID_LIMITS.gap.min}
-          max={GRID_LIMITS.gap.max}
-          suffix="px"
-          onChange={(gap) => patch({ gap })}
-        />
-        <Slider
-          label="Corner radius"
-          value={g.radius}
-          min={GRID_LIMITS.radius.min}
-          max={GRID_LIMITS.radius.max}
-          suffix="px"
-          onChange={(radius) => patch({ radius })}
-        />
-        <div className="flex gap-1.5 pt-0.5" aria-hidden>
-          {Array.from({ length: Math.min(6, g.columns) }).map((_, i) => (
-            <span
-              key={i}
-              className="h-8 flex-1 bg-muted"
-              style={{ borderRadius: Math.max(2, g.radius / 2) }}
-            />
-          ))}
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-export function Sidebar({ onHome }: { onHome: () => void }) {
-  const { page, setPage, setView, unpinBoard } = useExplorer();
+function useNavActions(onHome: () => void) {
+  const {
+    page,
+    setPage,
+    setView,
+    unpinBoard,
+    settingsOpen,
+    setSettingsOpen,
+  } = useExplorer();
   const { boards } = useBoards();
   const savedCount = new Set(boards.flatMap((b) => b.templateIds)).size;
+
+  return {
+    page,
+    savedCount,
+    settingsOpen,
+    goHome: onHome,
+    goExplore: () => {
+      unpinBoard();
+      setView({ kind: "search" });
+      setPage("explore");
+    },
+    goBoards: () => {
+      unpinBoard();
+      setView({ kind: "search" });
+      setPage("boards");
+    },
+    goBrief: () => {
+      unpinBoard();
+      getMoodboardStore().unpin();
+      setPage("brief");
+    },
+    toggleSettings: () => setSettingsOpen(!settingsOpen),
+  };
+}
+
+/** Desktop left rail (hidden on compact). */
+export function Sidebar({ onHome }: { onHome: () => void }) {
+  const nav = useNavActions(onHome);
   return (
     <TooltipProvider delay={300}>
       <aside
         aria-label="Primary"
-        className="z-40 flex w-[60px] shrink-0 flex-col items-center gap-1.5 bg-background py-4"
+        className="z-40 flex w-[60px] shrink-0 flex-col items-center gap-1.5 bg-background py-4 max-lg:hidden"
       >
-        <Brand onHome={onHome} />
+        <Brand onHome={nav.goHome} />
         <nav className="my-auto flex flex-col items-center gap-1.5">
-          <RailButton
+          <NavButton
             id="rail-explore"
             icon={CompassIcon}
             label="Explore"
-            active={page === "explore"}
-            onClick={() => {
-              unpinBoard();
-              setView({ kind: "search" });
-              setPage("explore");
-            }}
+            active={nav.page === "explore"}
+            onClick={nav.goExplore}
           />
-          <RailButton
+          <NavButton
             id="rail-boards"
             icon={BookmarkIcon}
             label="Boards"
-            active={page === "boards"}
-            badge={savedCount}
-            // Always the index: clearing the view turns /boards/<id> into /boards.
-            onClick={() => {
-              unpinBoard();
-              setView({ kind: "search" });
-              setPage("boards");
-            }}
+            active={nav.page === "boards"}
+            badge={nav.savedCount}
+            onClick={nav.goBoards}
           />
-          <RailButton
+          <NavButton
             id="rail-brief"
             icon={SparklesIcon}
             label="Moodboard"
-            active={page === "brief"}
-            onClick={() => {
-              unpinBoard();
-              getMoodboardStore().unpin();
-              setPage("brief");
-            }}
+            active={nav.page === "brief"}
+            onClick={nav.goBrief}
           />
         </nav>
         <div className="flex flex-col items-center gap-1.5">
-          <GridSettingsButton />
+          <NavButton
+            id="rail-settings"
+            icon={SettingsIcon}
+            label="Settings"
+            active={nav.settingsOpen}
+            onClick={nav.toggleSettings}
+          />
         </div>
       </aside>
+    </TooltipProvider>
+  );
+}
+
+/** Compact bottom app-style navigation (tablet + phone). */
+export function BottomNav({ onHome }: { onHome: () => void }) {
+  const nav = useNavActions(onHome);
+  return (
+    <TooltipProvider delay={300}>
+      <nav
+        aria-label="Primary"
+        data-testid="bottom-nav"
+        className="z-40 flex w-full shrink-0 items-center justify-around border-t border-border/60 bg-background p-2 lg:hidden"
+        style={{
+          minHeight: `calc(${BOTTOM_NAV_HEIGHT_PX}px + env(safe-area-inset-bottom, 0px))`,
+          paddingBottom: "calc(0.5rem + env(safe-area-inset-bottom, 0px))",
+        }}
+      >
+        <NavButton
+          id="nav-home"
+          icon={HomeIcon}
+          label="Home"
+          active={nav.page === "home"}
+          onClick={nav.goHome}
+          tooltipSide="top"
+        />
+        <NavButton
+          id="nav-boards"
+          icon={BookmarkIcon}
+          label="Boards"
+          active={nav.page === "boards"}
+          badge={nav.savedCount}
+          onClick={nav.goBoards}
+          tooltipSide="top"
+        />
+        <NavButton
+          id="nav-explore"
+          icon={CompassIcon}
+          label="Explore"
+          active={nav.page === "explore"}
+          onClick={nav.goExplore}
+          tooltipSide="top"
+        />
+        <NavButton
+          id="nav-brief"
+          icon={SparklesIcon}
+          label="Moodboard"
+          active={nav.page === "brief"}
+          onClick={nav.goBrief}
+          tooltipSide="top"
+        />
+        <NavButton
+          id="nav-settings"
+          icon={SettingsIcon}
+          label="Settings"
+          active={nav.settingsOpen}
+          onClick={nav.toggleSettings}
+          tooltipSide="top"
+        />
+      </nav>
     </TooltipProvider>
   );
 }

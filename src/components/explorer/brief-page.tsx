@@ -608,9 +608,9 @@ export function BriefPage() {
           <div className="thin-scroll min-h-0 flex-1 overflow-y-auto">
             <MoodboardBody />
           </div>
-          <div className="pointer-events-none absolute inset-x-0 bottom-5 z-30 flex justify-center px-4 max-md:bottom-0 max-md:px-0">
+          <div className="pointer-events-none absolute inset-x-0 z-30 flex justify-center px-4 bottom-5 max-lg:bottom-3">
             <div
-              className="pointer-events-auto w-full max-w-[620px] max-md:max-w-none"
+              className="pointer-events-auto w-full max-w-[620px] max-lg:max-w-none"
               data-testid="moodboard-dock"
             >
               {form}

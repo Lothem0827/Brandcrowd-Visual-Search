@@ -12,6 +12,7 @@ import {
 } from "./filter-bar";
 import { ActiveChips } from "./chips";
 import { HEADER_CONTROL, HEADER_CONTROL_IDLE } from "./header";
+import { SidePanel } from "./side-panel";
 
 function SortControl() {
   const { sort, setSort, setShuffleSeed } = useExplorer();
@@ -171,37 +172,29 @@ function Body() {
   );
 }
 
-/** Right-hand filter panel (Style / Colour / Layout / Image / More / Sort), opened by the filter icon.
- *  Slides out from the right and pushes the layout, matching the detail panel (not a modal sheet). */
+/** Right-hand filter panel (Style / Colour / Layout / Image / More / Sort). */
 export function FilterPanel() {
   const { filterPanelOpen, setFilterPanelOpen } = useExplorer();
   return (
-    <aside
-      aria-hidden={!filterPanelOpen}
-      className={cn(
-        "relative z-20 h-full shrink-0 overflow-hidden bg-background transition-[width] duration-300 ease-out",
-        filterPanelOpen ? "visible w-[380px] max-md:w-[92vw]" : "invisible w-0",
-      )}
-      aria-label="Filters"
-      data-testid="filter-panel"
+    <SidePanel
+      open={filterPanelOpen}
+      onClose={() => setFilterPanelOpen(false)}
+      width={380}
+      label="Filters"
+      testId="filter-panel"
     >
-      <div
-        inert={!filterPanelOpen}
-        className="flex h-full w-[380px] max-md:w-[92vw] flex-col border-l border-border/60"
-      >
-        <div className="flex shrink-0 items-center justify-between px-4 py-2.5">
-          <div className="text-xl font-semibold">Filters</div>
-          <button
-            type="button"
-            aria-label="Collapse filters"
-            onClick={() => setFilterPanelOpen(false)}
-            className={cn(HEADER_CONTROL, HEADER_CONTROL_IDLE)}
-          >
-            <PanelRightCloseIcon className="size-4" />
-          </button>
-        </div>
-        {filterPanelOpen && <Body />}
+      <div className="flex shrink-0 items-center justify-between px-4 py-2.5">
+        <div className="text-xl font-semibold">Filters</div>
+        <button
+          type="button"
+          aria-label="Collapse filters"
+          onClick={() => setFilterPanelOpen(false)}
+          className={cn(HEADER_CONTROL, HEADER_CONTROL_IDLE)}
+        >
+          <PanelRightCloseIcon className="size-4" />
+        </button>
       </div>
-    </aside>
+      {filterPanelOpen && <Body />}
+    </SidePanel>
   );
 }

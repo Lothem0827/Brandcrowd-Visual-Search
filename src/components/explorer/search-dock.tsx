@@ -27,6 +27,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useExplorer } from "./context";
 import { ColorSearchButton } from "./color-search";
+import { DOCK_ABOVE_NAV } from "./header";
 
 /**
  * Typing only updates the suggestion dropdown. The designs (and the URL, chips and AI call)
@@ -310,16 +311,14 @@ export function SearchDock({
     <div
       className={cn(
         // No panel compensation here: the dock lives inside the browse column, which the
-        // detail/filter panels already shrink, so the pill centers itself.
-        "pointer-events-none absolute inset-x-0 bottom-5 z-30 flex justify-center px-4",
-        "max-md:bottom-0 max-md:px-0",
+        // detail/filter panels already shrink, so the pill centers itself. On compact it
+        // sits at the bottom of that column, above the in-flow bottom nav.
+        "pointer-events-none absolute inset-x-0 z-30 flex justify-center px-4",
+        DOCK_ABOVE_NAV,
       )}
     >
       <div
-        className={cn(
-          "pointer-events-auto w-full max-w-[620px]",
-          "max-md:max-w-none max-md:rounded-b-none",
-        )}
+        className="pointer-events-auto w-full max-w-[620px] max-lg:max-w-none"
         data-testid="search-dock"
         role="search"
         aria-label="Search templates"

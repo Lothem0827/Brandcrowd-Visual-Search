@@ -1,9 +1,18 @@
 "use client";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import { BookmarkCheckIcon, BookmarkIcon, InfoIcon } from "lucide-react";
 import { SAVED_BOARD_ID } from "@/lib/boards";
 import { rankByOverall } from "@/lib/similarity";
+import type { Template } from "@/lib/schema";
 import { cn } from "@/lib/utils";
+import { useIsCompact } from "@/lib/use-media-query";
 import { BackButton } from "./back-button";
 import { useExplorer } from "./context";
 import { GridView } from "./grid-view";
@@ -14,7 +23,8 @@ import { SaveButton } from "./save-button";
 import { ThumbImage } from "./thumb-image";
 import { useBoards, useLastUsedBoardId } from "./use-boards";
 import { useMoodboardPinned } from "./use-moodboards";
-import { useGridSettings } from "./use-grid-settings";
+import { useEffectiveGridSettings } from "./use-grid-settings";
+import { DRAG_THRESHOLD } from "./use-drag-scroll";
 
 /** Compact quick-save overlay on the focused image (same look as grid thumbnails). */
 function FocusedTileSave({ templateId }: { templateId: string }) {
@@ -48,6 +58,9 @@ function FocusedTileSave({ templateId }: { templateId: string }) {
 
 /** How many related designs to keep in the flat, windowed list below the image. */
 const RELATED_LIMIT = 600;
+/** Cap the phone swipe sequence so left/right stays snappy. */
+const SWIPE_LIMIT = 40;
+const SWIPE_COMMIT_PX = 64;
 
 /**
  * Focused lightbox (grid click, `?design=<id>&view=focus`): a large image with a thumbnail-style
@@ -69,9 +82,10 @@ export function FocusedView() {
     page,
     pinnedBoardId,
   } = useExplorer();
+  const isCompact = useIsCompact();
   const moodboardPinned = useMoodboardPinned();
   const canDrag = !!pinnedBoardId || (moodboardPinned && page === "explore");
-  const { radius } = useGridSettings();
+  const { radius } = useEffectiveGridSettings();
   // Callback ref (state, not a ref object): the related grid needs the element to window
   // against, and a plain ref would still be empty when the grid's layout effect runs.
   const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
@@ -87,11 +101,121 @@ export function FocusedView() {
       .map((r) => r.template);
   }, [focused, base]);
 
+  /** Stable swipe sequence; rebuilt when opening focus or picking from the related grid. */
+  const swipeRef = useRef<{ items: Template[]; index: number } | null>(null);
+  const rebuildSwipe = useRef(false);
+  const [dragX, setDragX] = useState(0);
+  const [swiping, setSwiping] = useState(false);
+  const gestureRef = useRef<{
+    id: number;
+    x: number;
+    y: number;
+    axis: "none" | "h" | "v";
+  } | null>(null);
+
+  // Keep swipe index in sync, or rebuild when the focused id isn't in the sequence.
+  useEffect(() => {
+    if (!focused) {
+      swipeRef.current = null;
+      return;
+    }
+    const cur = swipeRef.current;
+    if (!rebuildSwipe.current && cur) {
+      const idx = cur.items.findIndex((t) => t.templateId === focused.templateId);
+      if (idx >= 0) {
+        cur.index = idx;
+        return;
+      }
+    }
+    rebuildSwipe.current = false;
+    const rest = related
+      .filter((t) => t.templateId !== focused.templateId)
+      .slice(0, SWIPE_LIMIT - 1);
+    swipeRef.current = { items: [focused, ...rest], index: 0 };
+  }, [focused, related]);
+
   const focusedId = focused?.templateId;
   // Re-centring from a related tile swaps the large image in place: bring it back into view.
   useEffect(() => {
     if (focusedId) scrollEl?.scrollTo({ top: 0 });
   }, [focusedId, scrollEl]);
+
+  const goSwipe = useCallback(
+    (delta: number) => {
+      const cur = swipeRef.current;
+      if (!cur) return;
+      const next = cur.index + delta;
+      if (next < 0 || next >= cur.items.length) return;
+      cur.index = next;
+      recenter(cur.items[next].templateId);
+    },
+    [recenter],
+  );
+
+  const onPickRelated = useCallback(
+    (id: string) => {
+      rebuildSwipe.current = true;
+      recenter(id);
+    },
+    [recenter],
+  );
+
+  const onHeroPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (!isCompact || e.button !== 0) return;
+    gestureRef.current = {
+      id: e.pointerId,
+      x: e.clientX,
+      y: e.clientY,
+      axis: "none",
+    };
+    setDragX(0);
+  };
+
+  const onHeroPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const g = gestureRef.current;
+    if (!g || g.id !== e.pointerId) return;
+    const dx = e.clientX - g.x;
+    const dy = e.clientY - g.y;
+    if (g.axis === "none") {
+      if (Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
+      g.axis = Math.abs(dx) > Math.abs(dy) ? "h" : "v";
+      if (g.axis === "h") {
+        try {
+          e.currentTarget.setPointerCapture(e.pointerId);
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+    if (g.axis !== "h") return;
+    e.preventDefault();
+    setSwiping(true);
+    const cur = swipeRef.current;
+    let next = dx;
+    // Light rubber-band at ends.
+    if (cur) {
+      if ((cur.index <= 0 && dx > 0) || (cur.index >= cur.items.length - 1 && dx < 0)) {
+        next = dx * 0.35;
+      }
+    }
+    setDragX(next);
+  };
+
+  const endHeroGesture = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const g = gestureRef.current;
+    if (!g || g.id !== e.pointerId) return;
+    const dx = e.clientX - g.x;
+    if (g.axis === "h") {
+      if (dx <= -SWIPE_COMMIT_PX) goSwipe(1);
+      else if (dx >= SWIPE_COMMIT_PX) goSwipe(-1);
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      }
+    }
+    gestureRef.current = null;
+    setSwiping(false);
+    setDragX(0);
+  };
 
   if (!focused) return null;
 
@@ -99,6 +223,7 @@ export function FocusedView() {
     const origin =
       view.kind === "focused" ? view.origin : { kind: "search" as const };
     setDetailOpen(false);
+    swipeRef.current = null;
     if (origin.kind === "board")
       setView({ kind: "board", boardId: origin.boardId });
     else setView({ kind: "search" });
@@ -161,14 +286,29 @@ export function FocusedView() {
               height) is the binding constraint. Radius lives here, which also clips the
               skeleton to the same corners. */}
           <div
-            draggable={canDrag}
+            draggable={canDrag && !isCompact}
             onDragStart={(event) => writeTemplateDrag(event.dataTransfer, focused.templateId)}
-            title={canDrag ? "Drag onto the board or moodboard" : undefined}
+            title={
+              isCompact
+                ? "Swipe left or right for related designs"
+                : canDrag
+                  ? "Drag onto the board or moodboard"
+                  : undefined
+            }
+            onPointerDown={onHeroPointerDown}
+            onPointerMove={onHeroPointerMove}
+            onPointerUp={endHeroGesture}
+            onPointerCancel={endHeroGesture}
             className={cn(
               "group relative aspect-square w-[min(100cqw,100cqh)] overflow-hidden",
-              canDrag && "cursor-grab active:cursor-grabbing",
+              canDrag && !isCompact && "cursor-grab active:cursor-grabbing",
+              isCompact && "touch-pan-y",
             )}
-            style={{ borderRadius: radius }}
+            style={{
+              borderRadius: radius,
+              transform: dragX ? `translate3d(${dragX}px, 0, 0)` : undefined,
+              transition: swiping ? undefined : "transform 180ms ease-out",
+            }}
           >
             <ThumbImage
               key={focused.templateId}
@@ -178,12 +318,12 @@ export function FocusedView() {
               retryButton
               className="size-full object-contain"
             />
-            <FocusedTileSave templateId={focused.templateId} />
+            {!isCompact && <FocusedTileSave templateId={focused.templateId} />}
           </div>
         </div>
       </div>
 
-      <GridView items={related} onPick={recenter} scrollContainer={scrollEl} />
+      <GridView items={related} onPick={onPickRelated} scrollContainer={scrollEl} />
     </div>
   );
 }

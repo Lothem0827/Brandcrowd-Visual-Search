@@ -7,6 +7,7 @@ import type { Template } from "@/lib/schema";
 import { cn } from "@/lib/utils";
 import { BoardCover } from "./board-cover";
 import { useExplorer } from "./context";
+import { DOCK_ABOVE_NAV } from "./header";
 import { useBoards } from "./use-boards";
 
 /**
@@ -58,15 +59,15 @@ export function BoardSelectBar() {
   return (
     <div
       className={cn(
-        "pointer-events-none absolute inset-x-0 bottom-5 z-30 flex justify-center px-4",
-        "max-md:bottom-0 max-md:px-0",
+        "pointer-events-none absolute inset-x-0 z-30 flex justify-center px-4",
+        DOCK_ABOVE_NAV,
       )}
     >
       <div
         data-testid="board-select-bar"
         className={cn(
           "pointer-events-auto flex h-13 max-w-[min(100%,860px)] items-center gap-1.5 rounded-full bg-panel/95 pr-2 pl-4 backdrop-blur",
-          "max-md:w-full max-md:max-w-none max-md:rounded-b-none max-md:overflow-x-auto",
+          "max-lg:w-full max-lg:max-w-none max-lg:overflow-x-auto",
         )}
       >
         <span className="shrink-0 text-sm font-semibold whitespace-nowrap tabular-nums">

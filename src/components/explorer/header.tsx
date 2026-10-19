@@ -34,3 +34,15 @@ export const HEADER_SEGMENT_ITEM =
 
 /** Page/board titles in a header, kept to one size so headers read as a set. */
 export const HEADER_TITLE = "min-w-0 truncate text-[20px] font-semibold";
+
+/** Compact bottom nav bar height (icons + p-2; safe-area is added separately). */
+export const BOTTOM_NAV_HEIGHT_PX = 64;
+
+/**
+ * Absolute bottom docks (search / board-select / moodboard). On compact the bottom nav is
+ * in document flow below the content column; keep a gap above the nav and equal side insets.
+ */
+export const DOCK_ABOVE_NAV = "bottom-5 max-lg:bottom-3";
+
+/** Scroll padding so grids clear the absolute search dock (nav is in-flow on compact). */
+export const SCROLL_PAD_DOCK = "pb-28";

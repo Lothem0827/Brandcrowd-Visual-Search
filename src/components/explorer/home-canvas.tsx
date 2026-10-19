@@ -19,10 +19,13 @@ import { rng } from "@/lib/color";
 import { cn } from "@/lib/utils";
 import { useExplorer } from "./context";
 import { useBoards, useLastUsedBoardId } from "./use-boards";
-import { useGridSettings } from "./use-grid-settings";
+import { useEffectiveGridSettings } from "./use-grid-settings";
 import { ThumbImage } from "./thumb-image";
 import { DRAG_THRESHOLD } from "./use-drag-scroll";
 import { Button } from "@/components/ui/button";
+
+const MIN_SCALE = 0.5;
+const MAX_SCALE = 2.5;
 
 /** Related industries sit next to each other; the map wraps in both directions. */
 const INDUSTRY_MAP: string[][] = [
@@ -108,7 +111,7 @@ function TileSave({ templateId, className }: { templateId: string; className?: s
         if (nowSaved) pinBoard(active.id);
       }}
       className={cn(
-        "grid size-7 place-items-center rounded-full bg-background/90 text-foreground backdrop-blur-sm transition-opacity",
+        "grid size-7 place-items-center rounded-full bg-background/90 text-foreground backdrop-blur-sm transition-opacity max-lg:hidden",
         "opacity-0 hover:bg-background focus-visible:opacity-100 group-hover:opacity-100",
         saved && "opacity-100 text-[#E5484D]",
         className,
@@ -207,16 +210,25 @@ export function HomeCanvas() {
     setFilters,
     setDetailOpen,
   } = useExplorer();
-  const { columns, gap, radius } = useGridSettings();
+  const { columns, gap, radius } = useEffectiveGridSettings();
   const rootRef = useRef<HTMLDivElement>(null);
   const layerRef = useRef<HTMLDivElement>(null);
   const offsetRef = useRef({ x: 0, y: 0 });
+  /** Canvas zoom; CSS `translate * scale` with origin 0,0 → screen = scale * world - offset. */
+  const scaleRef = useRef(1);
   const velRef = useRef({ x: 0, y: 0 });
   const rafRef = useRef(0);
   const inertiaRef = useRef(0);
   const pannedRef = useRef(false);
   /** Once the user pans while a pivot is open, stop auto-recentering on resize (e.g. details panel). */
   const userPannedPivotRef = useRef(false);
+  const pointersRef = useRef(new Map<number, { x: number; y: number }>());
+  const pinchRef = useRef<{
+    startDist: number;
+    startScale: number;
+    midX: number;
+    midY: number;
+  } | null>(null);
   const dragRef = useRef<{
     active: boolean;
     id: number;
@@ -301,7 +313,8 @@ export function HomeCanvas() {
     const el = layerRef.current;
     if (!el) return;
     const { x, y } = offsetRef.current;
-    el.style.transform = `translate3d(${-x}px, ${-y}px, 0)`;
+    const s = scaleRef.current;
+    el.style.transform = `translate3d(${-x}px, ${-y}px, 0) scale(${s})`;
   }, []);
 
   const updateRange = useCallback(() => {
@@ -309,10 +322,12 @@ export function HomeCanvas() {
     const { tile, step, gap: g } = layoutRef.current;
     if (w <= 0 || h <= 0 || step <= 0) return;
     const { x, y } = offsetRef.current;
-    const c0 = Math.floor((x - g) / step) - OVERSCAN;
-    const r0 = Math.floor((y - g) / step) - OVERSCAN;
-    const c1 = Math.ceil((x + w - g) / step) + OVERSCAN;
-    const r1 = Math.ceil((y + h - g) / step) + OVERSCAN;
+    const s = scaleRef.current;
+    // Visible world extent: screen = s * world - offset  ⇒  world = (screen + offset) / s
+    const c0 = Math.floor((x / s - g) / step) - OVERSCAN;
+    const r0 = Math.floor((y / s - g) / step) - OVERSCAN;
+    const c1 = Math.ceil(((x + w) / s - g) / step) + OVERSCAN;
+    const r1 = Math.ceil(((y + h) / s - g) / step) + OVERSCAN;
     setRange((prev) =>
       prev.c0 === c0 && prev.c1 === c1 && prev.r0 === r0 && prev.r1 === r1 ? prev : { c0, c1, r0, r1 },
     );
@@ -328,6 +343,29 @@ export function HomeCanvas() {
     });
   }, [applyTransform, updateRange]);
 
+  /** Zoom so the world point under (clientX, clientY) stays fixed. */
+  const zoomTo = useCallback(
+    (clientX: number, clientY: number, nextScale: number) => {
+      const root = rootRef.current;
+      if (!root) return;
+      const s0 = scaleRef.current;
+      const s1 = Math.min(MAX_SCALE, Math.max(MIN_SCALE, nextScale));
+      if (s1 === s0) return;
+      const rect = root.getBoundingClientRect();
+      const sx = clientX - rect.left;
+      const sy = clientY - rect.top;
+      const { x, y } = offsetRef.current;
+      // world = (screen + offset) / s
+      const wx = (sx + x) / s0;
+      const wy = (sy + y) / s0;
+      offsetRef.current = { x: s1 * wx - sx, y: s1 * wy - sy };
+      scaleRef.current = s1;
+      if (pivotCellRef.current) userPannedPivotRef.current = true;
+      schedulePaint();
+    },
+    [schedulePaint],
+  );
+
   // Measure viewport + recompute tile size; keep the world cell under the center anchored.
   // With an open pivot the user hasn't moved, snap that cell to center so opening/closing the
   // details panel (which resizes the canvas and retile) doesn't drift the large image.
@@ -339,27 +377,33 @@ export function HomeCanvas() {
       const h = el.clientHeight;
       if (w <= 0 || h <= 0) return;
       const prev = layoutRef.current;
-      const tile = Math.max(40, (w - gap * (columns + 1)) / columns);
+      const cols = columns;
+      const tile = Math.max(40, (w - gap * (cols + 1)) / cols);
       const step = tile + gap;
+      const s = scaleRef.current;
       setSize((prevSize) => {
         if (prevSize.w > 0) {
           const sizeChanged = prevSize.w !== w || prevSize.h !== h;
           const stepChanged = prev.step !== step || prev.gap !== gap;
           const pivot = pivotCellRef.current;
           if (pivot && !userPannedPivotRef.current && (sizeChanged || stepChanged)) {
+            const cx = pivot.c * step + gap + tile / 2;
+            const cy = pivot.r * step + gap + tile / 2;
             offsetRef.current = {
-              x: pivot.c * step + gap + tile / 2 - w / 2,
-              y: pivot.r * step + gap + tile / 2 - h / 2,
+              x: s * cx - w / 2,
+              y: s * cy - h / 2,
             };
             applyTransform();
           } else if (stepChanged) {
-            const cx = offsetRef.current.x + prevSize.w / 2;
-            const cy = offsetRef.current.y + prevSize.h / 2;
-            const anchorC = (cx - prev.gap) / prev.step;
-            const anchorR = (cy - prev.gap) / prev.step;
+            const worldCx = (offsetRef.current.x + prevSize.w / 2) / s;
+            const worldCy = (offsetRef.current.y + prevSize.h / 2) / s;
+            const anchorC = (worldCx - prev.gap) / prev.step;
+            const anchorR = (worldCy - prev.gap) / prev.step;
+            const newWx = anchorC * step + gap;
+            const newWy = anchorR * step + gap;
             offsetRef.current = {
-              x: anchorC * step + gap - w / 2,
-              y: anchorR * step + gap - h / 2,
+              x: s * newWx - w / 2,
+              y: s * newWy - h / 2,
             };
             applyTransform();
           }
@@ -474,11 +518,12 @@ export function HomeCanvas() {
     async (c: number, r: number) => {
       const { w, h } = size;
       const { tile, step, gap: g } = layoutRef.current;
+      const s = scaleRef.current;
       // Pan so cell (c, r) sits at the viewport center (pivot grows around that point).
-      const cellX = c * step + g;
-      const cellY = r * step + g;
-      const targetX = cellX + tile / 2 - w / 2;
-      const targetY = cellY + tile / 2 - h / 2;
+      const cellX = c * step + g + tile / 2;
+      const cellY = r * step + g + tile / 2;
+      const targetX = s * cellX - w / 2;
+      const targetY = s * cellY - h / 2;
       await animatePanTo(targetX, targetY);
     },
     [animatePanTo, size],
@@ -492,9 +537,10 @@ export function HomeCanvas() {
         // Place an unknown pivot under the current viewport center.
         const { x, y } = offsetRef.current;
         const { w, h } = size;
+        const s = scaleRef.current;
         cell = {
-          c: Math.round((x + w / 2 - g) / step),
-          r: Math.round((y + h / 2 - g) / step),
+          c: Math.round(((x + w / 2) / s - g) / step),
+          r: Math.round(((y + h / 2) / s - g) / step),
         };
       }
       pivotCellRef.current = cell;
@@ -555,9 +601,10 @@ export function HomeCanvas() {
     const { x, y } = offsetRef.current;
     const { w, h } = size;
     if (w <= 0) return;
+    const s = scaleRef.current;
     const cell = {
-      c: Math.round((x + w / 2 - g) / step),
-      r: Math.round((y + h / 2 - g) / step),
+      c: Math.round(((x + w / 2) / s - g) / step),
+      r: Math.round(((y + h / 2) / s - g) / step),
     };
     pivotCellRef.current = cell;
     setPivotCell(cell);
@@ -594,14 +641,20 @@ export function HomeCanvas() {
     (e: WheelEvent) => {
       e.preventDefault();
       stopInertia();
+      dismissHint();
+      // Pinch-on-trackpad / ctrl+wheel → zoom; otherwise pan.
+      if (e.ctrlKey || e.metaKey) {
+        const factor = Math.exp(-e.deltaY * 0.01);
+        zoomTo(e.clientX, e.clientY, scaleRef.current * factor);
+        return;
+      }
       // Trackpads send both axes; Shift+wheel maps vertical to horizontal for mouse wheels.
       const scale = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? size.h : 1;
       const dx = -(e.shiftKey ? e.deltaY : e.deltaX) * scale;
       const dy = -(e.shiftKey ? 0 : e.deltaY) * scale;
       panBy(dx, dy);
-      dismissHint();
     },
-    [dismissHint, panBy, size.h, stopInertia],
+    [dismissHint, panBy, size.h, stopInertia, zoomTo],
   );
 
   useEffect(() => {
@@ -614,6 +667,23 @@ export function HomeCanvas() {
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (e.button !== 0 && e.pointerType === "mouse") return;
     stopInertia();
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointersRef.current.size === 2) {
+      dragRef.current = null;
+      setDragging(false);
+      const pts = [...pointersRef.current.values()];
+      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      pinchRef.current = {
+        startDist: Math.max(1, dist),
+        startScale: scaleRef.current,
+        midX: (pts[0].x + pts[1].x) / 2,
+        midY: (pts[0].y + pts[1].y) / 2,
+      };
+      pannedRef.current = true;
+      dismissHint();
+      return;
+    }
+    if (pinchRef.current) return;
     pannedRef.current = false;
     dragRef.current = {
       active: true,
@@ -630,6 +700,28 @@ export function HomeCanvas() {
   };
 
   const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (pointersRef.current.has(e.pointerId)) {
+      pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    }
+    const pinch = pinchRef.current;
+    if (pinch && pointersRef.current.size >= 2) {
+      const pts = [...pointersRef.current.values()];
+      const dist = Math.max(1, Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y));
+      const midX = (pts[0].x + pts[1].x) / 2;
+      const midY = (pts[0].y + pts[1].y) / 2;
+      // Pan by midpoint drift first, then zoom about the new midpoint.
+      const dmx = midX - pinch.midX;
+      const dmy = midY - pinch.midY;
+      if (dmx || dmy) {
+        offsetRef.current.x -= dmx;
+        offsetRef.current.y -= dmy;
+        schedulePaint();
+      }
+      pinch.midX = midX;
+      pinch.midY = midY;
+      zoomTo(midX, midY, pinch.startScale * (dist / pinch.startDist));
+      return;
+    }
     const d = dragRef.current;
     if (!d?.active || d.id !== e.pointerId) return;
     const dx = e.clientX - d.x;
@@ -660,6 +752,30 @@ export function HomeCanvas() {
   };
 
   const endDrag = (e: ReactPointerEvent<HTMLDivElement>) => {
+    pointersRef.current.delete(e.pointerId);
+    if (pinchRef.current) {
+      if (pointersRef.current.size < 2) {
+        pinchRef.current = null;
+        // Resume single-finger drag from remaining pointer if any.
+        if (pointersRef.current.size === 1) {
+          const [id, pt] = [...pointersRef.current.entries()][0];
+          dragRef.current = {
+            active: true,
+            id,
+            x: pt.x,
+            y: pt.y,
+            ox: offsetRef.current.x,
+            oy: offsetRef.current.y,
+            lastX: pt.x,
+            lastY: pt.y,
+            lastT: performance.now(),
+          };
+          velRef.current = { x: 0, y: 0 };
+        }
+      }
+      setDragging(false);
+      return;
+    }
     const d = dragRef.current;
     if (!d || d.id !== e.pointerId) return;
     dragRef.current = null;
@@ -687,10 +803,11 @@ export function HomeCanvas() {
         void enterPivot(id);
         return;
       }
+      const s = scaleRef.current;
       const rect = el.getBoundingClientRect();
       const layerRect = layer.getBoundingClientRect();
-      const localX = rect.left - layerRect.left;
-      const localY = rect.top - layerRect.top;
+      const localX = (rect.left - layerRect.left) / s;
+      const localY = (rect.top - layerRect.top) / s;
       const c = Math.round((localX - g) / step);
       const r = Math.round((localY - g) / step);
       if (homePivotId === id) {
@@ -763,7 +880,8 @@ export function HomeCanvas() {
     left: 0,
     top: 0,
     willChange: "transform",
-    transform: `translate3d(${-offsetRef.current.x}px, ${-offsetRef.current.y}px, 0)`,
+    transformOrigin: "0 0",
+    transform: `translate3d(${-offsetRef.current.x}px, ${-offsetRef.current.y}px, 0) scale(${scaleRef.current})`,
   };
 
   return (

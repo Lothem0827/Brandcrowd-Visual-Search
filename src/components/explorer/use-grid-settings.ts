@@ -1,5 +1,21 @@
 "use client";
 import { useSyncExternalStore } from "react";
+import { useIsMobile, useIsTablet, useIsWide, useIsXl } from "@/lib/use-media-query";
+
+/** Phone layout forces this many columns (desktop prefs stay in localStorage). */
+export const MOBILE_GRID_COLUMNS = 2;
+/** Tablet layout forces this many columns (desktop prefs stay in localStorage). */
+export const TABLET_GRID_COLUMNS = 4;
+/** Phone caps for spacing / corner radius (desktop prefs stay in localStorage). */
+export const MOBILE_GRID_GAP_MAX = 16;
+export const MOBILE_GRID_RADIUS_MAX = 16;
+/** Tablet caps for spacing / corner radius. */
+export const TABLET_GRID_GAP_MAX = 20;
+export const TABLET_GRID_RADIUS_MAX = 20;
+/** Desktop column max by viewport: 1024–1279 → 8, 1280–1535 → 10, ≥1536 → 12. */
+export const DESKTOP_COLUMNS_MAX_NARROW = 8;
+export const DESKTOP_COLUMNS_MAX_WIDE = 10;
+export const DESKTOP_COLUMNS_MAX_XL = 12;
 
 /**
  * Grid appearance preferences (columns per row, spacing, corner radius). Device-level,
@@ -80,4 +96,46 @@ export function resetGridSettings() {
 
 export function useGridSettings(): GridSettings {
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+}
+
+/** Desktop max columns for the current viewport width band. */
+export function desktopColumnsMax(isWide: boolean, isXl: boolean): number {
+  if (isXl) return DESKTOP_COLUMNS_MAX_XL;
+  if (isWide) return DESKTOP_COLUMNS_MAX_WIDE;
+  return DESKTOP_COLUMNS_MAX_NARROW;
+}
+
+/** Viewport-based desktop column max (for settings slider + effective cap). */
+export function useDesktopColumnsMax(): number {
+  return desktopColumnsMax(useIsWide(), useIsXl());
+}
+
+/**
+ * Stored prefs with device caps applied (does not rewrite localStorage).
+ * Phone: 2 cols, gap/radius ≤16. Tablet: 4 cols, gap/radius ≤20.
+ * Desktop: columns capped by viewport (8 / 10 / 12).
+ */
+export function useEffectiveGridSettings(): GridSettings {
+  const g = useGridSettings();
+  const isMobile = useIsMobile();
+  const isTablet = useIsTablet();
+  const columnsMax = useDesktopColumnsMax();
+  if (isMobile) {
+    return {
+      columns: MOBILE_GRID_COLUMNS,
+      gap: Math.min(g.gap, MOBILE_GRID_GAP_MAX),
+      radius: Math.min(g.radius, MOBILE_GRID_RADIUS_MAX),
+    };
+  }
+  if (isTablet) {
+    return {
+      columns: TABLET_GRID_COLUMNS,
+      gap: Math.min(g.gap, TABLET_GRID_GAP_MAX),
+      radius: Math.min(g.radius, TABLET_GRID_RADIUS_MAX),
+    };
+  }
+  return {
+    ...g,
+    columns: Math.min(g.columns, columnsMax),
+  };
 }

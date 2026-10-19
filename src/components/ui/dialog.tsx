@@ -31,7 +31,7 @@ function DialogOverlay({
     <DialogPrimitive.Backdrop
       data-slot="dialog-overlay"
       className={cn(
-        "fixed inset-0 isolate z-50 bg-black/10 duration-100 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
+        "fixed inset-0 isolate z-[100] bg-black/10 duration-100 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
         className
       )}
       {...props}
@@ -53,7 +53,12 @@ function DialogContent({
       <DialogPrimitive.Popup
         data-slot="dialog-content"
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-sm text-popover-foreground duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          // Base
+          "fixed z-[100] grid w-full gap-4 bg-popover p-4 text-sm text-popover-foreground outline-none data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
+          // Compact (tablet + phone): bottom sheet
+          "inset-x-0 bottom-0 max-h-[min(92dvh,40rem)] overflow-y-auto rounded-t-2xl pb-[max(1rem,env(safe-area-inset-bottom,0px))] duration-200 max-lg:data-open:slide-in-from-bottom-8 max-lg:data-closed:slide-out-to-bottom-8",
+          // Desktop: centered modal
+          "lg:inset-auto lg:top-1/2 lg:left-1/2 lg:max-h-none lg:max-w-sm lg:-translate-x-1/2 lg:-translate-y-1/2 lg:overflow-visible lg:rounded-xl lg:pb-4 lg:duration-100 lg:data-open:zoom-in-95 lg:data-closed:zoom-out-95",
           className
         )}
         {...props}
@@ -102,7 +107,7 @@ function DialogFooter({
     <div
       data-slot="dialog-footer"
       className={cn(
-        "-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl bg-muted/50 p-4 sm:flex-row sm:justify-end",
+        "-mx-4 -mb-4 flex flex-col-reverse gap-2 bg-muted/50 p-4 sm:flex-row sm:justify-end max-lg:-mb-[max(1rem,env(safe-area-inset-bottom,0px))] max-lg:rounded-b-none max-lg:pb-[max(1rem,env(safe-area-inset-bottom,0px))] lg:rounded-b-xl",
         className
       )}
       {...props}

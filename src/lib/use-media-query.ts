@@ -13,8 +13,18 @@ export function useMediaQuery(query: string): boolean {
   );
 }
 
-/** Phone layout (bottom-sheet dock, full-screen details, readable tree zoom). */
+/** Phone layout (≤767px). */
 export const MOBILE_QUERY = "(max-width: 767px)";
+/** Tablet only (768–1023px). */
+export const TABLET_QUERY = "(min-width: 768px) and (max-width: 1023px)";
+/** Tablet + phone: bottom nav, search above nav, settings slide-in. */
+export const COMPACT_QUERY = "(max-width: 1023px)";
 /** Wide enough for the minimap and zoom controls beside the 800px search dock. */
 export const WIDE_QUERY = "(min-width: 1280px)";
+/** Extra-wide desktop (≥1536px). */
+export const XL_QUERY = "(min-width: 1536px)";
 export const useIsMobile = () => useMediaQuery(MOBILE_QUERY);
+export const useIsTablet = () => useMediaQuery(TABLET_QUERY);
+export const useIsCompact = () => useMediaQuery(COMPACT_QUERY);
+export const useIsWide = () => useMediaQuery(WIDE_QUERY);
+export const useIsXl = () => useMediaQuery(XL_QUERY);

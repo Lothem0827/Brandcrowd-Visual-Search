@@ -23,8 +23,9 @@ import { HEADER_CONTROL, HEADER_CONTROL_IDLE } from "./header";
 import { SaveButton } from "./save-button";
 import { ImageIcon, LayoutIcon } from "./icons";
 import { templateImageUrl } from "@/lib/images";
+import { SidePanel } from "./side-panel";
 import { ThumbImage } from "./thumb-image";
-import { useGridSettings } from "./use-grid-settings";
+import { useEffectiveGridSettings } from "./use-grid-settings";
 
 /** Order the similar groups in: overall match first, then the three specific facets. */
 const SIMILAR_ORDER: SimilarKind[] = ["overall", "colors", "layout", "style"];
@@ -83,7 +84,7 @@ function SimilarGroup({
   hits: SimilarHit[];
 }) {
   const { recenterDetail } = useExplorer();
-  const { gap, radius } = useGridSettings();
+  const { gap, radius } = useEffectiveGridSettings();
   const meta = SIMILAR_META[kind];
 
   return (
@@ -396,81 +397,74 @@ export function DetailPanel({ template: t }: { template: Template }) {
   }, [loadDetails]);
 
   return (
-    <aside
-      aria-hidden={!detailOpen}
-      className={cn(
-        "relative z-20 h-full shrink-0 overflow-hidden bg-background transition-[width] duration-300 ease-out",
-        detailOpen ? "visible w-[400px] max-md:w-[92vw]" : "invisible w-0",
-      )}
-      aria-label="Design details"
-      data-testid="detail-panel"
+    <SidePanel
+      open={detailOpen}
+      onClose={() => setDetailOpen(false)}
+      width={400}
+      label="Design details"
+      testId="detail-panel"
     >
-      <div
-        inert={!detailOpen}
-        className="flex h-full w-[400px] max-md:w-[92vw] flex-col border-l border-border/60"
-      >
-        <div className="flex shrink-0 items-center justify-between px-4 py-2.5">
-          <div className="text-xl font-semibold">Design details</div>
-          <button
-            type="button"
-            aria-label="Collapse details (Esc)"
-            onClick={() => setDetailOpen(false)}
-            className={cn(HEADER_CONTROL, HEADER_CONTROL_IDLE)}
-          >
-            <PanelRightCloseIcon className="size-4" />
-          </button>
-        </div>
-
-        <div className="shrink-0 space-y-4 border-b border-border/60 px-4 pt-1 pb-4">
-          <div>
-            <h2 className="text-2xl leading-tight font-semibold tracking-tight">
-              {t.url ? (
-                <a
-                  href={t.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  title="Open on design.com"
-                  className="decoration-1 underline-offset-[3px] hover:underline"
-                >
-                  {t.displayTitle}
-                  <ArrowUpRightIcon className="ml-1 inline-block size-3.5 translate-y-[-1px] align-middle text-muted-foreground" />
-                </a>
-              ) : (
-                t.displayTitle
-              )}
-            </h2>
-          </div>
-          <SaveButton templateId={t.templateId} className="w-full" />
-        </div>
-
-        <div
-          className="flex shrink-0 border-b border-border/60"
-          role="tablist"
-          aria-label="Design panel tabs"
+      <div className="flex shrink-0 items-center justify-between px-4 py-2.5">
+        <div className="text-xl font-semibold">Design details</div>
+        <button
+          type="button"
+          aria-label="Collapse details (Esc)"
+          onClick={() => setDetailOpen(false)}
+          className={cn(HEADER_CONTROL, HEADER_CONTROL_IDLE)}
         >
-          {(["info", "similar"] as const).map((k) => (
-            <button
-              key={k}
-              type="button"
-              role="tab"
-              aria-selected={tab === k}
-              onClick={() => setTab(k)}
-              className={cn(
-                "-mb-px h-10 flex-1 border-b-2 text-[13px] font-medium transition-colors",
-                tab === k
-                  ? "border-foreground text-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {k === "similar" ? "Similar Designs" : "Design Information"}
-            </button>
-          ))}
-        </div>
-
-        <div className="no-scrollbar flex-1 overflow-y-auto">
-          {tab === "similar" ? <SimilarDesignsTab /> : <DesignInfoTab t={t} />}
-        </div>
+          <PanelRightCloseIcon className="size-4" />
+        </button>
       </div>
-    </aside>
+
+      <div className="shrink-0 space-y-4 border-b border-border/60 px-4 pt-1 pb-4">
+        <div>
+          <h2 className="text-2xl leading-tight font-semibold tracking-tight">
+            {t.url ? (
+              <a
+                href={t.url}
+                target="_blank"
+                rel="noreferrer"
+                title="Open on design.com"
+                className="decoration-1 underline-offset-[3px] hover:underline"
+              >
+                {t.displayTitle}
+                <ArrowUpRightIcon className="ml-1 inline-block size-3.5 translate-y-[-1px] align-middle text-muted-foreground" />
+              </a>
+            ) : (
+              t.displayTitle
+            )}
+          </h2>
+        </div>
+        <SaveButton templateId={t.templateId} className="w-full" />
+      </div>
+
+      <div
+        className="flex shrink-0 border-b border-border/60"
+        role="tablist"
+        aria-label="Design panel tabs"
+      >
+        {(["info", "similar"] as const).map((k) => (
+          <button
+            key={k}
+            type="button"
+            role="tab"
+            aria-selected={tab === k}
+            onClick={() => setTab(k)}
+            className={cn(
+              "-mb-px h-10 flex-1 border-b-2 text-[13px] font-medium transition-colors",
+              tab === k
+                ? "border-foreground text-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {k === "similar" ? "Similar Designs" : "Design Information"}
+          </button>
+        ))}
+      </div>
+
+      <div className="no-scrollbar flex-1 overflow-y-auto">
+        {tab === "similar" ? <SimilarDesignsTab /> : <DesignInfoTab t={t} />}
+      </div>
+    </SidePanel>
   );
 }

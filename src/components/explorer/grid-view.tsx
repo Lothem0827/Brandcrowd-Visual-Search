@@ -4,9 +4,11 @@ import { BookmarkCheckIcon, BookmarkIcon, CheckIcon } from "lucide-react";
 import type { Template } from "@/lib/schema";
 import { SAVED_BOARD_ID } from "@/lib/boards";
 import { cn } from "@/lib/utils";
+import { useIsCompact } from "@/lib/use-media-query";
 import { useExplorer } from "./context";
 import { useBoards, useLastUsedBoardId } from "./use-boards";
-import { useGridSettings } from "./use-grid-settings";
+import { SCROLL_PAD_DOCK } from "./header";
+import { useEffectiveGridSettings } from "./use-grid-settings";
 import { computeWindow } from "./use-windowed-grid";
 import { templateImageUrl } from "@/lib/images";
 import { writeTemplateDrag } from "@/lib/template-drag";
@@ -132,7 +134,9 @@ export const GridView = memo(function GridView({
   /** Hide the per-tile save bookmark (boards, where everything is already saved). */
   hideSave?: boolean;
 }) {
-  const { columns, gap, radius } = useGridSettings();
+  const { columns, gap, radius } = useEffectiveGridSettings();
+  const isCompact = useIsCompact();
+  const hideSaveOnCompact = hideSave || isCompact;
   const rootRef = useRef<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const frame = useRef(0);
@@ -184,7 +188,14 @@ export const GridView = memo(function GridView({
     };
   }, [external, scrollContainer]);
 
-  const grid = computeWindow({ count: items.length, columns, gap, width: box.width, height: box.height, scrollTop });
+  const grid = computeWindow({
+    count: items.length,
+    columns,
+    gap,
+    width: box.width,
+    height: box.height,
+    scrollTop,
+  });
 
   const rows = [];
   for (let r = grid.firstRow; r < grid.lastRow; r++) {
@@ -201,7 +212,14 @@ export const GridView = memo(function GridView({
         }}
       >
         {items.slice(start, start + grid.cols).map((t) => (
-          <GridTile key={t.templateId} template={t} radius={radius} eager={r < 2} onPick={onPick} hideSave={hideSave} />
+          <GridTile
+            key={t.templateId}
+            template={t}
+            radius={radius}
+            eager={r < 2}
+            onPick={onPick}
+            hideSave={hideSaveOnCompact}
+          />
         ))}
       </div>,
     );
@@ -213,7 +231,8 @@ export const GridView = memo(function GridView({
       data-testid="grid-view"
       data-count={items.length}
       className={cn(
-        "px-4 pb-28",
+        "px-4",
+        SCROLL_PAD_DOCK,
         !external && "no-scrollbar h-full overflow-y-auto overscroll-contain",
         className,
       )}

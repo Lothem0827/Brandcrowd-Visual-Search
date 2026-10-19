@@ -4,15 +4,12 @@ import {
   BookmarkIcon,
   CompassIcon,
   ListChecksIcon,
-  MoonIcon,
   PencilIcon,
   SlidersHorizontalIcon,
   SparklesIcon,
-  SunIcon,
   TagIcon,
   XIcon,
 } from "lucide-react";
-import { useTheme } from "next-themes";
 import { activeFilterCount, sentenceCase, type FacetKey } from "@/lib/facets";
 import { relatedChips } from "@/lib/query";
 import type { Template } from "@/lib/schema";
@@ -29,8 +26,6 @@ import {
   HEADER_CONTROL_ON,
   HEADER_INSET,
   HEADER_ROW,
-  HEADER_SEGMENT,
-  HEADER_SEGMENT_ITEM,
   HEADER_TITLE,
 } from "./header";
 import { GridView } from "./grid-view";
@@ -48,45 +43,6 @@ function useChipRow() {
       drag.dragging ? "cursor-grabbing" : "cursor-grab",
     ),
   };
-}
-
-function ThemeSwitch() {
-  const { resolvedTheme, setTheme } = useTheme();
-  const dark = resolvedTheme === "dark";
-  return (
-    <div className={HEADER_SEGMENT} role="group" aria-label="Color theme">
-      <button
-        type="button"
-        aria-pressed={!dark}
-        aria-label="Light mode"
-        title="Light mode"
-        onClick={() => setTheme("light")}
-        className={cn(
-          HEADER_SEGMENT_ITEM,
-          !dark
-            ? HEADER_CONTROL_ON
-            : "text-muted-foreground hover:text-foreground",
-        )}
-      >
-        <SunIcon className="size-3.5" />
-      </button>
-      <button
-        type="button"
-        aria-pressed={dark}
-        aria-label="Dark mode"
-        title="Dark mode"
-        onClick={() => setTheme("dark")}
-        className={cn(
-          HEADER_SEGMENT_ITEM,
-          dark
-            ? HEADER_CONTROL_ON
-            : "text-muted-foreground hover:text-foreground",
-        )}
-      >
-        <MoonIcon className="size-3.5" />
-      </button>
-    </div>
-  );
 }
 
 function FilterToggle() {
@@ -262,12 +218,12 @@ function EmptyState() {
   );
 }
 
-/** Result count (or "Searching…") for the header row. */
+/** Result count (or "Searching…") for the header row. Hidden on tablet + phone. */
 function ResultCount() {
   const { results, searching } = useExplorer();
   return (
     <span
-      className="shrink-0 text-xs text-muted-foreground tabular-nums"
+      className="shrink-0 text-xs text-muted-foreground tabular-nums max-lg:hidden"
       role="status"
     >
       {searching
@@ -305,7 +261,6 @@ function ExploreArea() {
               </div>
             )}
           </div>
-          <ThemeSwitch />
         </div>
         {hasSearch ? <RelatedChips /> : <PopularTags />}
       </div>
@@ -490,7 +445,6 @@ function BoardArea() {
             <ListChecksIcon className="size-4" />
           </button>
         )}
-        <ThemeSwitch />
       </div>
       <div className="relative min-h-0 flex-1">
         <GridView items={items} hideSave />

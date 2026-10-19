@@ -5,7 +5,7 @@ import type { Template } from "@/lib/schema";
 import { cn } from "@/lib/utils";
 import { useExplorer } from "./context";
 import { ThumbImage } from "./thumb-image";
-import { useGridSettings } from "./use-grid-settings";
+import { useEffectiveGridSettings } from "./use-grid-settings";
 
 /** 12 spokes × 4 rings — same angles from inner to outer so tiles stack on axes. */
 const SPOKES = 12;
@@ -103,7 +103,7 @@ function buildRings(templates: Template[]): OrbitRing[] {
 
 export function BriefOrbit() {
   const { base } = useExplorer();
-  const { radius } = useGridSettings();
+  const { radius } = useEffectiveGridSettings();
   const rings = useMemo(() => buildRings(sampleOrbitTemplates(base)), [base]);
   const tileRadius = radius / 2;
 

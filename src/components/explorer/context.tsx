@@ -114,6 +114,9 @@ export interface ExplorerApi {
   /** side filter panel (Style / Color / Layout / Image / More / Sort) visibility */
   filterPanelOpen: boolean;
   setFilterPanelOpen: (o: boolean) => void;
+  /** settings panel (theme + grid appearance) visibility */
+  settingsOpen: boolean;
+  setSettingsOpen: (o: boolean) => void;
   view: View;
   setView: (v: View) => void;
   /** open a design from the grid (focused lightbox) */
