@@ -72,7 +72,7 @@ as before. The key stays server-side; the browser only ever calls `/api/interpre
   each with a short reason. Toggle **In ‹Industry›** vs **All categories**. Click any thumbnail to re-center;
   the breadcrumb lets you step back.
 - **Details panel**: big preview, colors (click to copy hex), layout, typography, imagery, copy ideas, tags.
-  Every label is clickable and adds a filter. *Open on design.com* and *Save*.
+  Every label is clickable and adds a filter. 
 - **Boards**: *Save* quick-saves to the last board you used (the *Saved* board until you pick another in the
   board picker). A design can be in several boards. **Boards** (top bar) lists boards; the dashed **New board**
   card at the end of the list opens a dialog for a board name and optional description, which then shows in
@@ -96,33 +96,13 @@ index is built in a Web Worker (`src/lib/search.worker.ts`), so neither the data
 
 Record shape (see `../schema.md` for the full spec and controlled vocabularies):
 
-```jsonc
-{
-  "templateId": "uuid", "slug": "simple-success-quote-1397283", "category": "Instagram Post",
-  "industry": "Personal Development", "topic": "Motivation",
-  "name": "Simple Success Quote", "displayTitle": "…", "url": "https://www.design.com/…/details",
-  "tags": ["quote"], "hashtags": ["#quote"], "description": "…",
-  "colors": [{ "hex": "#F8F5F2", "role": "background", "name": "off-white" }, { "role": "primary", … }, { "role": "accent", … }],
-  "style": { "aesthetic": ["minimalist"], "mood": ["calm"], "colorScheme": ["warm"], "texture": "flat", "era": null },
-  "typography": { "headline": "…", "accent": null, "body": "…", "fontStyles": ["sans serif"], "case": "mixed", "effects": [] },
-  "layout": { "structure": "centered text block", "alignment": "center", "focalPoint": "…", "balance": "symmetrical",
-              "whitespace": "airy", "textDensity": "medium", "hierarchy": ["…"] },
-  "imagery": { "type": "none", "illustrationStyle": null, "subject": null, "placement": null, "frameShape": null, "count": 0 },
-  "elements": ["large faded quotation marks"],
-  "content": { "type": "quote", "headline": "…", "subheadline": null, "body": null, "cta": null, "footer": "…",
-               "offer": null, "placeholders": [] },
-  "previewImage": "https://dynamic.design.com/template/preview/design/<guid>?…",
-  "thumbnailImage": "https://dynamic.design.com/template/preview/design/<guid>?…"
-}
-```
-
 Only templates **without a logo** belong in the file (preview URL has a single GUID; logo templates have a second
 GUID and `logoTemplateVersion`). `previewImage` / `thumbnailImage` are kept for reference only; the app never
 loads them (see *Template images* below).
 
 ### Template images (self-hosted)
 
-The app never requests images from design.com. Every template has one self-hosted image, `<templateId>.webp`
+The app never requests images. Every template has one self-hosted image, `<templateId>.webp`
 (1200×1200 WebP, ~76 KB), used for both thumbnails and previews. The URL is built from the record's `templateId`
 in one place (`templateImageUrl` in `src/lib/images.ts`): `${NEXT_PUBLIC_IMAGE_BASE}/${templateId}.webp`.
 
