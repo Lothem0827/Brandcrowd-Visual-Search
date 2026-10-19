@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useMemo, useState } from "react";
-import { BookmarkIcon, CheckIcon, CopyIcon, PlusIcon, SparklesIcon, Trash2Icon } from "lucide-react";
+import { BookmarkIcon, PaletteIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,11 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { SAVED_BOARD_ID, type Board } from "@/lib/boards";
-import {
-  bundleFromSaved,
-  formatSnapshot,
-} from "@/lib/brief-board";
-import type { SavedBrief } from "@/lib/briefs";
+import type { MoodboardDraft } from "@/lib/moodboards";
 import type { Template } from "@/lib/schema";
 import { cn } from "@/lib/utils";
 import { BackButton } from "./back-button";
@@ -26,22 +22,23 @@ import { BoardCover } from "./board-cover";
 import { useExplorer } from "./context";
 import { GridView } from "./grid-view";
 import { HEADER_ROW, HEADER_TITLE } from "./header";
+import { MoodboardCover, moodboardCardTitle } from "./moodboard-cover";
 import { useBoards } from "./use-boards";
-import { useBriefs } from "./use-briefs";
+import { useMoodboards } from "./use-moodboards";
 
-type BoardsTab = "boards" | "saves";
+type BoardsTab = "boards" | "saves" | "moodboards";
 
 /**
  * Full-page boards index (rail "Boards"): a Boards tab of board cards with a dashed
- * "New board" placeholder kept last, and a Saves tab that flattens every board's designs
- * into one grid. Boards are still local-only, so there's no profile chrome here yet.
+ * "New board" placeholder kept last, a Saves tab that flattens every board's designs
+ * into one grid, and a Moodboards tab of saved moodboards. Boards are still local-only,
+ * so there's no profile chrome here yet.
  */
 export function BoardsPage() {
-  const { byId, setView, setDetailOpen, setPage } = useExplorer();
+  const { base, byId, setView, setDetailOpen, setPage } = useExplorer();
   const { boards, store } = useBoards();
-  const { saved: savedBriefs, store: briefStore } = useBriefs();
+  const { saved, store: moodboards } = useMoodboards();
   const [tab, setTab] = useState<BoardsTab>("boards");
-  const [copiedBrief, setCopiedBrief] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
   const [newDescription, setNewDescription] = useState("");
@@ -82,6 +79,14 @@ export function BoardsPage() {
     return out;
   }, [boards, byId]);
 
+  const titles = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const item of saved) {
+      if (!map.has(item.query)) map.set(item.query, moodboardCardTitle(base, item.query));
+    }
+    return map;
+  }, [saved, base]);
+
   const openBoard = (b: Board) => {
     // Page first: changing page clears the view, so the board view must be set after it.
     setPage("boards");
@@ -89,43 +94,9 @@ export function BoardsPage() {
     setDetailOpen(false);
   };
 
-  /**
-   * Open a saved brief's workspace, rebuilding a minimal one when the draft has since
-   * been deleted (the snapshot always survives, so a saved brief is never lost).
-   */
-  const openBrief = (item: SavedBrief) => {
-    let draft = briefStore.getDraft(item.draftId);
-    if (!draft) {
-      draft = briefStore.createDraft({
-        query: item.query,
-        label: item.label,
-        templates: 0,
-      });
-      // One plugged card, so the restored workspace matches what was saved.
-      briefStore.patchDraft(draft.id, { cards: [bundleFromSaved(item)] });
-    }
-    briefStore.setActiveDraft(draft.id);
+  const openMoodboard = (item: MoodboardDraft) => {
+    moodboards.open(item.id);
     setPage("brief");
-  };
-
-  const copyBrief = (item: SavedBrief) => {
-    const text = formatSnapshot(
-      {
-        name: item.name,
-        title: item.title,
-        palette: item.palette,
-        tags: item.tags,
-        designIds: item.designIds,
-      },
-      item.label,
-    );
-    void navigator.clipboard
-      .writeText(text)
-      .then(() => {
-        setCopiedBrief(item.id);
-        window.setTimeout(() => setCopiedBrief((current) => (current === item.id ? null : current)), 1400);
-      })
-      .catch(() => undefined);
   };
 
   return (
@@ -136,7 +107,7 @@ export function BoardsPage() {
     >
       <div className="mx-auto w-full pb-28">
         <div className={HEADER_ROW}>
-          <BackButton label="Back" onClick={() => setPage("home")} />
+          <BackButton label="Back" onClick={() => setPage("explore")} />
           <h1 className={HEADER_TITLE}>Boards</h1>
           {/* Tabs center in the space right of the title; the underline track matches the
               detail panel's tab pattern (border-b + -mb-px indicator). */}
@@ -150,6 +121,7 @@ export function BoardsPage() {
                 [
                   ["boards", `Boards ${boards.length}`],
                   ["saves", `Saves ${savedCount}`],
+                  ["moodboards", `Moodboards ${saved.length}`],
                 ] as const
               ).map(([id, label]) => (
                 <button
@@ -173,99 +145,7 @@ export function BoardsPage() {
         </div>
 
         {tab === "boards" ? (
-          <div className="space-y-8">
-            {savedBriefs.length ? (
-              <section aria-label="Saved briefs" className="px-4">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <h2 className="flex items-center gap-1.5 text-[13px] font-semibold">
-                    <SparklesIcon className="size-3.5 text-muted-foreground" />
-                    Saved briefs
-                    <span className="text-[11px] font-normal text-muted-foreground tabular-nums">
-                      {savedBriefs.length}
-                    </span>
-                  </h2>
-                  <button
-                    type="button"
-                    onClick={() => setPage("brief")}
-                    className="text-[11px] font-medium text-muted-foreground hover:text-foreground"
-                  >
-                    Open workspace
-                  </button>
-                </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                  {savedBriefs.map((item) => (
-                    <div
-                      key={item.id}
-                      className="group flex flex-col gap-2 rounded-xl bg-panel p-3 ring-1 ring-foreground/10"
-                      data-testid="saved-brief"
-                    >
-                      <div className="flex items-start gap-2">
-                        <button
-                          type="button"
-                          onClick={() => openBrief(item)}
-                          className="min-w-0 flex-1 text-left"
-                        >
-                          <span className="block truncate text-[13px] font-semibold">{item.name}</span>
-                          <span className="block truncate text-[11px] text-muted-foreground">
-                            {item.title ?? "No title plugged in"} · {item.label}
-                          </span>
-                        </button>
-                        <button
-                          type="button"
-                          aria-label={`Copy brief ${item.name}`}
-                          onClick={() => copyBrief(item)}
-                          className="grid size-7 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                        >
-                          {copiedBrief === item.id ? (
-                            <CheckIcon className="size-3.5" />
-                          ) : (
-                            <CopyIcon className="size-3.5" />
-                          )}
-                        </button>
-                        <button
-                          type="button"
-                          aria-label={`Delete brief ${item.name}`}
-                          onClick={() => briefStore.removeSaved(item.id)}
-                          className="grid size-7 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                        >
-                          <Trash2Icon className="size-3.5" />
-                        </button>
-                      </div>
-
-                      <div className="flex gap-1">
-                        {item.palette?.length
-                          ? item.palette.map((slot) => (
-                              <span
-                                key={slot.hex}
-                                className="h-7 flex-1 rounded ring-1 ring-black/10"
-                                style={{ background: slot.hex }}
-                                title={slot.hex}
-                              />
-                            ))
-                          : Array.from({ length: 4 }, (_, index) => (
-                              <span
-                                key={index}
-                                className="h-7 flex-1 rounded border border-dashed border-foreground/20"
-                              />
-                            ))}
-                      </div>
-
-                      <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                        <span className="truncate">
-                          {item.tags?.length ? `${item.tags.length} tags` : "No tags plugged in"}
-                          {item.designIds.length ? ` · ${item.designIds.length} inspiration` : ""}
-                        </span>
-                        <span className="shrink-0 tabular-nums">
-                          {new Date(item.updatedAt).toLocaleDateString()}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            ) : null}
-
-            <div className="grid grid-cols-2 gap-x-5 gap-y-7 px-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          <div className="grid grid-cols-2 gap-x-5 gap-y-7 px-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {boards.map((b) => (
               <div key={b.id} className="group relative text-left">
                 <button
@@ -312,17 +192,61 @@ export function BoardsPage() {
               <PlusIcon className="size-5 transition-transform group-hover:scale-110" />
               New board
             </button>
-            </div>
           </div>
-        ) : saves.length ? (
-          <GridView items={saves} hideSave scrollContainer={scrollEl} />
-        ) : (
-          <div className="flex flex-col items-center gap-1.5 px-4 py-24 text-center">
-            <BookmarkIcon className="size-7 text-muted-foreground" />
-            <div className="text-sm font-semibold">No saves yet</div>
-            <div className="text-xs text-muted-foreground">
-              Save a design and it&apos;ll show up here.
+        ) : tab === "saves" ? (
+          saves.length ? (
+            <GridView items={saves} hideSave scrollContainer={scrollEl} />
+          ) : (
+            <div className="flex flex-col items-center gap-1.5 px-4 py-24 text-center">
+              <BookmarkIcon className="size-7 text-muted-foreground" />
+              <div className="text-sm font-semibold">No saves yet</div>
+              <div className="text-xs text-muted-foreground">
+                Save a design and it&apos;ll show up here.
+              </div>
             </div>
+          )
+        ) : saved.length ? (
+          <div className="grid grid-cols-2 gap-x-5 gap-y-7 px-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {saved.map((item) => {
+              const title = titles.get(item.query) ?? item.query;
+              const designs = item.inspoIds
+                .map((id) => byId(id))
+                .filter((template): template is Template => !!template);
+              return (
+                <div key={item.id} className="group relative text-left">
+                  <button
+                    type="button"
+                    onClick={() => openMoodboard(item)}
+                    className="flex w-full flex-col gap-2 text-left"
+                    data-testid="moodboard-card"
+                  >
+                    <MoodboardCover draft={item} designs={designs} className="aspect-[3/2] w-full" />
+                    <div className="min-w-0 px-0.5">
+                      <div className="truncate text-sm font-semibold">{title}</div>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Remove ${title}`}
+                    onClick={() => moodboards.removeSaved(item.id)}
+                    className="absolute top-2 right-2 grid size-8 place-items-center rounded-lg bg-background/80 text-muted-foreground backdrop-blur transition-opacity hover:bg-background hover:text-foreground [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-focus-within:opacity-100 [@media(hover:hover)]:group-hover:opacity-100"
+                  >
+                    <Trash2Icon className="size-3.5" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-1.5 px-4 py-24 text-center" data-testid="moodboards-empty">
+            <PaletteIcon className="size-7 text-muted-foreground" />
+            <div className="text-sm font-semibold">No moodboards yet</div>
+            <div className="text-xs text-muted-foreground">
+              Save a moodboard and it&apos;ll show up here.
+            </div>
+            <Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => setPage("brief")}>
+              Open moodboard
+            </Button>
           </div>
         )}
       </div>

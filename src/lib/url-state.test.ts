@@ -102,13 +102,13 @@ describe("history policy", () => {
 
 describe("routes", () => {
   it("maps a pathname to its page", () => {
-    expect(pageFromPath("/")).toBe("home");
+    expect(pageFromPath("/")).toBe("explore");
     expect(pageFromPath("/explore")).toBe("explore");
     expect(pageFromPath("/explore/")).toBe("explore");
     expect(pageFromPath("/boards")).toBe("boards");
     expect(pageFromPath("/boards/saved")).toBe("boards");
     expect(pageFromPath("/brief")).toBe("brief");
-    expect(pageFromPath("/nope")).toBe("home");
+    expect(pageFromPath("/nope")).toBe("explore");
   });
 
   it("reads a board id from the path only when it is valid", () => {
@@ -120,8 +120,8 @@ describe("routes", () => {
 
   it("builds one URL per page", () => {
     expect(toUrl(s({}))).toBe("/");
-    expect(toUrl(s({ page: "explore", query: "bold" }))).toBe("/explore?q=bold");
-    expect(toUrl(s({ page: "explore" }))).toBe("/explore");
+    expect(toUrl(s({ page: "explore", query: "bold" }))).toBe("/?q=bold");
+    expect(toUrl(s({ page: "explore" }))).toBe("/");
     expect(toUrl(s({ page: "boards" }))).toBe("/boards");
     expect(toUrl(s({ page: "boards", board: "saved" }))).toBe("/boards/saved");
     expect(toUrl(s({ page: "brief", query: "ignored" }))).toBe("/brief");
@@ -133,8 +133,9 @@ describe("routes", () => {
     expect(fromUrl("/boards/saved", "?design=a1&view=focus")).toEqual(state);
   });
 
-  it("keeps Explore's search state on its own path", () => {
+  it("keeps the browse search on / and accepts the old /explore address", () => {
     const state = s({ page: "explore", query: "retro", facets: { industry: ["Fitness"] } });
+    expect(fromUrl("/", toSearch(state))).toEqual(state);
     expect(fromUrl("/explore", toSearch(state))).toEqual(state);
   });
 

@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Design brief",
+  title: "Moodboard",
   robots: { index: false, follow: false },
 };
 
-/** Design brief workspace (`/brief`). Drafts are local, so the page needs no server data. */
+/** Moodboard (`/brief`). Generation reads the loaded catalogue, so the page needs no server data. */
 export default function BriefPage() {
   return null;
 }

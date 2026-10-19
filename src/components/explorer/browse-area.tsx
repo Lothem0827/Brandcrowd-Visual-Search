@@ -267,17 +267,6 @@ function ResultCount() {
   );
 }
 
-/** Home: a plain, shuffled discovery feed that the bottom search bar filters in place. */
-function HomeFeed() {
-  const { browseItems } = useExplorer();
-  return (
-    <div className="relative h-full pt-4">
-      <GridView items={browseItems} />
-      {browseItems.length === 0 && <EmptyState />}
-    </div>
-  );
-}
-
 /**
  * Tree view's back control, sat at the head of the same header row as the results heading so it
  * reads like the Boards page (back, then title). The trail stays over the canvas; only the button
@@ -538,5 +527,5 @@ export function BrowseArea() {
   // /boards is the index; /boards/<id> is one board, which stays behind a design opened in it.
   if (page === "boards") return boardIdOf(view) ? <BoardArea /> : <BoardsPage />;
   if (view.kind === "board") return <BoardArea />;
-  return page === "home" ? <HomeFeed /> : <ExploreArea />;
+  return <ExploreArea />;
 }

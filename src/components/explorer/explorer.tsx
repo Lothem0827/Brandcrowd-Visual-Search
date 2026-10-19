@@ -18,6 +18,8 @@ import { BrowseArea } from "./browse-area";
 import { FocusedView } from "./focused-view";
 import { FilterPanel } from "./filter-panel";
 import { DetailPanel } from "./detail-panel";
+import { MoodboardPanel } from "./moodboard-panel";
+import { useMoodboardPinned } from "./use-moodboards";
 import { BoardSelectBar } from "./board-select-bar";
 import { ImageDropOverlay } from "./image-drop";
 import { OfflineBanner } from "./offline-banner";
@@ -88,7 +90,7 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
     return m;
   }, [base]);
 
-  // Initial state comes from the URL (/explore?q=…&design=…, /boards/<id>), see lib/url-state.ts.
+  // Initial state comes from the URL (/?q=…&design=…, /boards/<id>), see lib/url-state.ts.
   const [initialUrl] = useState(() => fromUrl(window.location.pathname, window.location.search));
   const [query, setQuery] = useState(initialUrl.query);
   const [filters, setFilters] = useState<FilterState>({ facets: initialUrl.facets, color: initialUrl.color });
@@ -114,8 +116,6 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
   const [boardGroup, setBoardGroup] = useState<"layout" | "style">("layout");
   const [searchPath, setSearchPath] = useState<SearchStep[]>([]);
   const searchRef = useRef<HTMLInputElement>(null);
-  /** per-visit seed for the Home discovery feed (never URL-encoded) */
-  const [homeSeed, setHomeSeed] = useState(() => Math.floor(Math.random() * 100000));
 
   /**
    * Every page change goes through here: the URL follows `page`, so a stale view from the
@@ -143,7 +143,7 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
   // Navigation is a history push rather than a Next route change, so the title the route
   // metadata set on load would otherwise stick to every page after it.
   useEffect(() => {
-    const title = page === "boards" ? (view.kind === "board" ? "Board" : "Boards") : page === "brief" ? "Design brief" : null;
+    const title = page === "boards" ? (view.kind === "board" ? "Board" : "Boards") : page === "brief" ? "Moodboard" : null;
     document.title = title ? `${title} | ${SITE_NAME}` : SITE_TITLE;
   }, [page, view]);
 
@@ -226,10 +226,8 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
       list = [...list].sort((a, b) => imageScores.get(b.templateId)! - imageScores.get(a.templateId)!).slice(0, IMAGE_RESULTS);
     }
     if (sort === "shuffle" && shuffleSeed !== null) list = seededShuffle(list, shuffleSeed);
-    // Home is a shuffled discovery feed; a search narrows it in place and keeps relevance order.
-    else if (page === "home" && !hasSearch) list = seededShuffle(list, homeSeed);
     return list;
-  }, [base, effective, liveHits, aiText, parsed.text, imageScores, sort, shuffleSeed, unsearchable, page, hasSearch, homeSeed]);
+  }, [base, effective, liveHits, aiText, parsed.text, imageScores, sort, shuffleSeed, unsearchable]);
 
   // A free-text query that found nothing (and wasn't just filters narrowing the set)
   // is a "no close match", distinct from "remove a chip / clear the filters".
@@ -543,21 +541,8 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
 
   const focusSearch = useCallback(() => searchRef.current?.focus(), []);
 
-  /** Ad-hoc search for the inspiration panel; never mutates Explore's query or filters. */
-  const designSearch = useCallback(
-    (text: string) => (searchClient ? searchClient.search(text) : Promise.resolve(new Map<string, number>())),
-    [searchClient],
-  );
-
-  /** Home nav: a clean, shuffled discovery feed. */
-  const goHome = useCallback(() => {
-    clearAll();
-    setPage("home");
-    setHomeSeed(Math.floor(Math.random() * 100000));
-  }, [clearAll, setPage]);
-
-  /** Explore nav: keeps the current search so switches are non-destructive. */
-  const goExplore = useCallback(() => {
+  /** Home nav: the browse page, keeping the current search. */
+  const goBrowse = useCallback(() => {
     setPage("explore");
   }, [setPage]);
 
@@ -575,7 +560,7 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
         else if (detailOpen) setDetailOpen(false);
         else if (filterPanelOpen) setFilterPanelOpen(false);
         // Escape leaves one level: a board goes back to the Boards index (/boards), the
-        // index and the Brief go back to Explore (/explore).
+        // index and the Moodboard go back to Home (/).
         else if (page === "boards" && (view.kind === "board" || view.kind === "focused" || view.kind === "similar")) {
           setView({ kind: "search" });
         } else if (page === "boards" || page === "brief") setPage("explore");
@@ -586,12 +571,14 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
     return () => window.removeEventListener("keydown", onKey);
   }, [activeBoardSelection, stopBoardSelect, detailOpen, filterPanelOpen, page, view, setPage]);
 
+  const moodboardPinned = useMoodboardPinned();
+
   const api: ExplorerApi = {
     all, base, results, browseItems, byId, vocab, tagCounts, category,
     query, setQuery, parsed, searching, unsearchable, noCloseMatch, hasSearch, filters, setFilters, effective, toggleFacet, addFacet, clearAll,
     ai, aiStatus, aiEnabled, dismissAi,
     searchPath, searchWithin, backOneStep, jumpToStep,
-    imageQuery, setImageQuery, imageScores, textScores, imageBusy, searchByImage, designSearch,
+    imageQuery, setImageQuery, imageScores, textScores, imageBusy, searchByImage,
     page, setPage, browseMode, setBrowseMode, sort, setSort, shuffleSeed, setShuffleSeed,
     filterPanelOpen, setFilterPanelOpen,
     view, setView, openTemplate, openSimilar, recenter, recenterDetail, focused, simScope, setSimScope, similar, center,
@@ -615,22 +602,26 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
           Skip to search
         </a>
         <h1 className="sr-only">Template Taxonomy: explore design.com Instagram post templates</h1>
-        <Sidebar onHome={goHome} onExplore={goExplore} />
+        <Sidebar onBrowse={goBrowse} />
         <div className="relative flex min-w-0 flex-1 flex-col">
           <main className="relative flex-1 overflow-hidden" aria-label="Template browser">
             <BrowseArea />
             {focused && <FocusedView />}
           </main>
           {/* The board selection toolbar belongs to whichever page shows the board grid;
-              the search dock only makes sense on Home and Explore. */}
+              the search dock only makes sense on Home. */}
           {activeBoardSelection ? (
             <BoardSelectBar />
-          ) : page === "home" || page === "explore" ? (
+          ) : page === "explore" ? (
             <SearchDock inputRef={searchRef} />
           ) : null}
         </div>
         <FilterPanel />
-        {detailTemplate && <DetailPanel template={detailTemplate} />}
+        {moodboardPinned && page === "explore" ? (
+          <MoodboardPanel />
+        ) : (
+          detailTemplate && <DetailPanel template={detailTemplate} />
+        )}
       </div>
       <ImageDropOverlay />
       <OfflineBanner />

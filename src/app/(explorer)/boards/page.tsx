@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-/** Boards index (`/boards`): saved boards, saves and saved briefs. */
+/** Boards index (`/boards`): saved boards and saves. */
 export default function BoardsPage() {
   return null;
 }

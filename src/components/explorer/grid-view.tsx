@@ -9,7 +9,9 @@ import { useBoards, useLastUsedBoardId } from "./use-boards";
 import { useGridSettings } from "./use-grid-settings";
 import { computeWindow } from "./use-windowed-grid";
 import { templateImageUrl } from "@/lib/images";
+import { writeMoodboardDrag } from "@/lib/moodboards";
 import { ThumbImage } from "./thumb-image";
+import { useMoodboardPinned } from "./use-moodboards";
 
 /** Compact quick-save toggle shown on a tile while hovering or focused. */
 function TileSave({ templateId }: { templateId: string }) {
@@ -50,7 +52,9 @@ const GridTile = memo(function GridTile({
   /** Boards have no per-tile save toggle: every design in them is already saved. */
   hideSave?: boolean;
 }) {
-  const { openTemplate, boardSelection, toggleBoardSelect } = useExplorer();
+  const { openTemplate, boardSelection, toggleBoardSelect, page } = useExplorer();
+  const pinned = useMoodboardPinned();
+  const canDrag = pinned && page === "explore";
   const selecting = !!boardSelection;
   const selected = !!boardSelection?.ids.includes(template.templateId);
   const label = template.displayTitle || template.slug;
@@ -58,6 +62,8 @@ const GridTile = memo(function GridTile({
     <div className="group relative aspect-square" style={{ borderRadius: radius }}>
       <button
         type="button"
+        draggable={canDrag && !selecting}
+        onDragStart={(event) => writeMoodboardDrag(event.dataTransfer, template.templateId)}
         onClick={() => (selecting ? toggleBoardSelect(template.templateId) : (onPick ?? openTemplate)(template.templateId))}
         aria-label={selecting ? `${selected ? "Deselect" : "Select"} ${label}` : `Open ${label}`}
         aria-pressed={selecting ? selected : undefined}

@@ -1,106 +1,405 @@
 "use client";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  CheckIcon,
-  CopyIcon,
-  FilePlusIcon,
-  LayoutGridIcon,
-  PaletteIcon,
-  PanelRightIcon,
-  SaveIcon,
-  SparklesIcon,
-  TypeIcon,
-} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { CheckIcon, CopyIcon, SearchIcon, SparklesIcon, XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { toast } from "@/components/ui/toast";
-import {
-  CARD_SIZE,
-  LANE,
-  SLOT_LABELS,
-  addInspiration,
-  cardsFromBrief,
-  designCard,
-  emptyBundle,
-  formatSnapshot,
-  paletteSlots,
-  patchCard,
-  plugInto,
-  setSlot,
-  snapshotOfBundle,
-  TAGS_LIMIT,
-  toggleTag,
-  type ArmedSlot,
-  type BriefBundleCard,
-  type BriefCard,
-  type BriefDraft,
-  type DesignCard,
-  type PaletteCard,
-  type TagsCard,
-  type TitleCard,
-} from "@/lib/brief-board";
-import type { BriefStore } from "@/lib/briefs";
-import { generateBrief, MAX_BRIEF_OPTIONS } from "@/lib/brief";
-import { eyeDropperSupported, pickScreenColor } from "@/lib/eyedropper";
-import type { Template } from "@/lib/schema";
-import { useIsMobile } from "@/lib/use-media-query";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { moodboardSource, type PopularColor } from "@/lib/brief";
 import { sentenceCase } from "@/lib/facets";
+import { paletteFromHarmony, HARMONIES, type HarmonyId } from "@/lib/harmony";
+import { readMoodboardDrag, type MoodboardDraft } from "@/lib/moodboards";
+import type { MoodboardTitlesResponse } from "@/lib/moodboard-titles";
+import { templateImageUrl } from "@/lib/images";
 import { cn } from "@/lib/utils";
-import { BriefCanvas } from "./brief-canvas";
+import { BackButton } from "./back-button";
+import { SpectrumPicker } from "./color-spectrum";
 import { useExplorer } from "./context";
-import { InspirationPanel } from "./inspiration-panel";
-import { PalettePicker, type PaletteTarget } from "./palette-picker";
-import { HEADER_CONTROL, HEADER_CONTROL_IDLE, HEADER_CONTROL_ON, HEADER_ROW, HEADER_TITLE } from "./header";
-import { useActiveDraftId, useBriefs } from "./use-briefs";
+import { HEADER_ROW, HEADER_TITLE } from "./header";
+import { ThumbImage } from "./thumb-image";
+import { useMoodboards } from "./use-moodboards";
 
-/** Vertical gap used when "Add more" drops a card below everything already placed. */
-const ADD_MORE_GAP = 40;
+const SECTION = "text-[11px] font-semibold tracking-[0.12em] text-muted-foreground uppercase";
+const COPY_BUTTON =
+  "pointer-events-none absolute top-2 right-2 z-10 grid size-7 place-items-center text-white opacity-0 drop-shadow-[0_1px_1px_rgb(0_0_0/0.55)] transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100";
 
-/** A quiet pill button used for every secondary action in this page's header. */
-const PILL =
-  "flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-panel px-3 text-[12px] font-medium transition-colors hover:bg-muted disabled:opacity-40";
+/** Dot positions on a 16px wheel, degrees clockwise from the top. */
+const HARMONY_DOTS: Record<Exclude<HarmonyId, "shades" | "monochromatic">, number[]> = {
+  analogous: [-24, 0, 24],
+  complementary: [0, 180],
+  "split-complementary": [0, 150, 210],
+  triad: [0, 120, 240],
+  square: [0, 90, 180, 270],
+  compound: [-16, 16, 164, 196],
+};
 
-/** Floating chip used above the generator dock. */
-const DOCK_CHIP =
-  "pointer-events-auto flex h-8 items-center gap-1.5 rounded-full bg-panel/90 px-3 text-[12px] font-medium shadow-sm backdrop-blur-md transition-colors hover:bg-muted";
+function colorsOf(draft: MoodboardDraft): PopularColor[] {
+  return draft.colors.map((color, index) => {
+    const hex = draft.overrides[String(index)];
+    return hex ? { ...color, hex } : color;
+  });
+}
+
+function HarmonyMark({ id }: { id: HarmonyId }) {
+  if (id === "shades" || id === "monochromatic") {
+    return (
+      <svg viewBox="0 0 16 16" className="size-4" aria-hidden>
+        {[0, 1, 2].map((step) => (
+          <rect
+            key={step}
+            x="3"
+            y={2.5 + step * 4}
+            width={id === "monochromatic" ? 10 - step * 2 : 10}
+            height="2.4"
+            rx="0.6"
+            fill="currentColor"
+            opacity={id === "shades" ? 1 - step * 0.32 : 0.4 + step * 0.3}
+          />
+        ))}
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 16 16" className="size-4" aria-hidden>
+      <circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" strokeWidth="1" opacity="0.45" />
+      {HARMONY_DOTS[id].map((degrees) => {
+        const rad = ((degrees - 90) * Math.PI) / 180;
+        return (
+          <circle
+            key={degrees}
+            cx={8 + Math.cos(rad) * 5.1}
+            cy={8 + Math.sin(rad) * 5.1}
+            r="1.35"
+            fill="currentColor"
+          />
+        );
+      })}
+    </svg>
+  );
+}
+
+function QueryForm({
+  initial,
+  onGenerate,
+}: {
+  initial: string;
+  onGenerate: (value: string) => void;
+}) {
+  const [input, setInput] = useState(initial);
+  return (
+    <form
+      className="flex h-14 items-center gap-1 rounded-full bg-panel pr-2 pl-4 shadow-[0_8px_30px_rgb(0_0_0/0.12)] ring-1 ring-foreground/10"
+      onSubmit={(event) => {
+        event.preventDefault();
+        onGenerate(input);
+      }}
+    >
+      <input
+        value={input}
+        onChange={(event) => setInput(event.target.value)}
+        placeholder="Industry, topic or theme"
+        aria-label="Industry, topic or theme"
+        maxLength={80}
+        className="h-full min-w-0 flex-1 bg-transparent text-[15px] font-medium outline-none placeholder:text-muted-foreground/80"
+      />
+      <Button type="submit" className="h-10 shrink-0 rounded-full px-3.5">
+        <SparklesIcon className="size-4" />
+        Generate
+      </Button>
+    </form>
+  );
+}
+
+export function MoodboardHeaderActions({ compact = false }: { compact?: boolean }) {
+  const { draft, store } = useMoodboards();
+  const { setPage } = useExplorer();
+  const [savedFlash, setSavedFlash] = useState(false);
+
+  useEffect(() => {
+    if (!savedFlash) return;
+    const timer = window.setTimeout(() => setSavedFlash(false), 1400);
+    return () => window.clearTimeout(timer);
+  }, [savedFlash]);
+
+  return (
+    <div className={cn("flex shrink-0 items-center gap-1.5", !compact && "ml-auto")}>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        data-testid="save-moodboard"
+        aria-label="Save moodboard"
+        disabled={!draft}
+        onClick={() => {
+          if (store.save()) setSavedFlash(true);
+        }}
+      >
+        {savedFlash ? "Saved" : compact ? "Save" : "Save moodboard"}
+      </Button>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        data-testid="create-moodboard"
+        aria-label="Create new moodboard"
+        disabled={!draft}
+        onClick={() => {
+          store.createNew();
+          setPage("brief");
+        }}
+      >
+        {compact ? "New" : "Create new"}
+      </Button>
+    </div>
+  );
+}
+
+function SwatchCopy({ hex, copyKey, copied, onCopy }: { hex: string; copyKey: string; copied: string | null; onCopy: (text: string, key: string) => void }) {
+  return (
+    <button
+      type="button"
+      aria-label={`Copy ${hex}`}
+      onClick={() => onCopy(hex, copyKey)}
+      className={cn(COPY_BUTTON, copied === copyKey && "pointer-events-auto opacity-100")}
+    >
+      {copied === copyKey ? <CheckIcon className="size-3.5" /> : <CopyIcon className="size-3.5" />}
+    </button>
+  );
+}
+
+/** Titles, tags, colours, palette, and design inspo. Shared by the page and the pinned panel. */
+export function MoodboardBody({ compact = false }: { compact?: boolean }) {
+  const { draft, titlesPending, store } = useMoodboards();
+  const { byId, clearAll, setQuery, setPage } = useExplorer();
+  const [picker, setPicker] = useState<number | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+
+  useEffect(() => {
+    if (!copied) return;
+    const timer = window.setTimeout(() => setCopied(null), 1400);
+    return () => window.clearTimeout(timer);
+  }, [copied]);
+
+  if (!draft) return null;
+
+  const copy = (text: string, key: string) => {
+    void navigator.clipboard.writeText(text).then(
+      () => setCopied(key),
+      () => undefined,
+    );
+  };
+  const colors = colorsOf(draft);
+  const picked = colors[draft.selected] ?? colors[0];
+  const palette = picked ? paletteFromHarmony(picked.hex, draft.harmony) : null;
+  const findDesigns = () => {
+    clearAll();
+    setQuery(draft.query);
+    setPage("explore");
+    store.pin();
+  };
+
+  return (
+    <div className={cn("flex flex-col gap-8", compact ? "px-4 py-4" : "mx-auto w-full max-w-3xl px-4 pt-2 pb-28")}>
+      {!compact && (
+        <Button type="button" data-testid="find-designs" onClick={findDesigns} className="w-fit">
+          <SearchIcon className="size-4" />
+          Find designs
+        </Button>
+      )}
+
+      <section aria-label="Titles" className="space-y-2" data-testid="moodboard-titles">
+        <h2 className={SECTION}>Titles</h2>
+        {titlesPending && <p className="text-sm text-muted-foreground">Writing titles…</p>}
+        {draft.titles.length > 0 && (
+          <ol className="space-y-2">
+            {draft.titles.map((title, index) => (
+              <li
+                key={`${index}-${title}`}
+                className="flex items-center gap-2 rounded-xl bg-panel px-3 py-2.5 ring-1 ring-foreground/10"
+              >
+                <span className="min-w-0 flex-1 text-[15px] font-semibold">{title}</span>
+                <button
+                  type="button"
+                  aria-label={`Copy ${title}`}
+                  onClick={() => copy(title, title)}
+                  className="grid size-7 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  {copied === title ? <CheckIcon className="size-3.5" /> : <CopyIcon className="size-3.5" />}
+                </button>
+              </li>
+            ))}
+          </ol>
+        )}
+        {!titlesPending && draft.titles.length === 0 && (
+          <p className="text-sm text-muted-foreground">No titles came back for this subject.</p>
+        )}
+      </section>
+
+      <section aria-label="Tags" className="space-y-2" data-testid="moodboard-tags">
+        <div className="flex items-center justify-between">
+          <h2 className={SECTION}>Tags</h2>
+          <button
+            type="button"
+            aria-label="Copy tags"
+            onClick={() => copy(`${draft.tags.map((tag) => tag.toLowerCase()).join(", ")},`, "tags")}
+            className="flex h-7 items-center gap-1 rounded-full px-2 text-[12px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            {copied === "tags" ? <CheckIcon className="size-3.5" /> : <CopyIcon className="size-3.5" />}
+            {copied === "tags" ? "Copied" : "Copy"}
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {draft.tags.map((tag) => (
+            <span key={tag} className="rounded-full bg-panel px-2.5 py-1 text-[12px] ring-1 ring-foreground/10">
+              {sentenceCase(tag)}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      <section aria-label="Popular colours" className="space-y-3" data-testid="moodboard-colors">
+        <h2 className={SECTION}>Popular colours</h2>
+        {colors.length > 0 ? (
+          <>
+            <div className={cn("grid grid-cols-3 gap-2", !compact && "sm:grid-cols-6")}>
+              {colors.map((color, index) => {
+                const on = index === draft.selected;
+                return (
+                  <div key={`${index}-${draft.colors[index]?.hex ?? color.hex}`} className="group space-y-1">
+                    <div className="relative">
+                      <Popover
+                        open={picker === index}
+                        onOpenChange={(open) => {
+                          if (!open) setPicker((current) => (current === index ? null : current));
+                        }}
+                      >
+                        <PopoverTrigger
+                          aria-pressed={on}
+                          aria-label={color.hex}
+                          title="Double-click to adjust this colour"
+                          onClick={() => store.setSelected(index)}
+                          onDoubleClick={() => {
+                            store.setSelected(index);
+                            setPicker(index);
+                          }}
+                          className={cn("w-full rounded-xl p-1.5 text-left", on && "bg-muted")}
+                        >
+                          <span
+                            className={cn("block h-14 rounded-lg ring-1 ring-black/10", on && "ring-2 ring-foreground")}
+                            style={{ background: color.hex }}
+                          />
+                        </PopoverTrigger>
+                        <PopoverContent side="top" align="center" className="w-[280px] p-3">
+                          <SpectrumPicker hex={color.hex} onChange={(hex) => store.setOverride(index, hex)} />
+                        </PopoverContent>
+                      </Popover>
+                      <SwatchCopy hex={color.hex} copyKey={`popular-${index}`} copied={copied} onCopy={copy} />
+                    </div>
+                    <span className="block truncate text-center text-[10px] font-medium tabular-nums">{color.hex}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <div role="group" aria-label="Color harmony" data-testid="moodboard-harmony" className="flex flex-nowrap gap-1 overflow-x-auto">
+              {HARMONIES.map((item) => {
+                const on = draft.harmony === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    aria-pressed={on}
+                    aria-label={item.label}
+                    title={item.label}
+                    onClick={() => store.setHarmony(item.id)}
+                    className={cn(
+                      "grid size-9 shrink-0 place-items-center rounded-lg transition-colors",
+                      on
+                        ? "bg-foreground text-background"
+                        : "bg-panel text-muted-foreground ring-1 ring-foreground/10 hover:bg-muted hover:text-foreground",
+                    )}
+                  >
+                    <HarmonyMark id={item.id} />
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        ) : (
+          <p className="text-sm text-muted-foreground">No strong colours turned up in this set.</p>
+        )}
+
+        {palette && (
+          <div className="space-y-2" data-testid="moodboard-palette">
+            <h3 className={SECTION}>Palette</h3>
+            <div className="grid grid-cols-5 gap-2">
+              {palette.map((color, index) => (
+                <div key={`${index}-${color.hex}`} className="group space-y-1">
+                  <div className="relative">
+                    <span className="block h-16 rounded-lg ring-1 ring-black/10" aria-label={color.hex} style={{ background: color.hex }} />
+                    <SwatchCopy hex={color.hex} copyKey={`palette-${index}`} copied={copied} onCopy={copy} />
+                  </div>
+                  <span className="block truncate text-center text-[10px] font-medium text-muted-foreground tabular-nums">{color.hex}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
+
+      <section
+        aria-label="Design inspo"
+        data-testid="moodboard-inspo"
+        className={cn("space-y-2 rounded-2xl", dragOver && "bg-muted")}
+        onDragOver={(event) => {
+          event.preventDefault();
+          event.dataTransfer.dropEffect = "copy";
+          setDragOver(true);
+        }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={(event) => {
+          event.preventDefault();
+          setDragOver(false);
+          const id = readMoodboardDrag(event.dataTransfer);
+          if (id) store.addInspo(id);
+        }}
+      >
+        <h2 className={SECTION}>Design inspo</h2>
+        {draft.inspoIds.length > 0 ? (
+          <div className={cn("grid grid-cols-3 gap-2", !compact && "sm:grid-cols-6")}>
+            {draft.inspoIds.map((id) => {
+              const template = byId(id);
+              const label = template?.displayTitle || template?.slug || "Design";
+              return (
+                <div key={id} className="group relative aspect-square overflow-hidden rounded-lg bg-muted">
+                  {template ? (
+                    <ThumbImage src={templateImageUrl(id)} alt={label} className="size-full object-cover" />
+                  ) : (
+                    <span className="sr-only">{label}</span>
+                  )}
+                  <button
+                    type="button"
+                    aria-label={`Remove ${label}`}
+                    onClick={() => store.removeInspo(id)}
+                    className="absolute top-1 right-1 grid size-6 place-items-center rounded-md bg-background/80 text-foreground backdrop-blur-sm hover:bg-background"
+                  >
+                    <XIcon className="size-3.5" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="flex h-24 items-center justify-center rounded-xl border border-dashed border-foreground/15 px-3 text-center text-sm text-muted-foreground">
+            Drag a design here
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
 
 export function BriefPage() {
   const { base, setPage } = useExplorer();
-  const { drafts, saved, store } = useBriefs();
-  const activeId = useActiveDraftId();
-  const isMobile = useIsMobile();
-
-  const active = drafts.find((draft) => draft.id === activeId) ?? drafts.at(-1);
-  const [fresh, setFresh] = useState(false);
-  const draft = fresh ? undefined : active;
-
-  const [input, setInput] = useState("");
-  const [seenDraft, setSeenDraft] = useState<string | null>(draft?.id ?? null);
-  // Switching drafts (or starting a new one) seeds the dock with its query.
-  if ((draft?.id ?? null) !== seenDraft) {
-    setSeenDraft(draft?.id ?? null);
-    setInput(draft?.query ?? "");
-  }
-
-  const [count, setCount] = useState(1);
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [fitSignal, setFitSignal] = useState(0);
-  const [copied, setCopied] = useState<string | null>(null);
-
-  /* Inspiration panel + colour picker */
-  const [inspoOpen, setInspoOpen] = useState(false);
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [armedSlot, setArmedSlot] = useState<ArmedSlot | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
-  const canPickScreen = eyeDropperSupported();
-
-  // Switching drafts must not leave a colour armed on a card that no longer exists.
-  const [seenPickerDraft, setSeenPickerDraft] = useState(draft?.id ?? null);
-  if ((draft?.id ?? null) !== seenPickerDraft) {
-    setSeenPickerDraft(draft?.id ?? null);
-    setArmedSlot(null);
-    setPreview(null);
-  }
+  const { draft, miss, saved, store, attempt, formEpoch } = useMoodboards();
 
   const industries = useMemo(() => {
     const counts = new Map<string, number>();
@@ -113,779 +412,105 @@ export function BriefPage() {
       .map(([name]) => name);
   }, [base]);
 
-  // Saved records keep `finalId`; since plugging replaced final nodes it is the brief card id.
-  const savedBundleIds = useMemo(() => {
-    if (!draft) return new Set<string>();
-    return new Set(saved.filter((item) => item.draftId === draft.id).map((item) => item.finalId));
-  }, [draft, saved]);
-
-  const bumpFit = () => setFitSignal((value) => value + 1);
-
-  /* ------------------------------------------------------------------ */
-  /* Colour picking: manual spectrum + eyedropper share one writer       */
-  /* ------------------------------------------------------------------ */
-
-  const lastWrite = useRef<string | null>(null);
-
-  /** The slot a colour edit lands in: the armed one, else the board's first palette. */
-  const resolveTarget = useCallback((): ArmedSlot | null => {
-    if (!draft) return null;
-    if (armedSlot) return armedSlot;
-    const loose = draft.cards.find((card): card is PaletteCard => card.kind === "palette");
-    if (loose) return { cardId: loose.id, index: 0 };
-    const bundle = draft.cards.find(
-      (card): card is BriefBundleCard => card.kind === "brief" && !!card.palette,
-    );
-    return bundle ? { cardId: bundle.id, index: 0 } : null;
-  }, [armedSlot, draft]);
-
-  /** Fill the armed slot (arming the board's first palette when nothing is armed). */
-  const fillSlot = useCallback(
-    (hex: string) => {
-      const target = resolveTarget();
-      if (!target) {
-        setPickerOpen(true);
-        return;
-      }
-      setArmedSlot((current) =>
-        current?.cardId === target.cardId && current.index === target.index ? current : target,
-      );
-      setPreview(hex);
-    },
-    [resolveTarget],
-  );
-
-  const armSlot = useCallback(
-    (cardId: string, index: number) => {
-      const hex = paletteSlots(draft?.cards.find((card) => card.id === cardId))?.[index]?.hex ?? null;
-      setArmedSlot({ cardId, index });
-      setPreview(hex);
-      // Arming only opens the picker: seeding must not count as a colour change.
-      if (draft && hex) lastWrite.current = `${draft.id}:${cardId}:${index}:${hex}`;
-      setPickerOpen(true);
-    },
-    [draft],
-  );
-
-  // Manual edits are committed on a short delay, so dragging across the spectrum does not
-  // write to the store (and localStorage) on every pointer move.
-  useEffect(() => {
-    if (!preview || !armedSlot || !draft) return;
-    const key = `${draft.id}:${armedSlot.cardId}:${armedSlot.index}:${preview}`;
-    if (lastWrite.current === key) return;
-    const timer = window.setTimeout(() => {
-      lastWrite.current = key;
-      const card = draft.cards.find((current) => current.id === armedSlot.cardId);
-      const name =
-        card?.kind === "brief"
-          ? card.name || card.palette?.label || "Brief"
-          : card?.kind === "palette"
-            ? card.label || "Palette"
-            : "Palette";
-      store.patchDraft(draft.id, {
-        cards: setSlot(draft.cards, armedSlot.cardId, armedSlot.index, preview),
-      });
-      toast.success(`Filled ${SLOT_LABELS[armedSlot.index]} · ${name}`, { id: "slot-fill" });
-    }, 120);
-    return () => window.clearTimeout(timer);
-  }, [armedSlot, draft, preview, store]);
-
-  const pickColor = useCallback(async () => {
-    if (!eyeDropperSupported()) {
-      setPickerOpen(true);
+  const generate = (raw: string) => {
+    const query = raw.trim();
+    if (!query || !base.length) return;
+    const next = moodboardSource(base, query);
+    if (!next) {
+      store.miss(query);
       return;
     }
-    const hex = await pickScreenColor();
-    if (hex) fillSlot(hex);
-  }, [fillSlot]);
-
-  // "I" samples a colour from anywhere on screen, matching the picker's kbd hint.
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key !== "i" && event.key !== "I") return;
-      if (event.metaKey || event.ctrlKey || event.altKey) return;
-      const target = event.target as HTMLElement | null;
-      if (
-        target &&
-        (target.tagName === "INPUT" ||
-          target.tagName === "TEXTAREA" ||
-          target.isContentEditable ||
-          target.closest('[role="slider"]'))
-      ) {
-        return;
-      }
-      if (document.querySelector('[data-slot="dialog-content"]')) return;
-      event.preventDefault();
-      void pickColor();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [pickColor]);
-
-  const paletteTargets = useMemo<PaletteTarget[]>(() => {
-    if (!draft) return [];
-    const targets: PaletteTarget[] = [];
-    for (const card of draft.cards) {
-      if (card.kind === "palette") {
-        targets.push({ cardId: card.id, label: card.label || "Palette", slots: card.slots });
-      } else if (card.kind === "brief" && card.palette) {
-        targets.push({ cardId: card.id, label: card.name || card.palette.label || "Brief", slots: card.palette.slots });
-      }
-    }
-    return targets;
-  }, [draft]);
-
-  const armedHex =
-    armedSlot && draft
-      ? (paletteSlots(draft.cards.find((card) => card.id === armedSlot.cardId))?.[armedSlot.index]
-          ?.hex ?? null)
-      : null;
-  const pickerHex = preview ?? armedHex ?? "#F07B22";
-
-  /** Mobile/narrow screens have no drag, so an inspiration tile can be added with one tap. */
-  const addDesignToBoard = (template: Template) => {
-    if (!draft) return;
-    const host = draft.cards.find((card): card is BriefBundleCard => card.kind === "brief");
-    const lowest = draft.cards.reduce(
-      (max, card) => Math.max(max, card.y + CARD_SIZE[card.kind].h),
-      0,
-    );
-    const x = LANE.side;
-    const y = lowest + ADD_MORE_GAP;
-    const next = addInspiration(draft.cards, designCard(template, x, y), host?.id ?? null, x, y);
-    if (next !== draft.cards) {
-      store.patchDraft(draft.id, { cards: next });
-      bumpFit();
-    }
-  };
-
-  const copy = useCallback((text: string, key: string) => {
-    void navigator.clipboard
-      .writeText(text)
-      .then(() => {
-        setCopied(key);
-        window.setTimeout(() => setCopied((current) => (current === key ? null : current)), 1400);
+    const token = store.applyGenerated({ query, tags: next.tags, colors: next.colors });
+    const fallback = next.fallbackTitles;
+    void fetch("/api/moodboard/titles", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ query }),
+    })
+      .then(async (res) => (await res.json()) as MoodboardTitlesResponse)
+      .then((data) => {
+        store.setTitles(token, data.status === "ok" && data.titles.length ? data.titles : fallback);
       })
-      .catch(() => setError("Couldn't copy to the clipboard."));
-  }, []);
-
-  /** Append a generated batch. Nothing already on the canvas is discarded. */
-  const generate = (value: string, wanted: number) => {
-    const text = value.trim();
-    if (!text) return;
-    const previous = fresh ? undefined : active;
-    const seed = previous && previous.cards.length ? (previous.seed ?? 0) + 1 : 0;
-    const brief = generateBrief(base, text, wanted, {
-      seed,
-      minShare: seed > 0 ? 0.02 : undefined,
-    });
-    if (!brief) {
-      setError(`No designs match “${text}”. Try an industry like Construction or Food & Drink.`);
-      return;
-    }
-    setError(null);
-    setNotice(
-      brief.options.some((option) => option.variation)
-        ? "This industry has no further distinct colour stories, so the extra option is a variation of its strongest colour."
-        : null,
-    );
-
-    const target =
-      previous ??
-      store.createDraft({
-        query: text,
-        label: brief.match.label,
-        templates: brief.match.templates,
+      .catch(() => {
+        store.setTitles(token, fallback);
       });
-    const batchIndex = target.cards.filter((card) => card.kind === "tags").length;
-    store.patchDraft(target.id, {
-      query: text,
-      label: brief.match.label,
-      templates: brief.match.templates,
-      cards: [...target.cards, ...cardsFromBrief(brief, batchIndex)],
-      seed,
-    });
-    store.setActiveDraft(target.id);
-    setFresh(false);
-    setInput(text);
-    bumpFit();
   };
 
-  /** Add just titles or just palettes, below everything already placed. */
-  const addMore = (kind: "title" | "palette") => {
-    if (!draft) return;
-    const text = draft.query.trim() || draft.label;
-    const seed = (draft.seed ?? 0) + 1;
-    const brief = generateBrief(base, text, 1, { seed, minShare: 0.02 });
-    if (!brief) {
-      setNotice("This industry ran out of usable colour data — nothing to add.");
-      return;
-    }
-    const lowest = draft.cards.reduce(
-      (max, card) => Math.max(max, card.y + CARD_SIZE[card.kind].h),
-      0,
-    );
-    const batchIndex = draft.cards.filter((card) => card.kind === "tags").length;
-    const extra = cardsFromBrief(brief, batchIndex, lowest + ADD_MORE_GAP).filter(
-      (card) => card.kind === kind,
-    );
-    store.patchDraft(draft.id, { cards: [...draft.cards, ...extra], seed });
-    setNotice(
-      brief.options[0]?.variation
-        ? "No distinct colour story left; added a variation of this industry's strongest colour."
-        : null,
-    );
-    bumpFit();
-  };
-
-  const saveBundle = useCallback(
-    (bundleId: string) => {
-      if (!draft) return;
-      const savedBrief = store.saveSnapshot(draft.id, bundleId, "");
-      if (!savedBrief) return;
-      toast.success(`Saved “${savedBrief.name}”`, {
-        description: "Find it on the Boards page.",
-        action: { label: "View", onClick: () => setPage("boards") },
-      });
-    },
-    [draft, setPage, store],
+  const form = (
+    <QueryForm key={`${draft?.id ?? "new"}:${formEpoch}`} initial={attempt ?? draft?.query ?? ""} onGenerate={generate} />
   );
 
-  const startNew = () => {
-    setFresh(true);
-    setInput("");
-    setError(null);
-    setNotice(null);
-  };
-
-  const copyDraft = () => {
-    if (!draft) return;
-    const bundles = draft.cards.filter(
-      (card): card is BriefBundleCard => card.kind === "brief",
-    );
-    const text = bundles.length
-      ? bundles
-          .map((card) => formatSnapshot(snapshotOfBundle(draft.cards, card.id)!, draft.label))
-          .join("\n\n")
-      : cardsAsText(draft);
-    copy(text, "draft");
-  };
-
-  const hasCards = !!draft && draft.cards.length > 0;
-
   return (
-    <div className="flex h-full flex-col" data-testid="brief-page">
-      <div className={cn(HEADER_ROW, "flex-wrap")}>
-        <div className="min-w-0 flex-1 basis-full sm:basis-auto">
-          <h1 className={HEADER_TITLE}>Design brief</h1>
-          <p className="hidden truncate text-[11px] text-muted-foreground sm:block">
-            Generate palette, title and tag cards, then drop them together to plug in a brief.
-          </p>
-        </div>
-
-        {drafts.length > 0 && (
-          <select
-            value={fresh ? "" : (draft?.id ?? "")}
-            onChange={(event) => {
-              const id = event.target.value;
-              setFresh(!id);
-              if (id) store.setActiveDraft(id);
-            }}
-            aria-label="Switch brief workspace"
-            className="h-8 max-w-[180px] shrink-0 rounded-lg bg-panel px-2 text-[12px] font-medium outline-none ring-1 ring-foreground/10 focus:ring-foreground/25"
-          >
-            {fresh && <option value="">New brief…</option>}
-            {drafts.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.label} ·{" "}
-                {item.cards.filter((card) => card.kind === "palette" || card.kind === "brief").length}{" "}
-                palettes
-              </option>
-            ))}
-          </select>
-        )}
-
-        <button type="button" onClick={startNew} className={PILL} title="Start a new brief workspace">
-          <FilePlusIcon className="size-3.5" /> New
-        </button>
-
-        {hasCards && (
-          <button
-            type="button"
-            aria-label="Copy the whole draft"
-            title="Copy the whole draft"
-            onClick={copyDraft}
-            className={cn(HEADER_CONTROL, HEADER_CONTROL_IDLE, "rounded-xl")}
-          >
-            {copied === "draft" ? <CheckIcon className="size-4" /> : <CopyIcon className="size-4" />}
-          </button>
-        )}
-
-        <button
-          type="button"
-          aria-label="Search inspiration"
-          title="Search inspiration"
-          aria-pressed={inspoOpen}
-          onClick={() => {
-            setInspoOpen((open) => !open);
-            bumpFit();
-          }}
-          className={cn(HEADER_CONTROL, inspoOpen ? HEADER_CONTROL_ON : HEADER_CONTROL_IDLE)}
-        >
-          <PanelRightIcon className="size-4" />
-        </button>
+    <div className="relative flex h-full flex-col" data-testid="brief-page">
+      <div className={HEADER_ROW}>
+        <BackButton onClick={() => setPage("explore")} />
+        <h1 className={HEADER_TITLE}>Moodboard</h1>
+        <MoodboardHeaderActions />
       </div>
 
-      <div className="flex min-h-0 flex-1">
-        <div className="relative min-w-0 flex-1">
-          {!hasCards ? (
-            <div className="flex h-full flex-col items-center justify-center gap-2 px-6 pb-44 text-center">
-              <span className="grid size-11 place-items-center rounded-2xl bg-foreground text-background">
-                <LayoutGridIcon className="size-5" />
-              </span>
-              <p className="text-sm font-semibold">Start with an industry, topic or theme</p>
-              <p className="max-w-sm text-xs text-muted-foreground">
-                Generating lays out title, four-colour palette and tags cards. Move them around, drag
-                colours between palettes, then drop a title, a palette and the tags on top of each
-                other so they plug into one brief card you can name and save.
-              </p>
-            </div>
-          ) : isMobile ? (
-            <BriefMobileList
-              draft={draft}
-              store={store}
-              savedBundleIds={savedBundleIds}
-              onSaveBundle={saveBundle}
-              onCopy={copy}
-              copied={copied}
-              armedSlot={armedSlot}
-              armSlot={armSlot}
-            />
-          ) : (
-            <BriefCanvas
-              draft={draft}
-              store={store}
-              savedBundleIds={savedBundleIds}
-              fitSignal={fitSignal}
-              onSaveBundle={saveBundle}
-              armedSlot={armedSlot}
-              armSlot={armSlot}
-            />
-          )}
-
-          {/* The dock floats over the canvas: one place to generate, and contextual actions above it. */}
-          <div className="pointer-events-none absolute inset-x-0 bottom-5 z-30 flex flex-col items-center gap-2 px-4 max-md:bottom-0 max-md:px-0 max-md:pb-2">
-            {notice && (
-              <p className="pointer-events-auto max-w-[560px] rounded-lg bg-panel/90 px-3 py-1.5 text-center text-[11px] text-muted-foreground backdrop-blur-md">
-                {notice}
-              </p>
-            )}
-            {error && (
-              <p className="pointer-events-auto max-w-[560px] rounded-lg bg-destructive/10 px-3 py-2 text-center text-[11px] text-destructive backdrop-blur-md">
-                {error}
-              </p>
-            )}
-
-            <div className="flex max-w-full flex-wrap items-center justify-center gap-2">
-              {!hasCards
-                ? industries.map((industry) => (
-                    <button
-                      key={industry}
-                      type="button"
-                      onClick={() => generate(industry, count)}
-                      className={DOCK_CHIP}
-                    >
-                      {industry}
-                    </button>
-                  ))
-                : (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => addMore("title")}
-                        className={DOCK_CHIP}
-                        title="Add another title card"
-                      >
-                        <TypeIcon className="size-3.5" /> Add title
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => addMore("palette")}
-                        className={DOCK_CHIP}
-                        title="Add another palette card"
-                      >
-                        <PaletteIcon className="size-3.5" /> Add palette
-                      </button>
-                      <PalettePicker
-                        open={pickerOpen}
-                        onOpenChange={setPickerOpen}
-                        targets={paletteTargets}
-                        armed={armedSlot}
-                        onArm={armSlot}
-                        hex={pickerHex}
-                        onHexChange={fillSlot}
-                        onPickScreen={() => void pickColor()}
-                        supported={canPickScreen}
-                        onAddPalette={() => addMore("palette")}
-                        triggerClassName={cn(
-                          DOCK_CHIP,
-                          "pointer-events-auto",
-                          pickerOpen && "bg-foreground text-background hover:bg-foreground",
-                        )}
-                        triggerLabel="Pick colour"
-                        side="top"
-                        align="center"
-                      />
-                    </>
-                  )}
-            </div>
-
-            <form
-              className="pointer-events-auto flex h-13 w-full max-w-[620px] items-center gap-1 rounded-full bg-panel/75 pr-2 pl-4 shadow-[0_8px_30px_rgb(0_0_0/0.12)] backdrop-blur-md transition-shadow focus-within:ring-2 focus-within:ring-ring/40"
-              onSubmit={(event) => {
-                event.preventDefault();
-                generate(input, count);
-              }}
-            >
-              <LayoutGridIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-              <input
-                value={input}
-                onChange={(event) => setInput(event.target.value)}
-                placeholder="Industry, topic or theme"
-                aria-label="Industry, topic or theme"
-                maxLength={80}
-                className="h-full min-w-0 flex-1 bg-transparent text-[15px] font-medium outline-none placeholder:text-muted-foreground/80"
-              />
-
-              <div
-                role="group"
-                aria-label="Number of palette and title options"
-                className="flex shrink-0 gap-0.5 rounded-full bg-background/70 p-0.5"
-              >
-                {Array.from({ length: MAX_BRIEF_OPTIONS }, (_, index) => index + 1).map((value) => (
-                  <button
-                    key={value}
-                    type="button"
-                    aria-pressed={count === value}
-                    onClick={() => setCount(value)}
-                    className={cn(
-                      "grid size-7 place-items-center rounded-full text-[11px] tabular-nums transition-colors",
-                      count === value
-                        ? "bg-foreground font-semibold text-background"
-                        : "font-medium text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    {value}
-                  </button>
-                ))}
-              </div>
-
-              <Button type="submit" className="h-10 shrink-0 rounded-full px-3.5">
-                <SparklesIcon className="size-4" />
-                Generate
-              </Button>
-            </form>
+      {draft ? (
+        <>
+          <div className="thin-scroll min-h-0 flex-1 overflow-y-auto">
+            <MoodboardBody />
           </div>
-        </div>
-
-        {inspoOpen && (
-          <InspirationPanel
-            open={inspoOpen}
-            industry={draft?.query.trim() || draft?.label || ""}
-            draft={draft}
-            onClose={() => {
-              setInspoOpen(false);
-              bumpFit();
-            }}
-            onAddDesign={addDesignToBoard}
-            onPickColor={(_template, hex) => fillSlot(hex)}
-            onTransitionEnd={bumpFit}
-          />
-        )}
-      </div>
-    </div>
-  );
-}
-
-/** Plain-text dump of a draft that has no plugged brief yet. */
-function cardsAsText(draft: BriefDraft): string {
-  const titles = draft.cards.filter((card): card is TitleCard => card.kind === "title");
-  const palettes = draft.cards.filter((card): card is PaletteCard => card.kind === "palette");
-  const tags = draft.cards.find((card): card is TagsCard => card.kind === "tags");
-  const lines = [`${draft.label} design brief`];
-  palettes.forEach((palette, index) => {
-    const title = titles[index];
-    lines.push(
-      `${index + 1}. ${palette.slots.map((slot) => slot.hex).join(" ")} — ${
-        title ? title.text : "(no title plugged in)"
-      }`,
-    );
-  });
-  lines.push(`Tags: ${tags?.tags.join(", ") ?? "(none)"}`);
-  return lines.join("\n");
-}
-
-/** Closest palette above/below a title, used by the mobile "Make brief" shortcut. */
-function nearestPalette(cards: BriefCard[], y: number): PaletteCard | undefined {
-  let best: PaletteCard | undefined;
-  let distance = Number.POSITIVE_INFINITY;
-  for (const card of cards) {
-    if (card.kind !== "palette") continue;
-    const gap = Math.abs(card.y - y);
-    if (gap < distance) {
-      best = card;
-      distance = gap;
-    }
-  }
-  return best;
-}
-
-/**
- * Narrow screens have no drag-and-drop, so each title gets a "Make brief" action that plugs
- * it with its nearest palette and the shared tags in one tap.
- */
-function BriefMobileList({
-  draft,
-  store,
-  savedBundleIds,
-  onSaveBundle,
-  onCopy,
-  copied,
-  armedSlot,
-  armSlot,
-}: {
-  draft: BriefDraft;
-  store: BriefStore;
-  savedBundleIds: Set<string>;
-  onSaveBundle: (bundleId: string) => void;
-  onCopy: (text: string, key: string) => void;
-  copied: string | null;
-  armedSlot: ArmedSlot | null;
-  armSlot: (cardId: string, index: number) => void;
-}) {
-  const update = (id: string, fn: (card: BriefCard) => BriefCard) =>
-    store.patchDraft(draft.id, { cards: patchCard(draft.cards, id, fn) });
-
-  const makeBrief = (title: TitleCard) => {
-    const palette = nearestPalette(draft.cards, title.y);
-    const tags = draft.cards.find((card): card is TagsCard => card.kind === "tags");
-    let cards = draft.cards;
-    let bundleId: string;
-    if (palette) {
-      cards = plugInto(cards, title.id, palette.id);
-      bundleId = palette.id;
-    } else {
-      const blank = emptyBundle(title.x, title.y);
-      bundleId = blank.id;
-      cards = plugInto([...cards, blank], title.id, blank.id);
-    }
-    if (tags) cards = plugInto(cards, tags.id, bundleId);
-    store.patchDraft(draft.id, { cards });
-  };
-
-  return (
-    <div className="thin-scroll h-full space-y-3 overflow-y-auto px-4 pb-44">
-      {draft.cards.map((card) => {
-        if (card.kind === "title") {
-          return (
-            <div key={card.id} className="rounded-xl bg-panel p-3 ring-1 ring-foreground/10">
-              <label className="mb-1 block text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
-                Title
-              </label>
-              <input
-                key={card.text}
-                defaultValue={card.text}
-                aria-label="Brief title"
-                onBlur={(event) => {
-                  const text = event.target.value.trim();
-                  if (!text) event.target.value = card.text;
-                  else if (text !== card.text) {
-                    update(card.id, (c) => ({ ...(c as TitleCard), text }));
-                  }
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") event.currentTarget.blur();
-                  if (event.key === "Escape") {
-                    event.currentTarget.value = card.text;
-                    event.currentTarget.blur();
-                  }
-                }}
-                className="w-full rounded-lg bg-background px-2 py-1.5 text-[15px] leading-snug font-semibold outline-none ring-1 ring-transparent focus:ring-foreground/20"
-              />
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                className="mt-2 w-full"
-                onClick={() => makeBrief(card)}
-              >
-                <SparklesIcon className="size-3.5" /> Make brief
-              </Button>
+          <div className="pointer-events-none absolute inset-x-0 bottom-5 z-30 flex justify-center px-4 max-md:bottom-0 max-md:px-0">
+            <div className="pointer-events-auto w-full max-w-[620px] max-md:max-w-none" data-testid="moodboard-dock">
+              {form}
             </div>
-          );
-        }
-        if (card.kind === "palette") {
-          return (
-            <div key={card.id} className="rounded-xl bg-panel p-3 ring-1 ring-foreground/10">
-              <div className="mb-2 flex items-center justify-between text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
-                <span>Palette</span>
+          </div>
+        </>
+      ) : (
+        <div className="thin-scroll flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-4 py-8">
+          <div className="my-auto flex w-full max-w-[620px] flex-col items-center gap-4">
+            {form}
+            <p className="max-w-sm text-center text-sm text-muted-foreground">
+              {miss
+                ? "Nothing matched that. Try an industry, topic, or theme from the catalogue."
+                : "Enter an industry, topic, or theme."}
+            </p>
+            <div className="flex flex-wrap justify-center gap-2">
+              {industries.map((industry) => (
                 <button
+                  key={industry}
                   type="button"
-                  onClick={() => onCopy(card.slots.map((slot) => slot.hex).join(", "), card.id)}
-                  className="flex h-6 items-center gap-1 rounded-full px-2 text-[10px] font-medium normal-case tracking-normal text-muted-foreground"
+                  onClick={() => generate(industry)}
+                  className="h-8 rounded-full bg-panel px-3 text-[12px] font-medium ring-1 ring-foreground/10 transition-colors hover:bg-muted"
                 >
-                  {copied === card.id ? <CheckIcon className="size-3" /> : <CopyIcon className="size-3" />}
-                  {copied === card.id ? "Copied" : "Copy"}
+                  {industry}
                 </button>
-              </div>
-              <div className="grid grid-cols-4 gap-1.5">
-                {card.slots.map((slot, index) => {
-                  const armed = armedSlot?.cardId === card.id && armedSlot.index === index;
-                  return (
-                    <button
-                      key={`${index}-${slot.hex}`}
-                      type="button"
-                      onClick={() => armSlot(card.id, index)}
-                      aria-pressed={armed}
-                      aria-label={`Edit ${SLOT_LABELS[index]} ${slot.hex}`}
-                      className="space-y-1 rounded-lg text-left"
-                    >
-                      <span
-                        className={cn(
-                          "block h-12 rounded-lg ring-1 ring-black/10",
-                          armed && "ring-2 ring-foreground",
-                        )}
-                        style={{ background: slot.hex }}
-                      />
-                      <span className="block text-center text-[10px] font-medium tabular-nums">
-                        {slot.hex}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
+              ))}
             </div>
-          );
-        }
-        if (card.kind === "tags") {
-          return (
-            <div key={card.id} className="rounded-xl bg-panel p-3 ring-1 ring-foreground/10">
-              <div className="mb-2 text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
-                Tags · {card.tags.length}/{TAGS_LIMIT}
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {card.tags.map((tag) => (
-                  <button
-                    key={tag}
-                    type="button"
-                    title="Remove this tag"
-                    onClick={() =>
-                      update(card.id, (c) => ({
-                        ...(c as TagsCard),
-                        tags: toggleTag((c as TagsCard).tags, tag),
-                      }))
-                    }
-                    className="rounded-full bg-background px-2 py-0.5 text-[11px]"
-                  >
-                    {sentenceCase(tag)}
-                  </button>
-                ))}
-                {!card.tags.length && (
-                  <span className="text-[11px] text-muted-foreground">No tags selected.</span>
-                )}
-              </div>
-            </div>
-          );
-        }
-        if (card.kind === "design") {
-          const design = card as DesignCard;
-          return (
-            <div key={card.id} className="rounded-xl bg-panel p-3 ring-1 ring-foreground/10">
-              <div className="mb-1 text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
-                Inspiration
-              </div>
-              <p className="mb-1.5 truncate text-[12px] font-medium">{design.title}</p>
-              <div className="flex gap-1">
-                {design.palette.slice(0, 6).map((slot) => (
-                  <span
-                    key={slot.hex}
-                    className="h-6 flex-1 rounded ring-1 ring-black/10"
-                    style={{ background: slot.hex }}
-                  />
-                ))}
-              </div>
-            </div>
-          );
-        }
-        return null;
-      })}
-
-      {draft.cards
-        .filter((card): card is BriefBundleCard => card.kind === "brief")
-        .map((bundle) => (
-          <div key={bundle.id} className="space-y-2 rounded-xl bg-panel p-3 ring-1 ring-foreground/10">
-            <div className="flex items-center justify-between text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
-              <span>Brief</span>
-              {savedBundleIds.has(bundle.id) && <span>Saved</span>}
-            </div>
-            <input
-              key={bundle.name}
-              defaultValue={bundle.name}
-              placeholder="Name this brief"
-              aria-label="Brief name"
-              onBlur={(event) =>
-                update(bundle.id, (c) => ({ ...(c as BriefBundleCard), name: event.target.value.trim() }))
-              }
-              className="h-8 w-full rounded-lg bg-background px-2 text-[13px] font-semibold outline-none ring-1 ring-transparent focus:ring-foreground/20"
-            />
-            <p className="text-[15px] leading-snug font-semibold">
-              {bundle.title ?? "No title plugged in"}
-            </p>
-            {bundle.palette ? (
-              <div className="flex gap-1">
-                {bundle.palette.slots.map((slot, index) => {
-                  const armed = armedSlot?.cardId === bundle.id && armedSlot.index === index;
-                  return (
-                    <button
-                      key={`${index}-${slot.hex}`}
-                      type="button"
-                      onClick={() => armSlot(bundle.id, index)}
-                      aria-pressed={armed}
-                      aria-label={`Edit ${SLOT_LABELS[index]} ${slot.hex}`}
-                      className={cn(
-                        "h-8 flex-1 rounded ring-1 ring-black/10",
-                        armed && "ring-2 ring-foreground",
-                      )}
-                      style={{ background: slot.hex }}
-                    />
-                  );
-                })}
-              </div>
-            ) : null}
-            <p className="text-[11px] text-muted-foreground">
-              {bundle.tags?.map(sentenceCase).join(", ") ?? "No tags plugged in"}
-            </p>
-            {bundle.designs.length > 0 && (
-              <p className="text-[11px] text-muted-foreground">
-                {bundle.designs.length} inspiration{" "}
-                {bundle.designs.length === 1 ? "design" : "designs"}
-              </p>
+            {saved.length > 0 && (
+              <section aria-label="Saved moodboards" data-testid="moodboard-saved" className="mt-4 w-full space-y-2">
+                <h2 className={SECTION}>Saved</h2>
+                <ul className="space-y-2">
+                  {saved.map((item) => {
+                    const count = item.inspoIds.length;
+                    return (
+                      <li key={item.id} className="flex items-center gap-2 rounded-xl bg-panel px-3 py-2.5 ring-1 ring-foreground/10">
+                        <button type="button" onClick={() => store.open(item.id)} className="min-w-0 flex-1 text-left">
+                          <span className="block truncate text-[15px] font-semibold">{item.query}</span>
+                          <span className="text-[12px] text-muted-foreground">
+                            {count === 1 ? "1 design" : `${count} designs`}
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={`Remove ${item.query}`}
+                          onClick={() => store.removeSaved(item.id)}
+                          className="grid size-7 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                        >
+                          <XIcon className="size-3.5" />
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
             )}
-            <Button
-              type="button"
-              size="lg"
-              className="w-full"
-              onClick={() => onSaveBundle(bundle.id)}
-            >
-              <SaveIcon className="size-4" />
-              {savedBundleIds.has(bundle.id) ? "Saved — save again to update" : "Save brief"}
-            </Button>
           </div>
-        ))}
-
-      <p className="rounded-xl border border-dashed border-border px-3 py-4 text-center text-[11px] text-muted-foreground">
-        Drag-and-drop plugging is available on a wider screen.
-      </p>
+        </div>
+      )}
     </div>
   );
 }

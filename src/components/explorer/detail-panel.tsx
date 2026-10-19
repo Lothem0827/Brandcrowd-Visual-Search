@@ -8,7 +8,6 @@ import { cap, type FacetKey } from "@/lib/facets";
 import { cn } from "@/lib/utils";
 import type { SimilarHit, SimilarKind } from "@/lib/similarity";
 import { SIMILAR_META } from "@/lib/tree";
-import { AddToBriefButton } from "./add-to-brief";
 import { useExplorer } from "./context";
 import { SaveButton } from "./save-button";
 import { ImageIcon, LayoutIcon } from "./icons";
@@ -430,10 +429,7 @@ export function DetailPanel({ template: t }: { template: Template }) {
               )}
             </h2>
           </div>
-          <div className="flex items-stretch gap-2">
-            <SaveButton templateId={t.templateId} className="flex-1" />
-            <AddToBriefButton template={t} className="shrink-0" />
-          </div>
+          <SaveButton templateId={t.templateId} className="w-full" />
         </div>
 
         <div className="flex shrink-0 border-b border-border/60" role="tablist" aria-label="Design panel tabs">

@@ -2,7 +2,7 @@
  * End-to-end smoke flow + screenshots for the Savee-style shell, using an installed Chrome/Chromium.
  *   BASE_URL=http://localhost:3000 CHROME_PATH="C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" node scripts/e2e.mjs
  *
- * Covers the shell (sidebar nav, Home feed, Explore, filter panel, grid/tree toggle), the windowed
+ * Covers the shell (sidebar nav, Home browse, filter panel, grid/tree toggle), the windowed
  * grid, colour search, the focused lightbox (incl. its URL), the retained similar mind-map, and boards.
  */
 import { chromium } from "playwright-core";
@@ -40,8 +40,8 @@ const tilesIn = (scope = page) => scope.locator('[data-testid="grid-view"] [aria
 const gridCount = async (scope = page) => Number(await scope.getByTestId("grid-view").getAttribute("data-count"));
 const popover = page.locator('[data-slot="popover-content"]');
 
-// ---------------------------------------------------------------- Home discovery feed
-step("home discovery feed (default landing, dark)");
+// ---------------------------------------------------------------- Home browse
+step("home browse (default landing, dark)");
 await page.goto(BASE, { waitUntil: "domcontentloaded" });
 await page.getByTestId("grid-view").waitFor();
 await settle(2400);
@@ -66,7 +66,7 @@ assert(mountedMid < homeTotal, `after scrolling, still only ${mountedMid} tiles 
 assert(midLabel !== firstLabel, "scrolling swaps the mounted rows");
 await shot("01-home-scrolled");
 
-step("home: search narrows the feed and jumps to Explore");
+step("home: search narrows the feed and stays on /");
 await page.getByTestId("grid-view").evaluate((el) => {
   el.scrollTop = 0;
 });
@@ -75,24 +75,21 @@ await page.locator("#template-search").press("Enter");
 await settle(2400);
 const narrowed = await gridCount();
 assert(narrowed > 0 && narrowed < homeTotal, `search narrowed the feed to ${narrowed}`);
-assert((await page.locator('#rail-explore[aria-pressed="true"]').count()) === 1, "searching switched to Explore");
-assert(at() === "/explore" && /q=sale/.test(page.url()), "searching moves to /explore?q=…");
+assert((await page.locator('#rail-home[aria-pressed="true"]').count()) === 1, "searching stays on Home");
+assert(at() === "/" && /q=sale/.test(page.url()), "searching stays on /?q=…");
 assert((await page.getByRole("heading", { name: /Showing results for/ }).count()) === 1, "results heading is shown");
 await shot("02-home-search");
 await page.getByRole("button", { name: "Clear search", exact: true }).click();
 await settle(1600);
 
-// ---------------------------------------------------------------- Explore
-step("explore landing: popular tags");
-await rail.getByRole("button", { name: "Explore", exact: true }).click();
-await settle(1500);
+step("home landing: popular tags");
 assert((await page.getByText("Popular tags").count()) >= 1, "popular tags hero is shown");
 const tags = page.getByTestId("popular-tags").getByRole("button");
 const tagCount = await tags.count();
 assert(tagCount >= 12 && tagCount <= 16, `popular tags shows the top ${tagCount}`);
 await shot("03-explore-landing");
 
-step("explore: tap a popular tag -> heading + filter toggle");
+step("home: tap a popular tag -> heading + filter toggle");
 const tagName = ((await tags.first().innerText()) || "").split("\n")[0].trim();
 await tags.first().click();
 await settle(2400);
@@ -101,14 +98,14 @@ const heading = (await page.locator("h2").first().innerText()).replace(/\n/g, " 
 console.log("   tag:", tagName, "| heading:", heading);
 assert(/Filtered results|Showing results for/.test(heading), "results heading is shown");
 assert((await gridCount()) < homeTotal, "tag filter narrowed the results");
-assert(at() === "/explore" && /tag=/.test(page.url()), "explore search lives in /explore?tag=…");
+assert(at() === "/" && /tag=/.test(page.url()), "home search lives in /?tag=…");
 await shot("04-explore-tag-results");
 
-step("explore: refresh keeps the tagged search");
+step("home: refresh keeps the tagged search");
 await page.reload({ waitUntil: "domcontentloaded" });
 await page.getByTestId("grid-view").waitFor();
 await settle(2400);
-assert(at() === "/explore" && /tag=/.test(page.url()), "refresh keeps /explore?tag=…");
+assert(at() === "/" && /tag=/.test(page.url()), "refresh keeps /?tag=…");
 assert(/Filtered results|Showing results for/.test((await page.locator("h2").first().innerText()).replace(/\n/g, " ")), "results are still filtered after refresh");
 
 step("filter panel: sort + clear all");
@@ -321,16 +318,16 @@ assert(at() === boardPath, `refresh keeps ${boardPath}`);
 assert((await page.getByRole("button", { name: "Select designs" }).count()) === 1, "board detail is still open after refresh");
 
 step("routing: brief route and Back/Forward between pages");
-await rail.getByRole("button", { name: "Design brief", exact: true }).click();
+await rail.getByRole("button", { name: "Moodboard", exact: true }).click();
 await page.getByTestId("brief-page").waitFor();
 assert(at() === "/brief", "brief lives at /brief");
 await page.reload({ waitUntil: "domcontentloaded" });
 await page.getByTestId("brief-page").waitFor();
 await settle(800);
 assert(at() === "/brief", "refresh keeps /brief");
-await rail.getByRole("button", { name: "Explore", exact: true }).click();
+await rail.getByRole("button", { name: "Home", exact: true }).click();
 await settle(900);
-assert(at() === "/explore", "explore lives at /explore");
+assert(at() === "/", "home lives at /");
 await page.goBack();
 await page.getByTestId("brief-page").waitFor();
 assert(at() === "/brief", "Back returns to /brief");

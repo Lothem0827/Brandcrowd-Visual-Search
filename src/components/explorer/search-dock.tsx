@@ -219,8 +219,8 @@ function SearchBox({
         )}
         <button
           type="button"
-          aria-label="Open the design brief workspace"
-          title="Open the design brief (palette, title and tags)"
+          aria-label="Open the moodboard"
+          title="Open the moodboard"
           onClick={() => setPage("brief")}
           className="grid size-10 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >

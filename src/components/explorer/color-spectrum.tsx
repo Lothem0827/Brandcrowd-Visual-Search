@@ -160,8 +160,8 @@ export function HexField({
  * Spectrum square + hue slider + hex field + named swatches.
  *
  * `hsv` is local so dragging keeps the hue while saturation/value change (a hex round-trip
- * would lose it at black and white). External changes — the eyedropper, or arming another
- * slot — sync back through `hex`, without fighting the value this picker just emitted.
+ * would lose it at black and white). External hex changes sync back through `hex`,
+ * without fighting the value this picker just emitted.
  */
 export function SpectrumPicker({
   hex,

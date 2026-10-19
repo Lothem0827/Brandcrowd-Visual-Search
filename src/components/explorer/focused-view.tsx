@@ -4,13 +4,14 @@ import { InfoIcon } from "lucide-react";
 import { rankByOverall } from "@/lib/similarity";
 import { cn } from "@/lib/utils";
 import { BackButton } from "./back-button";
-import { AddToBriefButton } from "./add-to-brief";
 import { useExplorer } from "./context";
 import { GridView } from "./grid-view";
 import { HEADER_CONTROL, HEADER_CONTROL_IDLE, HEADER_CONTROL_ON } from "./header";
 import { SaveButton } from "./save-button";
 import { templateImageUrl } from "@/lib/images";
+import { writeMoodboardDrag } from "@/lib/moodboards";
 import { ThumbImage } from "./thumb-image";
+import { useMoodboardPinned } from "./use-moodboards";
 import { useGridSettings } from "./use-grid-settings";
 
 /** How many related designs to keep in the flat, windowed list below the image. */
@@ -25,8 +26,9 @@ const RELATED_LIMIT = 600;
  * Back restores its scroll.
  */
 export function FocusedView() {
-  const { focused, base, recenter, setView, view, detailOpen, setDetailOpen } =
+  const { focused, base, recenter, setView, view, detailOpen, setDetailOpen, page } =
     useExplorer();
+  const canDrag = useMoodboardPinned() && page === "explore";
   const { radius } = useGridSettings();
   // Callback ref (state, not a ref object): the related grid needs the element to window
   // against, and a plain ref would still be empty when the grid's layout effect runs.
@@ -77,7 +79,6 @@ export function FocusedView() {
         <div className="pointer-events-none absolute inset-x-0 top-4 flex items-center justify-between px-4">
           <BackButton onClick={goBack} className="pointer-events-auto" />
           <div className="pointer-events-auto flex items-center gap-2">
-            <AddToBriefButton template={focused} />
             <SaveButton templateId={focused.templateId} />
             <button
               type="button"
@@ -110,7 +111,13 @@ export function FocusedView() {
               height) is the binding constraint. Radius/shadow live here, which also clips the
               skeleton to the same corners. */}
           <div
-            className="relative aspect-square w-[min(100cqw,100cqh)] overflow-hidden shadow-2xl"
+            draggable={canDrag}
+            onDragStart={(event) => writeMoodboardDrag(event.dataTransfer, focused.templateId)}
+            title={canDrag ? "Drag onto the moodboard" : undefined}
+            className={cn(
+              "relative aspect-square w-[min(100cqw,100cqh)] overflow-hidden shadow-2xl",
+              canDrag && "cursor-grab active:cursor-grabbing",
+            )}
             style={{ borderRadius: radius }}
           >
             <ThumbImage
