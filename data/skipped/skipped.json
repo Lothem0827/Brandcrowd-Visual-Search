@@ -5219,6 +5219,59 @@
     "skipDetail": "dropped during visual tagging (b11): emblem/badge/brand-mark lockup"
   },
   {
+    "templateId": "3b4ccb59-d7ba-426c-8759-268183f60a27",
+    "slug": "bastille-day-badge-490320",
+    "category": "Instagram Post",
+    "name": "Bastille Day Badge",
+    "displayTitle": "Bastille Day Celebration Badge Instagram Post",
+    "url": "https://www.design.com/instagram-posts/bastille-day-badge-490320/details",
+    "tags": [
+      "freedom",
+      "badge",
+      "holiday",
+      "national",
+      "celebration",
+      "french",
+      "independence",
+      "liberty",
+      "paris"
+    ],
+    "hashtags": [
+      "#holiday",
+      "#freedom",
+      "#badge",
+      "#national",
+      "#paris",
+      "#independence",
+      "#french",
+      "#celebration",
+      "#liberty"
+    ],
+    "description": "Celebrate Bastille Day in style with our vibrant Instagram Post template! Perfect for showcasing your love for freedom and the spirit of independence, this customizable badge design captures the essence of the French national holiday.",
+    "previewImage": "https://dynamic.design.com/template/preview/design/3b4ccb59-d7ba-426c-8759-268183f60a27?v=4&designTemplateVersion=1&size=design-preview-standalone-1x&layout=auto-1-1",
+    "thumbnailImage": "https://dynamic.design.com/template/preview/design/3b4ccb59-d7ba-426c-8759-268183f60a27?v=4&designTemplateVersion=1&size=design-preview-tall-2x&layout=auto",
+    "colors": [
+      {
+        "hex": "#E6CCB2",
+        "role": "background",
+        "name": "cream"
+      },
+      {
+        "hex": "#9185AE",
+        "role": "primary",
+        "name": "purple"
+      },
+      {
+        "hex": "#373160",
+        "role": "accent",
+        "name": "navy"
+      }
+    ],
+    "source": "tag:celebration",
+    "skipReason": "logo-like",
+    "skipDetail": "dropped during visual tagging (b15): emblem/badge/brand-mark lockup"
+  },
+  {
     "templateId": "2be9d225-0f12-4be7-a5a8-1f1e9d9ba825",
     "slug": "bastille-special-sale-490892",
     "category": "Instagram Post",
@@ -9907,6 +9960,61 @@
     "skipDetail": "dropped during visual tagging (b11): emblem/badge/brand-mark lockup"
   },
   {
+    "templateId": "d33277c8-fb7c-4172-b1c3-0c0d24c9433a",
+    "slug": "canada-day-moose-488544",
+    "category": "Instagram Post",
+    "name": "Canada Day Moose",
+    "displayTitle": "Celebrate Canada Day Moose Instagram Post",
+    "url": "https://www.design.com/instagram-posts/canada-day-moose-488544/details",
+    "tags": [
+      "free",
+      "event",
+      "animal",
+      "stamp",
+      "canada",
+      "greeting",
+      "holiday",
+      "independence",
+      "maple",
+      "moose"
+    ],
+    "hashtags": [
+      "#animal",
+      "#event",
+      "#free",
+      "#stamp",
+      "#holiday",
+      "#maple",
+      "#canada",
+      "#independence",
+      "#moose",
+      "#greeting"
+    ],
+    "description": "Celebrate Canada Day in style with our vibrant Moose Instagram Post template! Perfect for sharing your holiday spirit, this eye-catching design features a majestic moose adorned with iconic maple leaves, embodying the essence of Canada’s natural beauty.",
+    "previewImage": "https://dynamic.design.com/template/preview/design/d33277c8-fb7c-4172-b1c3-0c0d24c9433a?v=4&designTemplateVersion=1&size=design-preview-standalone-1x&layout=auto-1-1",
+    "thumbnailImage": "https://dynamic.design.com/template/preview/design/d33277c8-fb7c-4172-b1c3-0c0d24c9433a?v=4&designTemplateVersion=1&size=design-preview-tall-2x&layout=auto",
+    "colors": [
+      {
+        "hex": "#FEFBE2",
+        "role": "background",
+        "name": "cream"
+      },
+      {
+        "hex": "#701410",
+        "role": "primary",
+        "name": "maroon"
+      },
+      {
+        "hex": "#393D3E",
+        "role": "accent",
+        "name": "charcoal"
+      }
+    ],
+    "source": "tag:event",
+    "skipReason": "logo-like",
+    "skipDetail": "dropped during visual tagging (b15): emblem/badge/brand-mark lockup"
+  },
+  {
     "templateId": "1d6718d2-8353-4995-bfdc-59a0566a699b",
     "slug": "cancer-peace-sign-655841",
     "category": "Instagram Post",
@@ -12265,6 +12373,52 @@
     "source": "search",
     "skipReason": "logo-like",
     "skipDetail": "dropped during visual tagging (b7): emblem/badge/brand-mark lockup"
+  },
+  {
+    "templateId": "dc2a2ef9-f51e-480a-a116-cf38caee7cb1",
+    "slug": "christmas-snowball-955529",
+    "category": "Instagram Post",
+    "name": "Christmas Snowball",
+    "displayTitle": "Festive Snowball Greetings Instagram Post",
+    "url": "https://www.design.com/instagram-posts/christmas-snowball-955529/details",
+    "tags": [
+      "christmas",
+      "xmas",
+      "holidays",
+      "merry christmas",
+      "happy holidays",
+      "greetings"
+    ],
+    "hashtags": [
+      "#christmas",
+      "#xmas",
+      "#holidays",
+      "#merrychristmas",
+      "#happyholidays"
+    ],
+    "description": "Capture the magic of the season with our Christmas Snowball Instagram Post template! Perfect for sharing festive cheer, this eye-catching design features a whimsical snowball scene adorned with twinkling lights and cheerful holiday motifs.",
+    "previewImage": "https://dynamic.design.com/template/preview/design/dc2a2ef9-f51e-480a-a116-cf38caee7cb1?v=4&designTemplateVersion=1&size=design-preview-standalone-1x&layout=auto-1-1",
+    "thumbnailImage": "https://dynamic.design.com/template/preview/design/dc2a2ef9-f51e-480a-a116-cf38caee7cb1?v=4&designTemplateVersion=1&size=design-preview-tall-2x&layout=auto",
+    "colors": [
+      {
+        "hex": "#FEEFE5",
+        "role": "background",
+        "name": "off-white"
+      },
+      {
+        "hex": "#F8A5CF",
+        "role": "primary",
+        "name": "light pink"
+      },
+      {
+        "hex": "#3F0830",
+        "role": "accent",
+        "name": "plum"
+      }
+    ],
+    "source": "tag:christmas",
+    "skipReason": "logo-like",
+    "skipDetail": "dropped during visual tagging (b15): emblem/badge/brand-mark lockup"
   },
   {
     "templateId": "487407c6-6972-4164-9103-a649a60fb3ad",
@@ -21005,6 +21159,122 @@
     "skipDetail": "dropped during visual tagging (b12): emblem/badge/brand-mark lockup"
   },
   {
+    "templateId": "5beed684-0137-42d8-9e7a-ff6a1683905f",
+    "slug": "easter-bunny-708555",
+    "category": "Instagram Post",
+    "name": "Cute Easter Basket Rabbit",
+    "displayTitle": "Charming Easter Bunny Delight Instagram Post",
+    "url": "https://www.design.com/instagram-posts/easter-bunny-708555/details",
+    "tags": [
+      "basket",
+      "fashion",
+      "cute",
+      "event",
+      "bunny",
+      "floral",
+      "holiday",
+      "greeting",
+      "easter",
+      "easter bunny",
+      "leaves",
+      "flowers",
+      "easter egg"
+    ],
+    "hashtags": [
+      "#easterbunny",
+      "#fashion",
+      "#cute",
+      "#holiday",
+      "#easteregg",
+      "#floral",
+      "#event",
+      "#greeting",
+      "#bunny",
+      "#basket",
+      "#leaves",
+      "#flowers"
+    ],
+    "description": "Hop into the spirit of Easter with our delightful Easter Bunny Instagram Post template!",
+    "previewImage": "https://dynamic.design.com/template/preview/design/5beed684-0137-42d8-9e7a-ff6a1683905f?v=4&designTemplateVersion=1&size=design-preview-standalone-1x&layout=auto-1-1",
+    "thumbnailImage": "https://dynamic.design.com/template/preview/design/5beed684-0137-42d8-9e7a-ff6a1683905f?v=4&designTemplateVersion=1&size=design-preview-tall-2x&layout=auto",
+    "colors": [
+      {
+        "hex": "#ADCDC6",
+        "role": "background",
+        "name": "teal"
+      },
+      {
+        "hex": "#BA9445",
+        "role": "primary",
+        "name": "orange"
+      },
+      {
+        "hex": "#E5B9B3",
+        "role": "accent",
+        "name": "pink"
+      }
+    ],
+    "source": "tag:cute",
+    "skipReason": "logo-like",
+    "skipDetail": "dropped during visual tagging (b15): emblem/badge/brand-mark lockup"
+  },
+  {
+    "templateId": "7cf1f795-84f5-4a9b-94ac-ab4d0a3823eb",
+    "slug": "easter-bunny-giveaway-721172",
+    "category": "Instagram Post",
+    "name": "Easter Bunny Giveaway",
+    "displayTitle": "Easter Bunny Basket Giveaway Instagram Post",
+    "url": "https://www.design.com/instagram-posts/easter-bunny-giveaway-721172/details",
+    "tags": [
+      "fashion",
+      "cute",
+      "event",
+      "basket",
+      "bunny",
+      "floral",
+      "holiday",
+      "easter",
+      "giveaway",
+      "easter bunny",
+      "promo",
+      "deals",
+      "leaves",
+      "flowers",
+      "easter egg"
+    ],
+    "hashtags": [
+      "#easterbunny",
+      "#giveaway",
+      "#fashion",
+      "#cute",
+      "#holiday",
+      "#promo"
+    ],
+    "description": "Hop into the spirit of Easter with our adorable Easter Bunny Giveaway! This Instagram Post template is perfect for sharing the joy of the holiday while promoting your fabulous fashion finds.",
+    "previewImage": "https://dynamic.design.com/template/preview/design/7cf1f795-84f5-4a9b-94ac-ab4d0a3823eb?v=4&designTemplateVersion=1&size=design-preview-standalone-1x&layout=auto-1-1",
+    "thumbnailImage": "https://dynamic.design.com/template/preview/design/7cf1f795-84f5-4a9b-94ac-ab4d0a3823eb?v=4&designTemplateVersion=1&size=design-preview-tall-2x&layout=auto",
+    "colors": [
+      {
+        "hex": "#D9D7EE",
+        "role": "background",
+        "name": "off-white"
+      },
+      {
+        "hex": "#BC9547",
+        "role": "primary",
+        "name": "orange"
+      },
+      {
+        "hex": "#655476",
+        "role": "accent",
+        "name": "purple"
+      }
+    ],
+    "source": "tag:cute",
+    "skipReason": "logo-like",
+    "skipDetail": "dropped during visual tagging (b15): emblem/badge/brand-mark lockup"
+  },
+  {
     "templateId": "1884be34-2580-46e1-a0c4-0f9a285eab69",
     "slug": "easter-friday-712375",
     "category": "Instagram Post",
@@ -21055,6 +21325,55 @@
     "source": "search",
     "skipReason": "logo-like",
     "skipDetail": "dropped during visual tagging (b9): emblem/badge/brand-mark lockup"
+  },
+  {
+    "templateId": "3743fb5a-0349-4d8b-9df1-9e7adf73acf2",
+    "slug": "easter-rabbit-418578",
+    "category": "Instagram Post",
+    "name": "Easter Flowers Rabbit",
+    "displayTitle": "Colorful Easter Bunny Celebration Instagram Post",
+    "url": "https://www.design.com/instagram-posts/easter-rabbit-418578/details",
+    "tags": [
+      "colorful",
+      "bunny",
+      "event",
+      "easter",
+      "festival",
+      "holiday",
+      "rabbit"
+    ],
+    "hashtags": [
+      "#event",
+      "#colorful",
+      "#bunny",
+      "#rabbit",
+      "#holiday",
+      "#festival",
+      "#easter"
+    ],
+    "description": "Hop into the festive spirit with our vibrant Easter Rabbit Instagram Post template! Perfect for celebrating the joy of the holiday, this colorful design features an adorable bunny surrounded by cheerful spring elements.",
+    "previewImage": "https://dynamic.design.com/template/preview/design/3743fb5a-0349-4d8b-9df1-9e7adf73acf2?v=4&designTemplateVersion=1&size=design-preview-standalone-1x&layout=auto-1-1",
+    "thumbnailImage": "https://dynamic.design.com/template/preview/design/3743fb5a-0349-4d8b-9df1-9e7adf73acf2?v=4&designTemplateVersion=1&size=design-preview-tall-2x&layout=auto",
+    "colors": [
+      {
+        "hex": "#F1F1F0",
+        "role": "background",
+        "name": "white"
+      },
+      {
+        "hex": "#8D866E",
+        "role": "primary",
+        "name": "taupe"
+      },
+      {
+        "hex": "#161D15",
+        "role": "accent",
+        "name": "black"
+      }
+    ],
+    "source": "tag:easter",
+    "skipReason": "logo-like",
+    "skipDetail": "dropped during visual tagging (b15): emblem/badge/brand-mark lockup"
   },
   {
     "templateId": "c72f96f1-4ad7-477b-9d4e-573cabb1be14",
@@ -23471,6 +23790,69 @@
     "source": "search",
     "skipReason": "logo-like",
     "skipDetail": "dropped during visual tagging (b9): emblem/badge/brand-mark lockup"
+  },
+  {
+    "templateId": "321e2369-393d-47f8-9cfe-c239c9e47b47",
+    "slug": "environment-day-scenery-463165",
+    "category": "Instagram Post",
+    "name": "Environment Day Scenery",
+    "displayTitle": "Celebrate Earth Day Beauty Instagram Post",
+    "url": "https://www.design.com/instagram-posts/environment-day-scenery-463165/details",
+    "tags": [
+      "green",
+      "event",
+      "home",
+      "eco",
+      "environment",
+      "mountain",
+      "nature",
+      "planet",
+      "world",
+      "campaign",
+      "earth",
+      "ecology",
+      "mother earth",
+      "mother nature",
+      "organization",
+      "recycle",
+      "safe"
+    ],
+    "hashtags": [
+      "#home",
+      "#eco",
+      "#recycle",
+      "#environment",
+      "#nature",
+      "#planet",
+      "#world",
+      "#safe",
+      "#organization",
+      "#campaign",
+      "#motherearth"
+    ],
+    "description": "Celebrate Environment Day with our vibrant Instagram Post template! Perfect for organizations and eco-enthusiasts alike, this eye-catching design showcases the beauty of our planet, featuring lush green mountains and serene natural landscapes.",
+    "previewImage": "https://dynamic.design.com/template/preview/design/321e2369-393d-47f8-9cfe-c239c9e47b47?v=4&designTemplateVersion=1&size=design-preview-standalone-1x&layout=auto-1-1",
+    "thumbnailImage": "https://dynamic.design.com/template/preview/design/321e2369-393d-47f8-9cfe-c239c9e47b47?v=4&designTemplateVersion=1&size=design-preview-tall-2x&layout=auto",
+    "colors": [
+      {
+        "hex": "#DFF1FB",
+        "role": "background",
+        "name": "off-white"
+      },
+      {
+        "hex": "#86B638",
+        "role": "primary",
+        "name": "green"
+      },
+      {
+        "hex": "#486536",
+        "role": "accent",
+        "name": "green"
+      }
+    ],
+    "source": "tag:event",
+    "skipReason": "logo-like",
+    "skipDetail": "dropped during visual tagging (b15): emblem/badge/brand-mark lockup"
   },
   {
     "templateId": "7a48959e-646d-444f-84df-cfa3e5496bcf",
@@ -30989,6 +31371,64 @@
     "skipDetail": "dropped during visual tagging (b10): emblem/badge/brand-mark lockup"
   },
   {
+    "templateId": "cfe2c20c-1993-4910-8879-2a161485d93d",
+    "slug": "get-ready-for-summer-748785",
+    "category": "Instagram Post",
+    "name": "Get Ready for Summer",
+    "displayTitle": "Summer Vibes Await You Instagram Post",
+    "url": "https://www.design.com/instagram-posts/get-ready-for-summer-748785/details",
+    "tags": [
+      "sun",
+      "coconut",
+      "fun",
+      "tree",
+      "ocean",
+      "beach",
+      "sea",
+      "tropical",
+      "summer",
+      "vacation",
+      "holiday",
+      "relax",
+      "island",
+      "season",
+      "paradise",
+      "unwind",
+      "southern summer"
+    ],
+    "hashtags": [
+      "#southernsummer",
+      "#relax",
+      "#unwind",
+      "#summervibes",
+      "#tropicalescape",
+      "#beachdays"
+    ],
+    "description": "Dive into the vibrant vibes of the season with our eye-catching Instagram Post template! Perfect for capturing those sun-soaked moments, this template features playful visuals of swaying palm trees, crystal-clear oceans, and sandy beaches.",
+    "previewImage": "https://dynamic.design.com/template/preview/design/cfe2c20c-1993-4910-8879-2a161485d93d?v=4&designTemplateVersion=1&size=design-preview-standalone-1x&layout=auto-1-1",
+    "thumbnailImage": "https://dynamic.design.com/template/preview/design/cfe2c20c-1993-4910-8879-2a161485d93d?v=4&designTemplateVersion=1&size=design-preview-tall-2x&layout=auto",
+    "colors": [
+      {
+        "hex": "#D6CDBB",
+        "role": "background",
+        "name": "beige"
+      },
+      {
+        "hex": "#50688B",
+        "role": "primary",
+        "name": "blue"
+      },
+      {
+        "hex": "#E76719",
+        "role": "accent",
+        "name": "orange"
+      }
+    ],
+    "source": "search",
+    "skipReason": "logo-like",
+    "skipDetail": "dropped during visual tagging (b15): emblem/badge/brand-mark lockup"
+  },
+  {
     "templateId": "284a6187-c11b-4d62-b9e0-062cdbe6eda0",
     "slug": "ghana-independence-celebration-1045074",
     "category": "Instagram Post",
@@ -34172,6 +34612,54 @@
     "source": "search",
     "skipReason": "logo-like",
     "skipDetail": "dropped during visual tagging (b9): emblem/badge/brand-mark lockup"
+  },
+  {
+    "templateId": "b1b46ba3-173f-4a71-92a2-e4c597f662d8",
+    "slug": "happy-australia-day-650530",
+    "category": "Instagram Post",
+    "name": "Happy Australia Day",
+    "displayTitle": "Celebrate Australia Day Spirit Instagram Post",
+    "url": "https://www.design.com/instagram-posts/happy-australia-day-650530/details",
+    "tags": [
+      "australia",
+      "historical",
+      "freedom",
+      "holiday",
+      "celebration",
+      "greeting",
+      "independence day",
+      "patriotic",
+      "australia day",
+      "national day of australia"
+    ],
+    "hashtags": [
+      "#australiaday",
+      "#nationaldayofaustralia",
+      "#patriotic"
+    ],
+    "description": "Celebrate the spirit of Australia Day with our vibrant Instagram Post template! Perfect for sharing your patriotic pride, this template encapsulates the essence of our national day, blending historical significance with a festive atmosphere.",
+    "previewImage": "https://dynamic.design.com/template/preview/design/b1b46ba3-173f-4a71-92a2-e4c597f662d8?v=4&designTemplateVersion=1&size=design-preview-standalone-1x&layout=auto-1-1",
+    "thumbnailImage": "https://dynamic.design.com/template/preview/design/b1b46ba3-173f-4a71-92a2-e4c597f662d8?v=4&designTemplateVersion=1&size=design-preview-tall-2x&layout=auto",
+    "colors": [
+      {
+        "hex": "#F2FBFD",
+        "role": "background",
+        "name": "white"
+      },
+      {
+        "hex": "#7C88B7",
+        "role": "primary",
+        "name": "blue"
+      },
+      {
+        "hex": "#152587",
+        "role": "accent",
+        "name": "blue"
+      }
+    ],
+    "source": "tag:celebration",
+    "skipReason": "logo-like",
+    "skipDetail": "dropped during visual tagging (b15): emblem/badge/brand-mark lockup"
   },
   {
     "templateId": "cd40d1ee-66a5-4019-bc2d-06fe1a19d798",
@@ -44149,6 +44637,59 @@
     "skipDetail": "dropped during visual tagging (b14): emblem/badge/brand-mark lockup"
   },
   {
+    "templateId": "2bcc9404-6452-465f-9c28-a6a6ec26f42e",
+    "slug": "lights-off-green-on-1074856",
+    "category": "Instagram Post",
+    "name": "Lights Off Green On",
+    "displayTitle": "Illuminate Nature, Embrace Change Instagram Post",
+    "url": "https://www.design.com/instagram-posts/lights-off-green-on-1074856/details",
+    "tags": [
+      "planet",
+      "nature",
+      "event",
+      "environment",
+      "earth",
+      "movement",
+      "mother earth",
+      "earth day",
+      "earth hour"
+    ],
+    "hashtags": [
+      "#event",
+      "#motherearth",
+      "#earthday",
+      "#earthhour",
+      "#earth",
+      "#nature",
+      "#planet",
+      "#environment",
+      "#lightsoffgreenon"
+    ],
+    "description": "Celebrate Mother Earth with our \"Lights Off, Green On\" Instagram Post template! Perfect for Earth Day and Earth Hour, this eye-catching design encourages your followers to take action for our planet.",
+    "previewImage": "https://dynamic.design.com/template/preview/design/2bcc9404-6452-465f-9c28-a6a6ec26f42e?v=4&designTemplateVersion=1&size=design-preview-standalone-1x&layout=auto-1-1",
+    "thumbnailImage": "https://dynamic.design.com/template/preview/design/2bcc9404-6452-465f-9c28-a6a6ec26f42e?v=4&designTemplateVersion=1&size=design-preview-tall-2x&layout=auto",
+    "colors": [
+      {
+        "hex": "#263E60",
+        "role": "background",
+        "name": "navy"
+      },
+      {
+        "hex": "#47261B",
+        "role": "primary",
+        "name": "dark brown"
+      },
+      {
+        "hex": "#E9EBED",
+        "role": "accent",
+        "name": "white"
+      }
+    ],
+    "source": "search",
+    "skipReason": "logo-like",
+    "skipDetail": "dropped during visual tagging (b15): emblem/badge/brand-mark lockup"
+  },
+  {
     "templateId": "bf1d9989-fc5f-47e1-a560-85657bc1dc40",
     "slug": "lights-off-planet-1073478",
     "category": "Instagram Post",
@@ -47678,6 +48219,77 @@
     "source": "search",
     "skipReason": "logo-like",
     "skipDetail": "dropped during visual tagging (b8): emblem/badge/brand-mark lockup"
+  },
+  {
+    "templateId": "9378c31a-53ca-44ff-abe9-3715d4c829c1",
+    "slug": "miner-s-day-badge-594280",
+    "category": "Instagram Post",
+    "name": "Miner's Day Badge",
+    "displayTitle": "Miner's Day Tribute Badge Instagram Post",
+    "url": "https://www.design.com/instagram-posts/miner-s-day-badge-594280/details",
+    "tags": [
+      "company",
+      "job",
+      "holiday",
+      "work",
+      "worker",
+      "badge",
+      "honor",
+      "coal",
+      "employee",
+      "mine",
+      "employer",
+      "excavation",
+      "profession",
+      "commemoration",
+      "labor",
+      "appreciation",
+      "national miner's day"
+    ],
+    "hashtags": [
+      "#company",
+      "#job",
+      "#holiday",
+      "#work",
+      "#worker",
+      "#badge",
+      "#honor",
+      "#coal",
+      "#employee",
+      "#mine",
+      "#employer",
+      "#excavation",
+      "#profession",
+      "#commemoration",
+      "#labor",
+      "#appreciation",
+      "#nationalminersday",
+      "#minersday",
+      "#thankyouminers"
+    ],
+    "description": "Celebrate National Miner's Day with our exclusive Miner's Day Badge Instagram Post template! Honor the dedicated workers who brave the depths of the earth, ensuring our energy needs are met.",
+    "previewImage": "https://dynamic.design.com/template/preview/design/9378c31a-53ca-44ff-abe9-3715d4c829c1?v=4&designTemplateVersion=1&size=design-preview-standalone-1x&layout=auto-1-1",
+    "thumbnailImage": "https://dynamic.design.com/template/preview/design/9378c31a-53ca-44ff-abe9-3715d4c829c1?v=4&designTemplateVersion=1&size=design-preview-tall-2x&layout=auto",
+    "colors": [
+      {
+        "hex": "#F5F1ED",
+        "role": "background",
+        "name": "white"
+      },
+      {
+        "hex": "#052042",
+        "role": "primary",
+        "name": "navy"
+      },
+      {
+        "hex": "#C08A83",
+        "role": "accent",
+        "name": "red"
+      }
+    ],
+    "source": "tag:holiday",
+    "skipReason": "logo-like",
+    "skipDetail": "dropped during visual tagging (b15): emblem/badge/brand-mark lockup"
   },
   {
     "templateId": "c4646190-32b5-46d4-a342-1b3ccaeb46cd",
@@ -55058,6 +55670,79 @@
     "source": "search",
     "skipReason": "logo-like",
     "skipDetail": "dropped during visual tagging (b7): emblem/badge/brand-mark lockup"
+  },
+  {
+    "templateId": "24281c3d-a6df-4fc0-90ff-37db56c3885a",
+    "slug": "national-miner-s-day-594441",
+    "category": "Instagram Post",
+    "name": "National Miner's Day",
+    "displayTitle": "Honoring Our Miners Today Instagram Post",
+    "url": "https://www.design.com/instagram-posts/national-miner-s-day-594441/details",
+    "tags": [
+      "face",
+      "company",
+      "job",
+      "holiday",
+      "man",
+      "work",
+      "worker",
+      "honor",
+      "coal",
+      "male",
+      "employee",
+      "mine",
+      "employer",
+      "excavation",
+      "profession",
+      "commemoration",
+      "labor",
+      "appreciation",
+      "national miner's day"
+    ],
+    "hashtags": [
+      "#face",
+      "#company",
+      "#job",
+      "#holiday",
+      "#man",
+      "#work",
+      "#worker",
+      "#honor",
+      "#coal",
+      "#male",
+      "#employee",
+      "#mine",
+      "#employer",
+      "#excavation",
+      "#profession",
+      "#commemoration",
+      "#labor",
+      "#appreciation",
+      "#nationalminersday"
+    ],
+    "description": "Celebrate National Miner's Day with our engaging Instagram Post template, designed to honor the hardworking men and women of the mining industry!",
+    "previewImage": "https://dynamic.design.com/template/preview/design/24281c3d-a6df-4fc0-90ff-37db56c3885a?v=4&designTemplateVersion=1&size=design-preview-standalone-1x&layout=auto-1-1",
+    "thumbnailImage": "https://dynamic.design.com/template/preview/design/24281c3d-a6df-4fc0-90ff-37db56c3885a?v=4&designTemplateVersion=1&size=design-preview-tall-2x&layout=auto",
+    "colors": [
+      {
+        "hex": "#F3F3F4",
+        "role": "background",
+        "name": "white"
+      },
+      {
+        "hex": "#321A1A",
+        "role": "primary",
+        "name": "dark brown"
+      },
+      {
+        "hex": "#897872",
+        "role": "accent",
+        "name": "taupe"
+      }
+    ],
+    "source": "tag:holiday",
+    "skipReason": "logo-like",
+    "skipDetail": "dropped during visual tagging (b15): emblem/badge/brand-mark lockup"
   },
   {
     "templateId": "1f2f4016-413a-4560-aa4c-eab5f5565d95",
@@ -63928,6 +64613,47 @@
     "skipDetail": "dropped during visual tagging (b11): emblem/badge/brand-mark lockup"
   },
   {
+    "templateId": "a870fc46-5b13-4501-a54b-812c0ffcde77",
+    "slug": "presidents-day-badge-387673",
+    "category": "Instagram Post",
+    "name": "Presidents Day Badge",
+    "displayTitle": "Presidents Day Celebration Badge Instagram Post",
+    "url": "https://www.design.com/instagram-posts/presidents-day-badge-387673/details",
+    "tags": [
+      "holiday",
+      "event",
+      "celebration"
+    ],
+    "hashtags": [
+      "#event",
+      "#holiday",
+      "#celebration"
+    ],
+    "description": "Celebrate Presidents Day in style with our vibrant Instagram Post template! Perfect for capturing the spirit of this national holiday, this customizable badge design features iconic symbols of American leadership and patriotism.",
+    "previewImage": "https://dynamic.design.com/template/preview/design/a870fc46-5b13-4501-a54b-812c0ffcde77?v=4&designTemplateVersion=1&size=design-preview-standalone-1x&layout=auto-1-1",
+    "thumbnailImage": "https://dynamic.design.com/template/preview/design/a870fc46-5b13-4501-a54b-812c0ffcde77?v=4&designTemplateVersion=1&size=design-preview-tall-2x&layout=auto",
+    "colors": [
+      {
+        "hex": "#0A2C4C",
+        "role": "background",
+        "name": "navy"
+      },
+      {
+        "hex": "#FEFDFD",
+        "role": "primary",
+        "name": "white"
+      },
+      {
+        "hex": "#FF1C0F",
+        "role": "accent",
+        "name": "red"
+      }
+    ],
+    "source": "search",
+    "skipReason": "logo-like",
+    "skipDetail": "dropped during visual tagging (b15): emblem/badge/brand-mark lockup"
+  },
+  {
     "templateId": "576f616b-42e6-4aff-b012-d7612583a102",
     "slug": "press-freedom-celebration-9890956",
     "category": "Instagram Post",
@@ -68255,6 +68981,61 @@
     "skipDetail": "dropped during visual tagging (b7): emblem/badge/brand-mark lockup"
   },
   {
+    "templateId": "6978f84f-5091-4d82-bb01-a62babea45f1",
+    "slug": "raise-pakistan-flag-846584",
+    "category": "Instagram Post",
+    "name": "Raise Pakistan Flag",
+    "displayTitle": "Celebrate Pakistan's Independence Day Instagram Post",
+    "url": "https://www.design.com/instagram-posts/raise-pakistan-flag-846584/details",
+    "tags": [
+      "flag",
+      "asia",
+      "holiday",
+      "celebration",
+      "country",
+      "independence",
+      "independence day",
+      "monument",
+      "pakistan",
+      "commemoration",
+      "pakistan day",
+      "resolution day",
+      "pakistani"
+    ],
+    "hashtags": [
+      "#flag",
+      "#asia",
+      "#holiday",
+      "#independence",
+      "#celebration",
+      "#pakistani",
+      "#resolutionday"
+    ],
+    "description": "Celebrate the spirit of Pakistan with our vibrant Instagram Post template, perfect for commemorating Independence Day and Pakistan Day!",
+    "previewImage": "https://dynamic.design.com/template/preview/design/6978f84f-5091-4d82-bb01-a62babea45f1?v=4&designTemplateVersion=1&size=design-preview-standalone-1x&layout=auto-1-1",
+    "thumbnailImage": "https://dynamic.design.com/template/preview/design/6978f84f-5091-4d82-bb01-a62babea45f1?v=4&designTemplateVersion=1&size=design-preview-tall-2x&layout=auto",
+    "colors": [
+      {
+        "hex": "#9BBF66",
+        "role": "background",
+        "name": "green"
+      },
+      {
+        "hex": "#E5C7AF",
+        "role": "primary",
+        "name": "peach"
+      },
+      {
+        "hex": "#182D0E",
+        "role": "accent",
+        "name": "dark green"
+      }
+    ],
+    "source": "search",
+    "skipReason": "logo-like",
+    "skipDetail": "dropped during visual tagging (b15): emblem/badge/brand-mark lockup"
+  },
+  {
     "templateId": "465b4671-9722-475f-a7b4-41d8cd7d3e01",
     "slug": "ramadan-flash-sale-1058305",
     "category": "Instagram Post",
@@ -69752,6 +70533,58 @@
     "skipDetail": "dropped during visual tagging (b8): emblem/badge/brand-mark lockup"
   },
   {
+    "templateId": "b92ee48c-608c-475a-ac35-b4debbc4a543",
+    "slug": "religious-friday-714506",
+    "category": "Instagram Post",
+    "name": "Religious Friday Cross",
+    "displayTitle": "Good Friday Reflections Instagram Post",
+    "url": "https://www.design.com/instagram-posts/religious-friday-714506/details",
+    "tags": [
+      "cross",
+      "service",
+      "religion",
+      "holiday",
+      "easter",
+      "holy week",
+      "religious",
+      "easter weekend",
+      "good friday"
+    ],
+    "hashtags": [
+      "#service",
+      "#religion",
+      "#easter",
+      "#goodfriday",
+      "#holiday",
+      "#religious",
+      "#holyweek",
+      "#easterweekend"
+    ],
+    "description": "**Religious Friday Instagram Post Template** Capture the essence of Good Friday with our beautifully designed Instagram post template, perfect for sharing your faith and connecting with your community.",
+    "previewImage": "https://dynamic.design.com/template/preview/design/b92ee48c-608c-475a-ac35-b4debbc4a543?v=4&designTemplateVersion=1&size=design-preview-standalone-1x&layout=auto-1-1",
+    "thumbnailImage": "https://dynamic.design.com/template/preview/design/b92ee48c-608c-475a-ac35-b4debbc4a543?v=4&designTemplateVersion=1&size=design-preview-tall-2x&layout=auto",
+    "colors": [
+      {
+        "hex": "#313854",
+        "role": "background",
+        "name": "navy"
+      },
+      {
+        "hex": "#F8F8F9",
+        "role": "primary",
+        "name": "white"
+      },
+      {
+        "hex": "#E28C69",
+        "role": "accent",
+        "name": "orange"
+      }
+    ],
+    "source": "tag:easter",
+    "skipReason": "logo-like",
+    "skipDetail": "dropped during visual tagging (b15): emblem/badge/brand-mark lockup"
+  },
+  {
     "templateId": "cef5a354-8516-422c-b915-6eb8df0ef172",
     "slug": "remember-our-heroes-581900",
     "category": "Instagram Post",
@@ -70828,6 +71661,57 @@
     "source": "tag:car",
     "skipReason": "logo-like",
     "skipDetail": "dropped during visual tagging (b3): emblem/badge/brand-mark lockup"
+  },
+  {
+    "templateId": "7a8198a1-2f19-47da-8dd9-07a769232bb0",
+    "slug": "retro-mexican-independence-day-1256249",
+    "category": "Instagram Post",
+    "name": "Retro Mexican Independence Day",
+    "displayTitle": "Vibrant Mexican Independence Celebration Instagram Post",
+    "url": "https://www.design.com/instagram-posts/retro-mexican-independence-day-1256249/details",
+    "tags": [
+      "mexico",
+      "culture",
+      "history",
+      "heritage",
+      "tradition",
+      "mexican independence day",
+      "dia de la independencia",
+      "fiestas patrias"
+    ],
+    "hashtags": [
+      "#mexico",
+      "#fiestaspatrias",
+      "#tradition",
+      "#heritage",
+      "#history",
+      "#díadelaindependencia",
+      "#mexicanindependenceday",
+      "#culture"
+    ],
+    "description": "Celebrate Mexico’s vibrant heritage with our Retro Mexican Independence Day Instagram Post template!",
+    "previewImage": "https://dynamic.design.com/template/preview/design/7a8198a1-2f19-47da-8dd9-07a769232bb0?v=4&designTemplateVersion=1&size=design-preview-standalone-1x&layout=auto-1-1",
+    "thumbnailImage": "https://dynamic.design.com/template/preview/design/7a8198a1-2f19-47da-8dd9-07a769232bb0?v=4&designTemplateVersion=1&size=design-preview-tall-2x&layout=auto",
+    "colors": [
+      {
+        "hex": "#F6F2E7",
+        "role": "background",
+        "name": "white"
+      },
+      {
+        "hex": "#D4A38C",
+        "role": "primary",
+        "name": "orange"
+      },
+      {
+        "hex": "#6B705A",
+        "role": "accent",
+        "name": "gray"
+      }
+    ],
+    "source": "search",
+    "skipReason": "logo-like",
+    "skipDetail": "dropped during visual tagging (b15): emblem/badge/brand-mark lockup"
   },
   {
     "templateId": "f5f37bdf-eb9a-47bf-9551-a99cffaa014d",
@@ -78288,6 +79172,61 @@
     "skipDetail": "dropped during visual tagging (b9): emblem/badge/brand-mark lockup"
   },
   {
+    "templateId": "44552d37-6821-4ac9-9633-5d63418f52f0",
+    "slug": "st-patrick-s-fest-689289",
+    "category": "Instagram Post",
+    "name": "St. Patrick's Fest",
+    "displayTitle": "St. Patrick's Day Celebration Instagram Post",
+    "url": "https://www.design.com/instagram-posts/st-patrick-s-fest-689289/details",
+    "tags": [
+      "holiday",
+      "beer",
+      "festival",
+      "irish",
+      "celebration",
+      "clover",
+      "ireland",
+      "festive",
+      "tradition",
+      "st patricks day"
+    ],
+    "hashtags": [
+      "#holiday",
+      "#beer",
+      "#festival",
+      "#irish",
+      "#clover",
+      "#celebration",
+      "#ireland",
+      "#festive",
+      "#tradition",
+      "#stpatricksday"
+    ],
+    "description": "Patrick’s Day in style with our vibrant Instagram Post template! Perfect for sharing the joy of this beloved holiday, this template captures the spirit of Ireland with festive elements like clovers, beer mugs, and traditional Irish motifs.",
+    "previewImage": "https://dynamic.design.com/template/preview/design/44552d37-6821-4ac9-9633-5d63418f52f0?v=4&designTemplateVersion=1&size=design-preview-standalone-1x&layout=auto-1-1",
+    "thumbnailImage": "https://dynamic.design.com/template/preview/design/44552d37-6821-4ac9-9633-5d63418f52f0?v=4&designTemplateVersion=1&size=design-preview-tall-2x&layout=auto",
+    "colors": [
+      {
+        "hex": "#FEF4C6",
+        "role": "background",
+        "name": "cream"
+      },
+      {
+        "hex": "#4AA514",
+        "role": "primary",
+        "name": "green"
+      },
+      {
+        "hex": "#F7C623",
+        "role": "accent",
+        "name": "gold"
+      }
+    ],
+    "source": "tag:celebration",
+    "skipReason": "logo-like",
+    "skipDetail": "dropped during visual tagging (b15): emblem/badge/brand-mark lockup"
+  },
+  {
     "templateId": "ce7aace5-827e-46e5-ba53-8dd5d640cb2f",
     "slug": "st-patrick-s-mega-sale-1074565",
     "category": "Instagram Post",
@@ -81301,6 +82240,55 @@
     "source": "tag:music",
     "skipReason": "logo-like",
     "skipDetail": "dropped during visual tagging (b7): emblem/badge/brand-mark lockup"
+  },
+  {
+    "templateId": "410c779c-7f05-4cb1-bd46-dbce8237bebc",
+    "slug": "tattoo-and-piercing-414159",
+    "category": "Instagram Post",
+    "name": "Tattoo and Piercing",
+    "displayTitle": "Celestial Tattoo and Piercing Instagram Post",
+    "url": "https://www.design.com/instagram-posts/tattoo-and-piercing-414159/details",
+    "tags": [
+      "skull",
+      "badge",
+      "studio",
+      "tattoo",
+      "body art",
+      "celestial",
+      "tattoo artist"
+    ],
+    "hashtags": [
+      "#studio",
+      "#badge",
+      "#skull",
+      "#tattoo",
+      "#bodyart",
+      "#celestial",
+      "#tattooartist"
+    ],
+    "description": "Unleash your inner rebel with our stunning Tattoo and Piercing Instagram Post template!",
+    "previewImage": "https://dynamic.design.com/template/preview/design/410c779c-7f05-4cb1-bd46-dbce8237bebc?v=4&designTemplateVersion=1&size=design-preview-standalone-1x&layout=auto-1-1",
+    "thumbnailImage": "https://dynamic.design.com/template/preview/design/410c779c-7f05-4cb1-bd46-dbce8237bebc?v=4&designTemplateVersion=1&size=design-preview-tall-2x&layout=auto",
+    "colors": [
+      {
+        "hex": "#1D1D1D",
+        "role": "background",
+        "name": "charcoal"
+      },
+      {
+        "hex": "#7A746B",
+        "role": "primary",
+        "name": "gray"
+      },
+      {
+        "hex": "#494742",
+        "role": "accent",
+        "name": "gray"
+      }
+    ],
+    "source": "tag:studio",
+    "skipReason": "logo-like",
+    "skipDetail": "dropped during visual tagging (b15): emblem/badge/brand-mark lockup"
   },
   {
     "templateId": "5ed4e6f2-29d8-4e69-848b-0e3de1d2c57e",
