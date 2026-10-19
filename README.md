@@ -1,6 +1,6 @@
 # Template Taxonomy (v1)
 
-A tree-view inspiration explorer for **design.com Instagram post templates** (no-logo templates only).
+A tree-view inspiration explorer for **Instagram post templates** (no-logo templates only).
 Search by style, layout, color, imagery and content; the results grow into a color-coded mind map.
 Click any design to see similar designs (colors, layout, style, overall), save designs to boards,
 or drop an image to find templates with a similar palette.
