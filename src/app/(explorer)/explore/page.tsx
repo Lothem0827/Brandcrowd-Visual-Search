@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  alternates: { canonical: "/" },
+  alternates: { canonical: "/explore" },
 };
 
-/** Old address for Home. The shell still mounts here; the client rewrites `/explore` to `/`. */
+/** Browse / search page. The shell mounts here; the client takes the page from the URL. */
 export default function ExplorePage() {
   return null;
 }

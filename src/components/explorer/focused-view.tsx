@@ -1,25 +1,53 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { InfoIcon } from "lucide-react";
+import { BookmarkCheckIcon, BookmarkIcon, InfoIcon } from "lucide-react";
+import { SAVED_BOARD_ID } from "@/lib/boards";
 import { rankByOverall } from "@/lib/similarity";
 import { cn } from "@/lib/utils";
 import { BackButton } from "./back-button";
 import { useExplorer } from "./context";
 import { GridView } from "./grid-view";
 import { HEADER_CONTROL, HEADER_CONTROL_IDLE, HEADER_CONTROL_ON } from "./header";
-import { SaveButton } from "./save-button";
 import { templateImageUrl } from "@/lib/images";
 import { writeTemplateDrag } from "@/lib/template-drag";
 import { ThumbImage } from "./thumb-image";
+import { useBoards, useLastUsedBoardId } from "./use-boards";
 import { useMoodboardPinned } from "./use-moodboards";
 import { useGridSettings } from "./use-grid-settings";
+
+/** Compact quick-save overlay on the focused image (same look as grid thumbnails). */
+function FocusedTileSave({ templateId }: { templateId: string }) {
+  const { boards, store } = useBoards();
+  const activeId = useLastUsedBoardId();
+  const active = boards.find((b) => b.id === activeId) ?? boards.find((b) => b.id === SAVED_BOARD_ID);
+  const activeName = active?.name ?? "Saved";
+  const saved = active ? active.templateIds.includes(templateId) : false;
+  return (
+    <button
+      type="button"
+      aria-label={saved ? `Remove from ${activeName}` : `Save to ${activeName}`}
+      aria-pressed={saved}
+      title={saved ? `Saved — click to remove` : `Save to “${activeName}”`}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (active) store.toggle(active.id, templateId);
+      }}
+      className={cn(
+        "absolute top-2 right-2 z-10 grid size-7 place-items-center rounded-lg bg-background/80 text-foreground backdrop-blur-sm transition-colors hover:bg-background",
+        saved && "text-[#E5484D]",
+      )}
+    >
+      {saved ? <BookmarkCheckIcon className="size-4" /> : <BookmarkIcon className="size-4" />}
+    </button>
+  );
+}
 
 /** How many related designs to keep in the flat, windowed list below the image. */
 const RELATED_LIMIT = 600;
 
 /**
- * Focused lightbox (grid click, `?design=<id>&view=focus`): a large image with back / save /
- * info controls, and a flat, deduped related list (most similar first) windowed below.
+ * Focused lightbox (grid click, `?design=<id>&view=focus`): a large image with a thumbnail-style
+ * save overlay, back / info controls, and a flat related list (most similar first) below.
  *
  * The overlay itself is the scroller, so a wheel/touch anywhere scrolls — the image scrolls
  * away with the related list instead of being pinned. The grid underneath stays mounted, so
@@ -88,22 +116,20 @@ export function FocusedView() {
       <div className="sticky top-0 z-30 h-0">
         <div className="pointer-events-none absolute inset-x-0 top-4 flex items-center justify-between px-4">
           <BackButton onClick={goBack} className="pointer-events-auto" />
-          <div className="pointer-events-auto flex items-center gap-2">
-            <SaveButton templateId={focused.templateId} />
-            <button
-              type="button"
-              aria-pressed={detailOpen}
-              aria-label="Design info"
-              title="Design info"
-              onClick={() => setDetailOpen(!detailOpen)}
-              className={cn(
-                HEADER_CONTROL,
-                detailOpen ? HEADER_CONTROL_ON : HEADER_CONTROL_IDLE,
-              )}
-            >
-              <InfoIcon className="size-[18px]" />
-            </button>
-          </div>
+          <button
+            type="button"
+            aria-pressed={detailOpen}
+            aria-label="Design info"
+            title="Design info"
+            onClick={() => setDetailOpen(!detailOpen)}
+            className={cn(
+              "pointer-events-auto",
+              HEADER_CONTROL,
+              detailOpen ? HEADER_CONTROL_ON : HEADER_CONTROL_IDLE,
+            )}
+          >
+            <InfoIcon className="size-[18px]" />
+          </button>
         </div>
       </div>
 
@@ -138,6 +164,7 @@ export function FocusedView() {
               retryButton
               className="size-full object-contain"
             />
+            <FocusedTileSave templateId={focused.templateId} />
           </div>
         </div>
       </div>

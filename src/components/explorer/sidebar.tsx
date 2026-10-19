@@ -1,7 +1,7 @@
 "use client";
 import {
   BookmarkIcon,
-  HomeIcon,
+  CompassIcon,
   MoonIcon,
   RotateCcwIcon,
   SettingsIcon,
@@ -34,12 +34,14 @@ import { useExplorer } from "./context";
 import { getMoodboardStore } from "@/lib/moodboards";
 import { useBoards } from "./use-boards";
 
-function Brand({ onBrowse }: { onBrowse: () => void }) {
+function Brand({ onHome }: { onHome: () => void }) {
+  const { page } = useExplorer();
   return (
     <button
       type="button"
       aria-label="Home"
-      onClick={onBrowse}
+      aria-current={page === "home" ? "page" : undefined}
+      onClick={onHome}
       className="grid size-7 place-items-center rounded-full text-foreground shadow-sm transition-transform hover:scale-105"
     >
       <LogoMark className="size-full" />
@@ -250,7 +252,7 @@ function ThemeToggle() {
   );
 }
 
-export function Sidebar({ onBrowse }: { onBrowse: () => void }) {
+export function Sidebar({ onHome }: { onHome: () => void }) {
   const { page, setPage, setView, unpinBoard } = useExplorer();
   const { boards } = useBoards();
   const savedCount = new Set(boards.flatMap((b) => b.templateIds)).size;
@@ -260,14 +262,18 @@ export function Sidebar({ onBrowse }: { onBrowse: () => void }) {
         aria-label="Primary"
         className="z-40 flex w-[60px] shrink-0 flex-col items-center gap-1.5 bg-background py-4"
       >
-        <Brand onBrowse={onBrowse} />
+        <Brand onHome={onHome} />
         <nav className="my-auto flex flex-col items-center gap-1.5">
           <RailButton
-            id="rail-home"
-            icon={HomeIcon}
-            label="Home"
+            id="rail-explore"
+            icon={CompassIcon}
+            label="Explore"
             active={page === "explore"}
-            onClick={onBrowse}
+            onClick={() => {
+              unpinBoard();
+              setView({ kind: "search" });
+              setPage("explore");
+            }}
           />
           <RailButton
             id="rail-boards"

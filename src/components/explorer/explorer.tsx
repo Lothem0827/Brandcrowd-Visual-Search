@@ -32,6 +32,11 @@ const BROWSE_MODE_KEY = "template-taxonomy:browse:v1";
 
 /** View described by the URL; design ids that aren't in the dataset are dropped. */
 function viewFromUrl(u: UrlState, exists: (id: string) => boolean): View {
+  // On home, `design` is a canvas pivot — don't open the focused/similar views.
+  if (u.page === "home") {
+    if (u.board) return { kind: "board", boardId: u.board };
+    return { kind: "search" };
+  }
   const trail = u.design.filter(exists);
   if (trail.length) {
     const origin: Origin = u.board ? { kind: "board", boardId: u.board } : { kind: "search" };
@@ -102,6 +107,11 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
   const [shuffleSeed, setShuffleSeed] = useState<number | null>(initialUrl.shuffleSeed);
   const [view, setView] = useState<View>(() => viewFromUrl(initialUrl, (id) => !!repo.byId(id)));
   const [page, setPageState] = useState<Page>(() => initialUrl.page);
+  const [homePivotId, setHomePivotId] = useState<string | null>(() =>
+    initialUrl.page === "home" && initialUrl.design[0] && repo.byId(initialUrl.design[0])
+      ? initialUrl.design[0]
+      : null,
+  );
   const [browseMode, setBrowseMode] = useState<BrowseMode>(() => {
     try {
       const v = window.localStorage.getItem(BROWSE_MODE_KEY);
@@ -135,6 +145,7 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
     // The filter panel belongs to Explore; leaving it must not leave the panel over another page.
     setFilterPanelOpen(false);
     setView((v) => (v.kind === "search" ? v : { kind: "search" }));
+    if (next !== "home") setHomePivotId(null);
   }, [page]);
 
   useEffect(() => {
@@ -148,7 +159,16 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
   // Navigation is a history push rather than a Next route change, so the title the route
   // metadata set on load would otherwise stick to every page after it.
   useEffect(() => {
-    const title = page === "boards" ? (view.kind === "board" ? "Board" : "Boards") : page === "brief" ? "Moodboard" : null;
+    const title =
+      page === "boards"
+        ? view.kind === "board"
+          ? "Board"
+          : "Boards"
+        : page === "brief"
+          ? "Moodboard"
+          : page === "explore"
+            ? "Explore"
+            : null;
     document.title = title ? `${title} | ${SITE_NAME}` : SITE_TITLE;
   }, [page, view]);
 
@@ -245,7 +265,7 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
   const byId = useCallback((id: string) => repo.byId(id), [repo]);
   const focused = view.kind === "focused" ? byId(view.id) ?? null : null;
   const center = view.kind === "similar" ? byId(view.trail[view.trail.length - 1]) ?? null : null;
-  const detailTemplate = focused ?? center;
+  const detailTemplate = focused ?? center ?? (homePivotId ? byId(homePivotId) ?? null : null);
   const similar = useMemo(() => {
     if (!detailTemplate) return null;
     const pool = simScope === "industry" ? base.filter((t) => t.industry === detailTemplate.industry) : base;
@@ -384,7 +404,7 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
     }
   }, [setPage]);
 
-  /** Grid/Home click: open the focused lightbox, remembering where we came from. */
+  /** Grid click: open the focused lightbox, remembering where we came from. */
   const openTemplate = useCallback((id: string) => {
     setHover(null);
     setDetailOpen(false);
@@ -478,7 +498,16 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
       query,
       facets: filters.facets,
       color: filters.color,
-      design: view.kind === "focused" ? [view.id] : view.kind === "similar" ? view.trail : [],
+      design:
+        page === "home"
+          ? homePivotId
+            ? [homePivotId]
+            : []
+          : view.kind === "focused"
+            ? [view.id]
+            : view.kind === "similar"
+              ? view.trail
+              : [],
       focused: view.kind === "focused",
       board:
         view.kind === "board"
@@ -492,7 +521,7 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
       sort,
       shuffleSeed,
     }),
-    [page, query, filters, view, simScope, sort, shuffleSeed],
+    [page, query, filters, view, simScope, sort, shuffleSeed, homePivotId],
   );
   const lastUrl = useRef<UrlState | null>(null);
   const typingRun = useRef(false);
@@ -533,6 +562,9 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
       setView(nextView);
       // raw setter: the URL already decided the page, so no view normalising here
       setPageState(u.page);
+      setHomePivotId(
+        u.page === "home" && u.design[0] && byId(u.design[0]) ? u.design[0] : null,
+      );
       setSimScope(u.scope);
       setSort(u.sort);
       setShuffleSeed(u.shuffleSeed);
@@ -546,9 +578,10 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
 
   const focusSearch = useCallback(() => searchRef.current?.focus(), []);
 
-  /** Home nav: the browse page, keeping the current search. */
-  const goBrowse = useCallback(() => {
-    setPage("explore");
+  /** Logo: the infinite-canvas home (also clears an open pivot when already there). */
+  const goHome = useCallback(() => {
+    setHomePivotId(null);
+    setPage("home");
   }, [setPage]);
 
   const pinBoard = useCallback((boardId: string) => {
@@ -576,15 +609,16 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
       } else if (e.key === "Escape" && !typing) {
         if (document.querySelector("[data-slot=dialog-content], [role=menu], [data-slot=popover-content]")) return;
         if (activeBoardSelection) stopBoardSelect();
+        else if (detailOpen) setDetailOpen(false);
+        else if (homePivotId && page === "home") setHomePivotId(null);
         else if (pinnedBoardId && page === "explore") {
           const id = pinnedBoardId;
           unpinBoard();
           setPage("boards");
           setView({ kind: "board", boardId: id });
-        } else if (detailOpen) setDetailOpen(false);
-        else if (filterPanelOpen) setFilterPanelOpen(false);
+        } else if (filterPanelOpen) setFilterPanelOpen(false);
         // Escape leaves one level: a board goes back to the Boards index (/boards), the
-        // index and the Moodboard go back to Home (/).
+        // index and the Moodboard go back to Explore.
         else if (page === "boards" && (view.kind === "board" || view.kind === "focused" || view.kind === "similar")) {
           setView({ kind: "search" });
         } else if (page === "boards" || page === "brief") setPage("explore");
@@ -593,7 +627,19 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [activeBoardSelection, stopBoardSelect, detailOpen, filterPanelOpen, page, view, setPage, pinnedBoardId, unpinBoard, setView]);
+  }, [
+    activeBoardSelection,
+    stopBoardSelect,
+    detailOpen,
+    filterPanelOpen,
+    page,
+    view,
+    setPage,
+    pinnedBoardId,
+    unpinBoard,
+    setView,
+    homePivotId,
+  ]);
 
   const api: ExplorerApi = {
     all, base, results, browseItems, byId, vocab, tagCounts, category,
@@ -608,11 +654,12 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
     detailOpen, setDetailOpen, hover, setHover, boardGroup, setBoardGroup, focusSearch,
     boardSelection: activeBoardSelection, startBoardSelect, stopBoardSelect, toggleBoardSelect,
     pinnedBoardId, pinBoard, unpinBoard,
+    homePivotId, setHomePivotId,
   };
 
   return (
     <ExplorerContext.Provider value={api}>
-      <div className="flex h-full overflow-hidden bg-background text-foreground">
+      <div className="relative flex h-full overflow-hidden bg-background text-foreground">
         {/* Keyboard users reach the search before the hundreds of grid/tree buttons. */}
         <a
           href="#template-search"
@@ -625,17 +672,17 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
           Skip to search
         </a>
         <h1 className="sr-only">Template Taxonomy: explore design.com Instagram post templates</h1>
-        <Sidebar onBrowse={goBrowse} />
+        <Sidebar onHome={goHome} />
         <div className="relative flex min-w-0 flex-1 flex-col">
           <main className="relative flex-1 overflow-hidden" aria-label="Template browser">
             <BrowseArea />
             {focused && <FocusedView />}
           </main>
           {/* The board selection toolbar belongs to whichever page shows the board grid;
-              the search dock only makes sense on Home. */}
+              the search dock belongs to Home and Explore. */}
           {activeBoardSelection ? (
             <BoardSelectBar />
-          ) : page === "explore" ? (
+          ) : page === "explore" || page === "home" ? (
             <SearchDock inputRef={searchRef} />
           ) : null}
         </div>

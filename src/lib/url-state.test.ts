@@ -25,6 +25,7 @@ describe("URL state", () => {
 
   it("round-trips query, filters, colour, view and options", () => {
     const state = s({
+      page: "explore",
       query: "retro serif cutout",
       facets: { industry: ["Construction", "Real Estate"], aesthetic: ["bold"], structure: ["frame/border"] },
       color: { colors: ["#F07B22"], mode: "any" },
@@ -36,7 +37,7 @@ describe("URL state", () => {
     const search = toSearch(state);
     expect(search).toContain("q=retro+serif+cutout");
     expect(search).toContain("industry=Construction&industry=Real+Estate");
-    expect(fromSearch(search)).toEqual(state);
+    expect(fromSearch(search)).toEqual({ ...state, page: "home" });
   });
 
   it("round-trips multiple picked colours (OR) and their shared role mode", () => {
@@ -85,30 +86,36 @@ describe("URL state", () => {
 });
 
 describe("history policy", () => {
-  const base = s({ query: "bold" });
+  const base = s({ page: "explore", query: "bold" });
   it("does nothing when the URL wouldn't change", () => {
-    expect(historyAction(base, s({ query: "bold" }), false).action).toBe("none");
+    expect(historyAction(base, s({ page: "explore", query: "bold" }), false).action).toBe("none");
   });
   it("pushes the first edit of a typing run, then replaces", () => {
-    const first = historyAction(base, s({ query: "bold r" }), false);
+    const first = historyAction(base, s({ page: "explore", query: "bold r" }), false);
     expect(first).toEqual({ action: "push", typing: true });
-    expect(historyAction(s({ query: "bold r" }), s({ query: "bold re" }), first.typing)).toEqual({ action: "replace", typing: true });
+    expect(historyAction(s({ page: "explore", query: "bold r" }), s({ page: "explore", query: "bold re" }), first.typing)).toEqual({
+      action: "replace",
+      typing: true,
+    });
   });
   it("pushes discrete changes like filters or opening a design", () => {
-    expect(historyAction(base, s({ query: "bold", facets: { mood: ["calm"] } }), true)).toEqual({ action: "push", typing: false });
-    expect(historyAction(base, s({ query: "bold", design: ["x"] }), true).action).toBe("push");
+    expect(historyAction(base, s({ page: "explore", query: "bold", facets: { mood: ["calm"] } }), true)).toEqual({
+      action: "push",
+      typing: false,
+    });
+    expect(historyAction(base, s({ page: "explore", query: "bold", design: ["x"] }), true).action).toBe("push");
   });
 });
 
 describe("routes", () => {
   it("maps a pathname to its page", () => {
-    expect(pageFromPath("/")).toBe("explore");
+    expect(pageFromPath("/")).toBe("home");
     expect(pageFromPath("/explore")).toBe("explore");
     expect(pageFromPath("/explore/")).toBe("explore");
     expect(pageFromPath("/boards")).toBe("boards");
     expect(pageFromPath("/boards/saved")).toBe("boards");
     expect(pageFromPath("/brief")).toBe("brief");
-    expect(pageFromPath("/nope")).toBe("explore");
+    expect(pageFromPath("/nope")).toBe("home");
   });
 
   it("reads a board id from the path only when it is valid", () => {
@@ -120,8 +127,9 @@ describe("routes", () => {
 
   it("builds one URL per page", () => {
     expect(toUrl(s({}))).toBe("/");
-    expect(toUrl(s({ page: "explore", query: "bold" }))).toBe("/?q=bold");
-    expect(toUrl(s({ page: "explore" }))).toBe("/");
+    expect(toUrl(s({ page: "home", design: ["a1"] }))).toBe("/?design=a1");
+    expect(toUrl(s({ page: "explore", query: "bold" }))).toBe("/explore?q=bold");
+    expect(toUrl(s({ page: "explore" }))).toBe("/explore");
     expect(toUrl(s({ page: "boards" }))).toBe("/boards");
     expect(toUrl(s({ page: "boards", board: "saved" }))).toBe("/boards/saved");
     expect(toUrl(s({ page: "brief", query: "ignored" }))).toBe("/brief");
@@ -133,23 +141,27 @@ describe("routes", () => {
     expect(fromUrl("/boards/saved", "?design=a1&view=focus")).toEqual(state);
   });
 
-  it("keeps the browse search on / and accepts the old /explore address", () => {
+  it("keeps browse search on /explore and folds old /?q= links there", () => {
     const state = s({ page: "explore", query: "retro", facets: { industry: ["Fitness"] } });
-    expect(fromUrl("/", toSearch(state))).toEqual(state);
+    expect(toUrl(state)).toBe("/explore?q=retro&industry=Fitness");
     expect(fromUrl("/explore", toSearch(state))).toEqual(state);
+    expect(fromUrl("/", toSearch(state))).toEqual(state);
   });
 
   it("folds pre-route links into the canonical route", () => {
     expect(fromUrl("/", "?q=retro").page).toBe("explore");
     expect(fromUrl("/", "?industry=Fitness").page).toBe("explore");
+    expect(fromUrl("/", "?design=a1")).toEqual(s({ page: "home", design: ["a1"] }));
     expect(fromUrl("/", "?board=saved")).toEqual(s({ page: "boards", board: "saved" }));
     expect(fromUrl("/explore", "?board=saved")).toEqual(s({ page: "boards", board: "saved" }));
     expect(fromUrl("/explore", "")).toEqual(s({ page: "explore" }));
+    expect(fromUrl("/", "")).toEqual(s({ page: "home" }));
   });
 
   it("pushes a page change as a single history entry", () => {
     expect(historyAction(s({}), s({ page: "boards" }), false).action).toBe("push");
     expect(historyAction(s({ page: "boards" }), s({ page: "brief" }), false).action).toBe("push");
     expect(historyAction(s({ page: "boards", board: "saved" }), s({ page: "boards" }), false).action).toBe("push");
+    expect(historyAction(s({ page: "home" }), s({ page: "explore" }), false).action).toBe("push");
   });
 });

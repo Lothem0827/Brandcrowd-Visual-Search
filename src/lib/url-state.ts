@@ -2,14 +2,15 @@ import { FACETS, type ColorFilter, type FacetKey, type FacetSelection } from "./
 import { normalizeHex, type ColorMatchMode } from "./color";
 
 /** Which top-level page the URL names. */
-export type Page = "explore" | "boards" | "brief";
+export type Page = "home" | "explore" | "boards" | "brief";
 
 /**
  * The shareable part of the explorer state, mirrored in the URL so pages can be refreshed,
  * bookmarked/shared and Back/Forward can step through them:
  *
- *   /?q=retro+serif&industry=Construction&aesthetic=bold&color=F07B22&cm=any
- *   /?design=<id>&view=focus&scope=all&sort=shuffle
+ *   /?design=<id>                         (home canvas pivot)
+ *   /explore?q=retro&industry=Construction&aesthetic=bold&color=F07B22&cm=any
+ *   /explore?design=<id>&view=focus&scope=all&sort=shuffle
  *   /boards/<id>?design=<id>&view=focus
  *
  * (An uploaded image can't be put in a URL; it stays local.)
@@ -17,7 +18,7 @@ export type Page = "explore" | "boards" | "brief";
 export type SortMode = "relevance" | "shuffle";
 
 export interface UrlState {
-  /** which top-level page (also the pathname: /, /boards, /brief; /explore is an old alias of /) */
+  /** which top-level page (pathname: /, /explore, /boards, /brief) */
   page: Page;
   query: string;
   facets: FacetSelection;
@@ -35,7 +36,7 @@ export interface UrlState {
 }
 
 export const EMPTY_URL_STATE: UrlState = {
-  page: "explore",
+  page: "home",
   query: "",
   facets: {},
   color: null,
@@ -48,7 +49,8 @@ export const EMPTY_URL_STATE: UrlState = {
 };
 
 const PAGE_PATH: Record<Page, string> = {
-  explore: "/",
+  home: "/",
+  explore: "/explore",
   boards: "/boards",
   brief: "/brief",
 };
@@ -93,12 +95,13 @@ function trimPath(pathname: string): string {
   return pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
 }
 
-/** Map a pathname to the page it names. `/` and the old `/explore` address are the browse page. */
+/** Map a pathname to the page it names. */
 export function pageFromPath(pathname: string): Page {
   const path = trimPath(pathname);
   if (path === "/boards" || path.startsWith("/boards/")) return "boards";
   if (path === "/brief") return "brief";
-  return "explore";
+  if (path === "/explore") return "explore";
+  return "home";
 }
 
 /** `/boards/<id>` → id; null for the index and for ids that fail validation. */
@@ -115,8 +118,25 @@ export function boardFromPath(pathname: string): string | null {
 }
 
 /**
+ * True when the search describes a browse/search view (query, facets, colour, sort) rather than
+ * a home-canvas pivot (`design` alone). Used to fold old `/?q=…` links onto `/explore`.
+ */
+function hasBrowseSearch(s: UrlState): boolean {
+  if (s.query.trim()) return true;
+  if (s.color) return true;
+  if (s.sort === "shuffle") return true;
+  if (s.focused) return true;
+  if (s.design.length > 1) return true;
+  for (const k of FACET_KEYS) {
+    if (s.facets[k]?.length) return true;
+  }
+  return false;
+}
+
+/**
  * The canonical URL for a state: pathname derived from the page, query from the rest.
  * The Boards index and the Brief drop the query entirely — they have no searchable view.
+ * Home keeps only `design` (canvas pivot).
  */
 export function toUrl(s: UrlState): string {
   if (s.page === "boards") {
@@ -136,7 +156,16 @@ export function toUrl(s: UrlState): string {
     return `/boards/${encodeURIComponent(s.board)}${toSearch(shown)}`;
   }
   if (s.page === "brief") return PAGE_PATH.brief;
-  return `${PAGE_PATH[s.page]}${toSearch(s)}`;
+  if (s.page === "home") {
+    const home: UrlState = {
+      ...EMPTY_URL_STATE,
+      page: "home",
+      design: s.design.slice(-1),
+      focused: false,
+    };
+    return `${PAGE_PATH.home}${toSearch(home)}`;
+  }
+  return `${PAGE_PATH.explore}${toSearch(s)}`;
 }
 
 /** Parse a query string, ignoring anything unknown or malformed. */
@@ -166,7 +195,7 @@ export function fromSearch(search: string): UrlState {
   const seedNum = Number(p.get("shuffle"));
   const shuffleSeed = sort === "shuffle" ? (Number.isInteger(seedNum) ? seedNum : 1) : null;
   return {
-    page: "explore",
+    page: "home",
     query: (p.get("q") ?? "").slice(0, MAX_QUERY_LENGTH),
     facets,
     color: colors.length ? { colors, mode } : null,
@@ -190,7 +219,11 @@ export function fromUrl(pathname: string, search = ""): UrlState {
   const board = boardFromPath(pathname) ?? state.board;
   if (board) return { ...state, page: "boards", board };
   if (page === "boards") return { ...state, page, board: null };
-  return { ...state, page };
+  if (page === "brief") return { ...state, page: "brief" };
+  if (page === "explore") return { ...state, page: "explore" };
+  // `/` with browse params (old home-was-search links) folds onto /explore.
+  if (hasBrowseSearch(state)) return { ...state, page: "explore" };
+  return { ...state, page: "home", query: "", facets: {}, color: null, sort: "relevance", shuffleSeed: null, focused: false, design: state.design.slice(-1) };
 }
 
 /** True when only the free-text query differs (i.e. the user is typing). */
@@ -209,5 +242,13 @@ export function historyAction(
 ): { action: "none" | "push" | "replace"; typing: boolean } {
   if (toUrl(prev) === toUrl(next)) return { action: "none", typing: lastWasTyping };
   if (onlyQueryChanged(prev, next)) return { action: lastWasTyping ? "replace" : "push", typing: true };
+  // Home canvas pivots replace so Back leaves the page instead of stepping through every design.
+  if (
+    prev.page === "home" &&
+    next.page === "home" &&
+    toUrl({ ...prev, design: [] }) === toUrl({ ...next, design: [] })
+  ) {
+    return { action: "replace", typing: false };
+  }
   return { action: "push", typing: false };
 }

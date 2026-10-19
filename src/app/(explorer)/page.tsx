@@ -1,4 +1,4 @@
-/** Home: search, filters and the grid/tree browse area (`/?q=…`). The page itself renders nothing. */
+/** Home: infinite canvas of templates (`/` or `/?design=<id>`). The page itself renders nothing. */
 export default function HomePage() {
   return null;
 }

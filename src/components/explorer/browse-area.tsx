@@ -33,6 +33,7 @@ import {
   HEADER_TITLE,
 } from "./header";
 import { GridView } from "./grid-view";
+import { HomeCanvas } from "./home-canvas";
 import { TreeCanvas } from "./tree-canvas";
 import { useBoards } from "./use-boards";
 import { useDragScroll } from "./use-drag-scroll";
@@ -547,6 +548,7 @@ function BoardArea() {
 
 export function BrowseArea() {
   const { page, view } = useExplorer();
+  if (page === "home") return <HomeCanvas />;
   if (page === "brief") return <BriefPage />;
   // /boards is the index; /boards/<id> is one board, which stays behind a design opened in it.
   if (page === "boards") return boardIdOf(view) ? <BoardArea /> : <BoardsPage />;

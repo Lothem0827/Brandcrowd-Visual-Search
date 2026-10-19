@@ -120,7 +120,7 @@ export interface ExplorerApi {
   setFilterPanelOpen: (o: boolean) => void;
   view: View;
   setView: (v: View) => void;
-  /** open a design from the grid/Home (focused lightbox) */
+  /** open a design from the grid (focused lightbox) */
   openTemplate: (id: string) => void;
   /** open a design from the tree/board (similar mind-map) */
   openSimilar: (id: string) => void;
@@ -155,6 +155,9 @@ export interface ExplorerApi {
   pinBoard: (boardId: string) => void;
   /** Close the board panel without navigating. */
   unpinBoard: () => void;
+  /** Home canvas pivot design id (`/?design=`), null when browsing industries. */
+  homePivotId: string | null;
+  setHomePivotId: (id: string | null) => void;
   focusSearch: () => void;
 }
 
