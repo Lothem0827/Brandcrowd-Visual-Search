@@ -31,7 +31,7 @@ import { useMoodboards } from "./use-moodboards";
 const SECTION =
   "text-[11px] font-semibold tracking-[0.12em] text-muted-foreground uppercase";
 const COPY_BUTTON =
-  "pointer-events-none absolute top-2 right-2 z-10 grid size-7 place-items-center text-white opacity-0 drop-shadow-[0_1px_1px_rgb(0_0_0/0.55)] transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100";
+  "pointer-events-none absolute top-2 right-2 z-10 grid size-7 place-items-center text-white opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100";
 
 /** Dot positions on a 16px wheel, degrees clockwise from the top. */
 const HARMONY_DOTS: Record<
@@ -109,7 +109,7 @@ function QueryForm({
   const [input, setInput] = useState(initial);
   return (
     <form
-      className="flex h-14 w-full items-center gap-1 rounded-full bg-panel pr-2 pl-4  ring-1 ring-foreground/10"
+      className="flex h-13 w-full items-center gap-1 rounded-full bg-panel/75 pr-2 pl-4 backdrop-blur-md focus-within:ring-2 focus-within:ring-ring/40"
       onSubmit={(event) => {
         event.preventDefault();
         onGenerate(input);
@@ -123,7 +123,7 @@ function QueryForm({
         maxLength={80}
         className="h-full min-w-0 flex-1 bg-transparent text-[15px] font-medium outline-none placeholder:text-muted-foreground/80"
       />
-      <Button type="submit" className="h-10 shrink-0 rounded-full px-3.5">
+      <Button type="submit" className="h-8 shrink-0 rounded-full px-3.5">
         <SparklesIcon className="size-4" />
         Generate
       </Button>

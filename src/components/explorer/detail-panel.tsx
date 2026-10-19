@@ -1,7 +1,17 @@
 "use client";
 import { useEffect, useState, type ReactNode } from "react";
-import { ArrowUpRightIcon, CheckIcon, ChevronDownIcon, CopyIcon, XIcon } from "lucide-react";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  ArrowUpRightIcon,
+  CheckIcon,
+  ChevronDownIcon,
+  CopyIcon,
+  PanelRightCloseIcon,
+} from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { toast } from "@/components/ui/toast";
 import type { Template } from "@/lib/schema";
 import { cap, type FacetKey } from "@/lib/facets";
@@ -9,6 +19,7 @@ import { cn } from "@/lib/utils";
 import type { SimilarHit, SimilarKind } from "@/lib/similarity";
 import { SIMILAR_META } from "@/lib/tree";
 import { useExplorer } from "./context";
+import { HEADER_CONTROL, HEADER_CONTROL_IDLE } from "./header";
 import { SaveButton } from "./save-button";
 import { ImageIcon, LayoutIcon } from "./icons";
 import { templateImageUrl } from "@/lib/images";
@@ -224,12 +235,7 @@ function DesignInfoTab({ t }: { t: Template }) {
             label={cap(t.content.type)}
           />
           {t.tags.map((v) => (
-            <FilterPill
-              key={v}
-              facet="tag"
-              value={v.toLowerCase()}
-              label={v}
-            />
+            <FilterPill key={v} facet="tag" value={v.toLowerCase()} label={v} />
           ))}
         </div>
       </section>
@@ -246,7 +252,12 @@ function DesignInfoTab({ t }: { t: Template }) {
             <Label>Style</Label>
             <div className="flex flex-wrap gap-1.5">
               {t.style.aesthetic.map((v) => (
-                <FilterPill key={v} facet="aesthetic" value={v} label={cap(v)} />
+                <FilterPill
+                  key={v}
+                  facet="aesthetic"
+                  value={v}
+                  label={cap(v)}
+                />
               ))}
               {t.style.mood.map((v) => (
                 <FilterPill key={v} facet="mood" value={v} label={cap(v)} />
@@ -399,20 +410,20 @@ export function DetailPanel({ template: t }: { template: Template }) {
         className="flex h-full w-[400px] max-md:w-[92vw] flex-col border-l border-border/60"
       >
         <div className="flex shrink-0 items-center justify-between px-4 py-2.5">
-          <div className="text-sm font-semibold">Design details</div>
+          <div className="text-xl font-semibold">Design details</div>
           <button
             type="button"
-            aria-label="Close details (Esc)"
+            aria-label="Collapse details (Esc)"
             onClick={() => setDetailOpen(false)}
-            className="grid size-7 place-items-center rounded-lg bg-panel hover:bg-muted"
+            className={cn(HEADER_CONTROL, HEADER_CONTROL_IDLE)}
           >
-            <XIcon className="size-3.5" />
+            <PanelRightCloseIcon className="size-4" />
           </button>
         </div>
 
         <div className="shrink-0 space-y-4 border-b border-border/60 px-4 pt-1 pb-4">
           <div>
-            <h2 className="text-[17px] leading-tight font-semibold tracking-tight">
+            <h2 className="text-2xl leading-tight font-semibold tracking-tight">
               {t.url ? (
                 <a
                   href={t.url}
@@ -432,7 +443,11 @@ export function DetailPanel({ template: t }: { template: Template }) {
           <SaveButton templateId={t.templateId} className="w-full" />
         </div>
 
-        <div className="flex shrink-0 border-b border-border/60" role="tablist" aria-label="Design panel tabs">
+        <div
+          className="flex shrink-0 border-b border-border/60"
+          role="tablist"
+          aria-label="Design panel tabs"
+        >
           {(["info", "similar"] as const).map((k) => (
             <button
               key={k}
@@ -452,7 +467,7 @@ export function DetailPanel({ template: t }: { template: Template }) {
           ))}
         </div>
 
-        <div className="thin-scroll flex-1 overflow-y-auto">
+        <div className="no-scrollbar flex-1 overflow-y-auto">
           {tab === "similar" ? <SimilarDesignsTab /> : <DesignInfoTab t={t} />}
         </div>
       </div>

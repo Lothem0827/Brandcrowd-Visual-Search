@@ -3,16 +3,16 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   BookmarkIcon,
   CompassIcon,
-  LayoutGridIcon,
   ListChecksIcon,
-  NetworkIcon,
+  MoonIcon,
   PencilIcon,
-  SearchIcon,
   SlidersHorizontalIcon,
   SparklesIcon,
+  SunIcon,
   TagIcon,
   XIcon,
 } from "lucide-react";
+import { useTheme } from "next-themes";
 import { activeFilterCount, sentenceCase, type FacetKey } from "@/lib/facets";
 import { relatedChips } from "@/lib/query";
 import type { Template } from "@/lib/schema";
@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { BackButton } from "./back-button";
 import { BoardsPage } from "./boards-page";
 import { BriefPage } from "./brief-page";
+import { HeaderDetectedChips } from "./chips";
 import { useExplorer, type View } from "./context";
 import {
   HEADER_CONTROL,
@@ -34,7 +35,6 @@ import {
 } from "./header";
 import { GridView } from "./grid-view";
 import { HomeCanvas } from "./home-canvas";
-import { TreeCanvas } from "./tree-canvas";
 import { useBoards } from "./use-boards";
 import { useDragScroll } from "./use-drag-scroll";
 
@@ -50,34 +50,41 @@ function useChipRow() {
   };
 }
 
-function BrowseToggle() {
-  const { browseMode, setBrowseMode } = useExplorer();
+function ThemeSwitch() {
+  const { resolvedTheme, setTheme } = useTheme();
+  const dark = resolvedTheme === "dark";
   return (
-    <div className={HEADER_SEGMENT} role="group" aria-label="Browse mode">
-      {(["grid", "tree"] as const).map((m) => (
-        <button
-          key={m}
-          type="button"
-          aria-pressed={browseMode === m}
-          onClick={() => setBrowseMode(m)}
-          title={m === "grid" ? "Grid view" : "Tree view"}
-          className={cn(
-            HEADER_SEGMENT_ITEM,
-            browseMode === m
-              ? HEADER_CONTROL_ON
-              : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          {m === "grid" ? (
-            <LayoutGridIcon className="size-3.5" />
-          ) : (
-            <NetworkIcon className="size-3.5" />
-          )}
-          <span className="hidden sm:inline">
-            {m === "grid" ? "Grid" : "Tree"}
-          </span>
-        </button>
-      ))}
+    <div className={HEADER_SEGMENT} role="group" aria-label="Color theme">
+      <button
+        type="button"
+        aria-pressed={!dark}
+        aria-label="Light mode"
+        title="Light mode"
+        onClick={() => setTheme("light")}
+        className={cn(
+          HEADER_SEGMENT_ITEM,
+          !dark
+            ? HEADER_CONTROL_ON
+            : "text-muted-foreground hover:text-foreground",
+        )}
+      >
+        <SunIcon className="size-3.5" />
+      </button>
+      <button
+        type="button"
+        aria-pressed={dark}
+        aria-label="Dark mode"
+        title="Dark mode"
+        onClick={() => setTheme("dark")}
+        className={cn(
+          HEADER_SEGMENT_ITEM,
+          dark
+            ? HEADER_CONTROL_ON
+            : "text-muted-foreground hover:text-foreground",
+        )}
+      >
+        <MoonIcon className="size-3.5" />
+      </button>
     </div>
   );
 }
@@ -270,36 +277,9 @@ function ResultCount() {
   );
 }
 
-/**
- * Tree view's back control, sat at the head of the same header row as the results heading so it
- * reads like the Boards page (back, then title). The trail stays over the canvas; only the button
- * moved. A similar tree pops its trail back toward wherever the exploration started; a search tree
- * steps back through the search path.
- */
-function TreeBackButton() {
-  const { view, setView, searchPath, backOneStep, browseMode } = useExplorer();
-  if (browseMode !== "tree") return null;
-  if (view.kind === "similar") {
-    const v = view;
-    return (
-      <BackButton
-        label="Back"
-        side="top"
-        onClick={() =>
-          v.trail.length > 1
-            ? setView({ ...v, trail: v.trail.slice(0, -1) })
-            : setView(v.origin)
-        }
-      />
-    );
-  }
-  if (view.kind !== "search" || searchPath.length === 0) return null;
-  return <BackButton label="Back" side="top" onClick={backOneStep} />;
-}
-
-/** Explore: popular tags / results heading, filter + grid/tree toggles, then the grid or tree. */
+/** Explore: popular tags / results heading, filter + theme toggle, then the grid. */
 function ExploreArea() {
-  const { hasSearch, browseMode, browseItems } = useExplorer();
+  const { hasSearch, browseItems } = useExplorer();
   return (
     <div className="flex h-full flex-col">
       <div
@@ -310,12 +290,12 @@ function ExploreArea() {
         )}
       >
         <div className="flex items-center gap-3">
-          <TreeBackButton />
           <div className="flex min-w-0 flex-1 items-center gap-4">
             {hasSearch ? (
               <>
                 <ResultsHeading />
                 <FilterToggle />
+                <HeaderDetectedChips />
                 <ResultCount />
               </>
             ) : (
@@ -325,16 +305,12 @@ function ExploreArea() {
               </div>
             )}
           </div>
-          <BrowseToggle />
+          <ThemeSwitch />
         </div>
         {hasSearch ? <RelatedChips /> : <PopularTags />}
       </div>
       <div className="relative min-h-0 flex-1">
-        {browseMode === "grid" ? (
-          <GridView items={browseItems} />
-        ) : (
-          <TreeCanvas />
-        )}
+        <GridView items={browseItems} />
         {browseItems.length === 0 && <EmptyState />}
       </div>
     </div>
@@ -430,15 +406,10 @@ function boardIdOf(view: View): string | null {
   return null;
 }
 
-/**
- * Board: one saved board's designs, rendered in the browse area so boards open in grid mode
- * (and from Home), not only as the tree mind-map. The tree canvas keeps its own board layout
- * (grouping + scope controls), so the back button here is grid-only to avoid duplicating it.
- */
+/** Board: one saved board's designs in the browse area grid. */
 function BoardArea() {
   const {
     view,
-    browseMode,
     setView,
     setPage,
     byId,
@@ -473,7 +444,6 @@ function BoardArea() {
           side="top"
           // Boards open from the full-page index now, so Back returns there. Clearing the view
           // too rewrites /boards/<id> to /boards and stops the index's Esc bouncing back in.
-          // Not gated on grid mode: the tree view wants the same control in its header row.
           onClick={() => {
             setView({ kind: "search" });
             setPage("boards");
@@ -498,13 +468,12 @@ function BoardArea() {
             size="sm"
             data-testid="find-more-design"
             onClick={findMore}
-            className="shrink-0"
+            className="h-8 shrink-0"
           >
-            <SearchIcon className="size-4" />
             Find more design
           </Button>
         )}
-        {browseMode === "grid" && board && (
+        {board && (
           <button
             type="button"
             aria-pressed={selecting}
@@ -515,22 +484,17 @@ function BoardArea() {
             }
             className={cn(
               HEADER_CONTROL,
-              "rounded-xl",
               selecting ? HEADER_CONTROL_ON : HEADER_CONTROL_IDLE,
             )}
           >
             <ListChecksIcon className="size-4" />
           </button>
         )}
-        <BrowseToggle />
+        <ThemeSwitch />
       </div>
       <div className="relative min-h-0 flex-1">
-        {browseMode === "grid" ? (
-          <GridView items={items} hideSave />
-        ) : (
-          <TreeCanvas />
-        )}
-        {browseMode === "grid" && items.length === 0 && (
+        <GridView items={items} hideSave />
+        {items.length === 0 && (
           <div className="absolute inset-0 grid place-items-center p-6">
             <div className="flex max-w-sm flex-col items-center gap-1.5 text-center">
               <BookmarkIcon className="size-7 text-muted-foreground" />

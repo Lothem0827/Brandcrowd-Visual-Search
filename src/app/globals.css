@@ -174,3 +174,10 @@
 .thin-scroll {
   scrollbar-width: thin;
 }
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

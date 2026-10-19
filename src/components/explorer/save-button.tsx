@@ -58,7 +58,7 @@ export function SaveButton({ templateId, className }: { templateId: string; clas
         <PopoverTrigger
           aria-label="Choose boards"
           data-testid="board-picker"
-          className="grid w-10 place-items-center bg-muted/40 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          className="grid aspect-square h-full place-items-center bg-muted/40 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <ChevronDownIcon className="size-4" />
         </PopoverTrigger>

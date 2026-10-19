@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
  * ships a system font stack, a border and a smaller radius).
  */
 const SURFACE =
-  "pointer-events-auto flex w-full items-center gap-3 rounded-lg border-0 bg-popover px-4 py-4 font-sans text-popover-foreground shadow-[0_8px_30px_rgb(0_0_0/0.18)]";
+  "pointer-events-auto flex w-full items-center gap-3 rounded-lg border-0 bg-popover px-4 py-4 font-sans text-popover-foreground";
 
 type Kind = "default" | "success" | "info" | "warning" | "error" | "loading";
 

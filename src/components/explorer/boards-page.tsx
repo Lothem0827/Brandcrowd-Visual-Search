@@ -82,7 +82,8 @@ export function BoardsPage() {
   const titles = useMemo(() => {
     const map = new Map<string, string>();
     for (const item of saved) {
-      if (!map.has(item.query)) map.set(item.query, moodboardCardTitle(base, item.query));
+      if (!map.has(item.query))
+        map.set(item.query, moodboardCardTitle(base, item.query));
     }
     return map;
   }, [saved, base]);
@@ -146,7 +147,7 @@ export function BoardsPage() {
 
         {tab === "boards" ? (
           <div className="grid grid-cols-2 gap-x-5 gap-y-7 px-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-              {boards.map((b) => (
+            {boards.map((b) => (
               <div key={b.id} className="group relative text-left">
                 <button
                   type="button"
@@ -220,9 +221,15 @@ export function BoardsPage() {
                     className="flex w-full flex-col gap-2 text-left"
                     data-testid="moodboard-card"
                   >
-                    <MoodboardCover draft={item} designs={designs} className="aspect-[3/2] w-full" />
+                    <MoodboardCover
+                      draft={item}
+                      designs={designs}
+                      className="aspect-[3/2] w-full"
+                    />
                     <div className="min-w-0 px-0.5">
-                      <div className="truncate text-sm font-semibold">{title}</div>
+                      <div className="truncate text-sm font-semibold">
+                        {title}
+                      </div>
                     </div>
                   </button>
                   <button
@@ -238,13 +245,22 @@ export function BoardsPage() {
             })}
           </div>
         ) : (
-          <div className="flex flex-col items-center gap-1.5 px-4 py-24 text-center" data-testid="moodboards-empty">
+          <div
+            className="flex flex-col items-center gap-1.5 px-4 py-24 text-center"
+            data-testid="moodboards-empty"
+          >
             <PaletteIcon className="size-7 text-muted-foreground" />
             <div className="text-sm font-semibold">No moodboards yet</div>
             <div className="text-xs text-muted-foreground">
               Save a moodboard and it&apos;ll show up here.
             </div>
-            <Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => setPage("brief")}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              onClick={() => setPage("brief")}
+            >
               Open moodboard
             </Button>
           </div>

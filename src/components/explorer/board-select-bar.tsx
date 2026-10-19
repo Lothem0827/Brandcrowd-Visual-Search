@@ -65,7 +65,7 @@ export function BoardSelectBar() {
       <div
         data-testid="board-select-bar"
         className={cn(
-          "pointer-events-auto flex h-13 max-w-[min(100%,860px)] items-center gap-1.5 rounded-full bg-panel/95 pr-2 pl-4 shadow-[0_8px_30px_rgb(0_0_0/0.18)] backdrop-blur",
+          "pointer-events-auto flex h-13 max-w-[min(100%,860px)] items-center gap-1.5 rounded-full bg-panel/95 pr-2 pl-4 backdrop-blur",
           "max-md:w-full max-md:max-w-none max-md:rounded-b-none max-md:overflow-x-auto",
         )}
       >

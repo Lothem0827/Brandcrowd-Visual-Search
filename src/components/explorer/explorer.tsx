@@ -11,7 +11,7 @@ import { SITE_NAME, SITE_TITLE } from "@/lib/site";
 import { paletteFromFile } from "@/lib/image-search";
 import { toast } from "@/components/ui/toast";
 import { useAiInterpretation } from "./use-ai-interpretation";
-import { ExplorerContext, type BoardSelection, type BrowseMode, type ExplorerApi, type HoverState, type ImageQuery, type Origin, type SearchStep, type SortMode, type View } from "./context";
+import { ExplorerContext, type BoardSelection, type ExplorerApi, type HoverState, type ImageQuery, type Origin, type SearchStep, type SortMode, type View } from "./context";
 import { Sidebar } from "./sidebar";
 import { SearchDock } from "./search-dock";
 import { BrowseArea } from "./browse-area";
@@ -21,14 +21,12 @@ import { DetailPanel } from "./detail-panel";
 import { BoardPanel } from "./board-panel";
 import { MoodboardPanel } from "./moodboard-panel";
 import { useMoodboardPinned } from "./use-moodboards";
-import { getMoodboardStore } from "@/lib/moodboards";
 import { getBoardStore } from "@/lib/boards";
 import { BoardSelectBar } from "./board-select-bar";
 import { ImageDropOverlay } from "./image-drop";
 import { OfflineBanner } from "./offline-banner";
 
 const IMAGE_RESULTS = 60;
-const BROWSE_MODE_KEY = "template-taxonomy:browse:v1";
 
 /** View described by the URL; design ids that aren't in the dataset are dropped. */
 function viewFromUrl(u: UrlState, exists: (id: string) => boolean): View {
@@ -40,8 +38,8 @@ function viewFromUrl(u: UrlState, exists: (id: string) => boolean): View {
   const trail = u.design.filter(exists);
   if (trail.length) {
     const origin: Origin = u.board ? { kind: "board", boardId: u.board } : { kind: "search" };
-    if (u.focused) return { kind: "focused", id: trail[trail.length - 1], origin };
-    return { kind: "similar", trail, origin };
+    // Tree / similar mind-map is gone: any design deep-link opens the focused lightbox.
+    return { kind: "focused", id: trail[trail.length - 1], origin };
   }
   if (u.board) return { kind: "board", boardId: u.board };
   return { kind: "search" };
@@ -112,15 +110,6 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
       ? initialUrl.design[0]
       : null,
   );
-  const [browseMode, setBrowseMode] = useState<BrowseMode>(() => {
-    try {
-      const v = window.localStorage.getItem(BROWSE_MODE_KEY);
-      if (v === "tree" || v === "grid") return v;
-    } catch {
-      /* storage unavailable */
-    }
-    return "grid";
-  });
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
   const [simScope, setSimScope] = useState<"industry" | "all">(initialUrl.scope);
   const [detailOpen, setDetailOpen] = useState(() => view.kind === "similar");
@@ -147,14 +136,6 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
     setView((v) => (v.kind === "search" ? v : { kind: "search" }));
     if (next !== "home") setHomePivotId(null);
   }, [page]);
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(BROWSE_MODE_KEY, browseMode);
-    } catch {
-      /* storage unavailable */
-    }
-  }, [browseMode]);
 
   // Navigation is a history push rather than a Next route change, so the title the route
   // metadata set on load would otherwise stick to every page after it.
@@ -468,8 +449,7 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
   const selectionLive =
     !!boardSelection &&
     view.kind === "board" &&
-    view.boardId === boardSelection.boardId &&
-    browseMode === "grid";
+    view.boardId === boardSelection.boardId;
   if (boardSelection && !selectionLive) setBoardSelection(null);
   const activeBoardSelection = selectionLive ? boardSelection : null;
 
@@ -585,7 +565,6 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
   }, [setPage]);
 
   const pinBoard = useCallback((boardId: string) => {
-    getMoodboardStore().unpin();
     getBoardStore().pin(boardId);
     getBoardStore().setLastUsedBoard(boardId);
     setPinnedBoardId(boardId);
@@ -611,12 +590,8 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
         if (activeBoardSelection) stopBoardSelect();
         else if (detailOpen) setDetailOpen(false);
         else if (homePivotId && page === "home") setHomePivotId(null);
-        else if (pinnedBoardId && page === "explore") {
-          const id = pinnedBoardId;
-          unpinBoard();
-          setPage("boards");
-          setView({ kind: "board", boardId: id });
-        } else if (filterPanelOpen) setFilterPanelOpen(false);
+        else if (pinnedBoardId) unpinBoard();
+        else if (filterPanelOpen) setFilterPanelOpen(false);
         // Escape leaves one level: a board goes back to the Boards index (/boards), the
         // index and the Moodboard go back to Explore.
         else if (page === "boards" && (view.kind === "board" || view.kind === "focused" || view.kind === "similar")) {
@@ -647,7 +622,7 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
     ai, aiStatus, aiEnabled, dismissAi,
     searchPath, searchWithin, backOneStep, jumpToStep,
     imageQuery, setImageQuery, imageScores, textScores, imageBusy, searchByImage,
-    page, setPage, browseMode, setBrowseMode, sort, setSort, shuffleSeed, setShuffleSeed,
+    page, setPage, sort, setSort, shuffleSeed, setShuffleSeed,
     filterPanelOpen, setFilterPanelOpen,
     view, setView, openTemplate, openSimilar, recenter, recenterDetail, focused, simScope, setSimScope, similar, center,
     detailsReady, detailsError, loadDetails,
@@ -687,13 +662,9 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
           ) : null}
         </div>
         <FilterPanel />
-        {pinnedBoardId && page === "explore" ? (
-          <BoardPanel />
-        ) : moodboardPinned && page === "explore" ? (
-          <MoodboardPanel />
-        ) : (
-          detailTemplate && <DetailPanel template={detailTemplate} />
-        )}
+        {pinnedBoardId && <BoardPanel />}
+        {moodboardPinned && page === "explore" && <MoodboardPanel />}
+        {detailTemplate && <DetailPanel template={detailTemplate} />}
       </div>
       <ImageDropOverlay />
       <OfflineBanner />

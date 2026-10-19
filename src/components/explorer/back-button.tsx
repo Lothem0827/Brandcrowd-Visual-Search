@@ -13,7 +13,7 @@ import { HEADER_CONTROL, HEADER_CONTROL_IDLE } from "./header";
 /**
  * The single back control for the explorer: icon-only, with its label moved into a deliberate
  * 2s hover tooltip (nobody should have to hunt for "Back"). It IS the shared header control —
- * the same 40px raised square and 16px arrow everywhere it appears, so every back affordance in
+ * the same 32px raised square and 16px arrow everywhere it appears, so every back affordance in
  * the app is the same target. Callers only adjust the shape through `className` (the tree
  * canvas's stacked chips use a nested `rounded-lg` inside their panel), never the size.
  */

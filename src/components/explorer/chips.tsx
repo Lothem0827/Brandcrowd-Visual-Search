@@ -19,6 +19,7 @@ import { ignoredQueryText } from "@/lib/query";
 import { useIsMobile } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
 import { useExplorer } from "./context";
+import { useDragScroll } from "./use-drag-scroll";
 
 const COLOR_LABEL: Record<ColorMatchMode, string> = {
   background: "Background",
@@ -38,6 +39,107 @@ type ChipMetrics = {
   /** Height that shows exactly 6 rows, or null when the chips fit in 6 rows. */
   expandPx: number | null;
 };
+
+/** Compact active chips + Clear all for the explore header row. */
+export function HeaderDetectedChips() {
+  const {
+    parsed,
+    filters,
+    toggleFacet,
+    setFilters,
+    clearAll,
+    imageQuery,
+    setImageQuery,
+    query,
+  } = useExplorer();
+  const detected = parsed.chips;
+  const committed = (
+    Object.entries(filters.facets) as [FacetKey, string[]][]
+  ).flatMap(([k, vs]) =>
+    (vs ?? [])
+      .filter((v) => !detected.some((c) => c.facet === k && c.value === v))
+      .map((v) => ({ facet: k, value: v })),
+  );
+  const colors = filters.color?.colors ?? [];
+  const any =
+    detected.length > 0 ||
+    committed.length > 0 ||
+    colors.length > 0 ||
+    !!imageQuery ||
+    !!query.trim();
+
+  const drag = useDragScroll();
+
+  if (!any) return null;
+
+  return (
+    <div className="flex min-w-0 flex-1 items-center gap-2">
+      <div
+        {...drag.props}
+        className={cn(
+          "no-scrollbar flex min-w-0 flex-1 flex-nowrap items-center gap-1.5 overflow-x-auto overscroll-x-contain",
+          drag.dragging ? "cursor-grabbing" : "cursor-grab",
+        )}
+      >
+        {detected.map((c) => (
+          <Chip
+            key={`d:${c.facet}:${c.value}`}
+            dark
+            label={FACET_MAP[c.facet].label}
+            value={displayValue(c.facet, c.value)}
+            onRemove={() => toggleFacet(c.facet, c.value)}
+          />
+        ))}
+        {committed.map((c) => (
+          <Chip
+            key={`c:${c.facet}:${c.value}`}
+            label={FACET_MAP[c.facet].label}
+            value={displayValue(c.facet, c.value)}
+            onRemove={() => toggleFacet(c.facet, c.value)}
+          />
+        ))}
+        {colors.map((hex, i) => (
+          <Chip
+            key={hex}
+            label={
+              i === 0
+                ? filters.color?.mode === "background"
+                  ? "Background"
+                  : COLOR_LABEL[filters.color?.mode ?? "any"]
+                : ""
+            }
+            value={hex}
+            swatch={hex}
+            onRemove={() => {
+              const rest = colors.filter((c) => c !== hex);
+              setFilters((f) => ({
+                ...f,
+                color: rest.length
+                  ? { colors: rest, mode: f.color?.mode ?? "background" }
+                  : null,
+              }));
+            }}
+          />
+        ))}
+        {imageQuery && (
+          <Chip
+            label="Image"
+            value="colors from upload"
+            swatch={imageQuery.palette[0]?.hex}
+            onRemove={() => setImageQuery(null)}
+          />
+        )}
+      </div>
+      <button
+        type="button"
+        onClick={clearAll}
+        className="shrink-0 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+      >
+        Clear all
+      </button>
+    </div>
+  );
+}
 
 export function ActiveChips() {
   const {
@@ -321,7 +423,7 @@ export function ActiveChips() {
   );
 }
 
-function Chip({
+export function Chip({
   label,
   value,
   onRemove,
@@ -339,7 +441,7 @@ function Chip({
   return (
     <span
       className={cn(
-        "inline-flex h-7 items-center gap-1.5 rounded-full pr-1 pl-2.5 text-xs",
+        "inline-flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full pr-1 pl-2.5 text-xs",
         dark ? "bg-foreground text-background" : "bg-panel",
         ai && "bg-primary/5",
       )}
@@ -347,7 +449,7 @@ function Chip({
       {ai && <WandSparklesIcon className="size-3 text-primary" aria-hidden />}
       {swatch && (
         <span
-          className="size-3 rounded-full ring-1 ring-black/15"
+          className="size-3 shrink-0 rounded-full ring-1 ring-black/15"
           style={{ background: swatch }}
         />
       )}

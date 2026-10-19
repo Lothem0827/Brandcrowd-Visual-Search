@@ -12,7 +12,6 @@ import {
   ImagePlusIcon,
   LoaderCircleIcon,
   SearchIcon,
-  SparklesIcon,
   XIcon,
 } from "lucide-react";
 import { useIsMobile } from "@/lib/use-media-query";
@@ -132,7 +131,7 @@ function SearchBox({
 
   return (
     <div className="relative w-full">
-      <div className="flex h-13 items-center gap-1 rounded-full bg-panel/75 pr-2 pl-4 shadow-[0_8px_30px_rgb(0_0_0/0.12)] backdrop-blur-md transition-shadow focus-within:ring-2 focus-within:ring-ring/40">
+      <div className="flex h-13 items-center gap-1 rounded-full bg-panel/75 pr-2 pl-4 backdrop-blur-md focus-within:ring-2 focus-within:ring-ring/40">
         <SearchIcon
           className="size-4 shrink-0 text-muted-foreground"
           aria-hidden
@@ -219,15 +218,6 @@ function SearchBox({
         )}
         <button
           type="button"
-          aria-label="Open the moodboard"
-          title="Open the moodboard"
-          onClick={() => setPage("brief")}
-          className="grid size-10 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
-          <SparklesIcon className="size-[18px]" />
-        </button>
-        <button
-          type="button"
           aria-label={imageBusy ? "Reading image colors" : "Search by image"}
           aria-busy={imageBusy}
           disabled={imageBusy}
@@ -263,7 +253,7 @@ function SearchBox({
         <ul
           id={listId}
           role="listbox"
-          className="absolute right-0 bottom-15 left-0 z-50 overflow-hidden rounded-xl bg-popover p-1 text-sm shadow-xl"
+          className="absolute right-0 bottom-15 left-0 z-50 overflow-hidden rounded-xl bg-popover p-1 text-sm"
         >
           {suggestions.map((s, i) => {
             const { before, match, after } = highlightLabel(

@@ -15,6 +15,7 @@ import { useMoodboardPinned } from "./use-moodboards";
 
 /** Compact quick-save toggle shown on a tile while hovering or focused. */
 function TileSave({ templateId }: { templateId: string }) {
+  const { pinBoard } = useExplorer();
   const { boards, store } = useBoards();
   const activeId = useLastUsedBoardId();
   const active = boards.find((b) => b.id === activeId) ?? boards.find((b) => b.id === SAVED_BOARD_ID);
@@ -26,7 +27,11 @@ function TileSave({ templateId }: { templateId: string }) {
       aria-label={saved ? `Remove from ${activeName}` : `Save to ${activeName}`}
       aria-pressed={saved}
       title={saved ? `Saved — click to remove` : `Save to “${activeName}”`}
-      onClick={() => active && store.toggle(active.id, templateId)}
+      onClick={() => {
+        if (!active) return;
+        const nowSaved = store.toggle(active.id, templateId);
+        if (nowSaved) pinBoard(active.id);
+      }}
       className={cn(
         "absolute top-2 right-2 grid size-7 place-items-center rounded-lg bg-background/80 backdrop-blur-sm transition-opacity",
         "text-foreground opacity-0 hover:bg-background focus-visible:opacity-100 group-hover:opacity-100",
@@ -55,7 +60,7 @@ const GridTile = memo(function GridTile({
   const { openTemplate, boardSelection, toggleBoardSelect, page, pinnedBoardId } =
     useExplorer();
   const moodboardPinned = useMoodboardPinned();
-  const canDrag = (!!moodboardPinned || !!pinnedBoardId) && page === "explore";
+  const canDrag = !!pinnedBoardId || (moodboardPinned && page === "explore");
   const selecting = !!boardSelection;
   const selected = !!boardSelection?.ids.includes(template.templateId);
   const label = template.displayTitle || template.slug;
@@ -209,7 +214,7 @@ export const GridView = memo(function GridView({
       data-count={items.length}
       className={cn(
         "px-4 pb-28",
-        !external && "thin-scroll h-full overflow-y-auto overscroll-contain",
+        !external && "no-scrollbar h-full overflow-y-auto overscroll-contain",
         className,
       )}
     >

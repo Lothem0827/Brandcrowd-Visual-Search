@@ -89,6 +89,7 @@ function easeOutCubic(t: number): number {
 }
 
 function TileSave({ templateId, className }: { templateId: string; className?: string }) {
+  const { pinBoard } = useExplorer();
   const { boards, store } = useBoards();
   const activeId = useLastUsedBoardId();
   const active = boards.find((b) => b.id === activeId) ?? boards.find((b) => b.id === SAVED_BOARD_ID);
@@ -102,10 +103,12 @@ function TileSave({ templateId, className }: { templateId: string; className?: s
       title={saved ? `Saved — click to remove` : `Save to “${activeName}”`}
       onClick={(e) => {
         e.stopPropagation();
-        if (active) store.toggle(active.id, templateId);
+        if (!active) return;
+        const nowSaved = store.toggle(active.id, templateId);
+        if (nowSaved) pinBoard(active.id);
       }}
       className={cn(
-        "grid size-7 place-items-center rounded-full bg-background/90 text-foreground shadow-sm backdrop-blur-sm transition-opacity",
+        "grid size-7 place-items-center rounded-full bg-background/90 text-foreground backdrop-blur-sm transition-opacity",
         "opacity-0 hover:bg-background focus-visible:opacity-100 group-hover:opacity-100",
         saved && "opacity-100 text-[#E5484D]",
         className,
@@ -212,6 +215,8 @@ export function HomeCanvas() {
   const rafRef = useRef(0);
   const inertiaRef = useRef(0);
   const pannedRef = useRef(false);
+  /** Once the user pans while a pivot is open, stop auto-recentering on resize (e.g. details panel). */
+  const userPannedPivotRef = useRef(false);
   const dragRef = useRef<{
     active: boolean;
     id: number;
@@ -324,6 +329,8 @@ export function HomeCanvas() {
   }, [applyTransform, updateRange]);
 
   // Measure viewport + recompute tile size; keep the world cell under the center anchored.
+  // With an open pivot the user hasn't moved, snap that cell to center so opening/closing the
+  // details panel (which resizes the canvas and retile) doesn't drift the large image.
   useLayoutEffect(() => {
     const el = rootRef.current;
     if (!el) return;
@@ -335,16 +342,27 @@ export function HomeCanvas() {
       const tile = Math.max(40, (w - gap * (columns + 1)) / columns);
       const step = tile + gap;
       setSize((prevSize) => {
-        if (prevSize.w > 0 && (prev.step !== step || prev.gap !== gap)) {
-          const cx = offsetRef.current.x + prevSize.w / 2;
-          const cy = offsetRef.current.y + prevSize.h / 2;
-          const anchorC = (cx - prev.gap) / prev.step;
-          const anchorR = (cy - prev.gap) / prev.step;
-          offsetRef.current = {
-            x: anchorC * step + gap - w / 2,
-            y: anchorR * step + gap - h / 2,
-          };
-          applyTransform();
+        if (prevSize.w > 0) {
+          const sizeChanged = prevSize.w !== w || prevSize.h !== h;
+          const stepChanged = prev.step !== step || prev.gap !== gap;
+          const pivot = pivotCellRef.current;
+          if (pivot && !userPannedPivotRef.current && (sizeChanged || stepChanged)) {
+            offsetRef.current = {
+              x: pivot.c * step + gap + tile / 2 - w / 2,
+              y: pivot.r * step + gap + tile / 2 - h / 2,
+            };
+            applyTransform();
+          } else if (stepChanged) {
+            const cx = offsetRef.current.x + prevSize.w / 2;
+            const cy = offsetRef.current.y + prevSize.h / 2;
+            const anchorC = (cx - prev.gap) / prev.step;
+            const anchorR = (cy - prev.gap) / prev.step;
+            offsetRef.current = {
+              x: anchorC * step + gap - w / 2,
+              y: anchorR * step + gap - h / 2,
+            };
+            applyTransform();
+          }
         }
         layoutRef.current = { tile, step, gap };
         if (prevSize.w === w && prevSize.h === h) return prevSize;
@@ -407,6 +425,9 @@ export function HomeCanvas() {
 
   const panBy = useCallback(
     (dx: number, dy: number) => {
+      if (dx !== 0 || dy !== 0) {
+        if (pivotCellRef.current) userPannedPivotRef.current = true;
+      }
       offsetRef.current.x -= dx;
       offsetRef.current.y -= dy;
       schedulePaint();
@@ -477,6 +498,7 @@ export function HomeCanvas() {
         };
       }
       pivotCellRef.current = cell;
+      userPannedPivotRef.current = false;
       setPivotCell(cell);
       setHomePivotId(id);
       dismissHint();
@@ -510,6 +532,7 @@ export function HomeCanvas() {
     setHomePivotId(null);
     setPivotCell(null);
     pivotCellRef.current = null;
+    userPannedPivotRef.current = false;
     setPivotAnim(0);
     setRippleRing(0);
   }, [setHomePivotId]);
@@ -519,6 +542,7 @@ export function HomeCanvas() {
     if (homePivotId) return;
     setPivotCell(null);
     pivotCellRef.current = null;
+    userPannedPivotRef.current = false;
     setPivotAnim(0);
     setRippleRing(0);
   }, [homePivotId]);
@@ -613,6 +637,7 @@ export function HomeCanvas() {
     if (!pannedRef.current && Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
     if (!pannedRef.current) {
       pannedRef.current = true;
+      if (pivotCellRef.current) userPannedPivotRef.current = true;
       setDragging(true);
       dismissHint();
       try {
@@ -780,7 +805,7 @@ export function HomeCanvas() {
           const top = cell.y + tile / 2 - current / 2;
           return (
           <div
-            className="absolute z-10"
+            className="group absolute z-10"
             style={{
               left,
               top,
@@ -793,7 +818,7 @@ export function HomeCanvas() {
               type="button"
               aria-label={`Close preview of ${pivotTemplate.displayTitle || pivotTemplate.slug}`}
               onClick={() => exitPivot()}
-              className="size-full overflow-hidden bg-muted shadow-xl outline-none focus-visible:ring-2 focus-visible:ring-ring/70"
+              className="size-full overflow-hidden bg-muted outline-none focus-visible:ring-2 focus-visible:ring-ring/70"
               style={{ borderRadius: radius }}
             >
               <ThumbImage
@@ -804,11 +829,15 @@ export function HomeCanvas() {
                 className="size-full object-cover"
               />
             </button>
+            <TileSave
+              templateId={pivotTemplate.templateId}
+              className="absolute top-2 right-2 z-10"
+            />
             <div
               className="pointer-events-auto absolute top-full left-1/2 mt-4 flex -translate-x-1/2 items-center gap-1.5"
               style={{ opacity: pivotAnim }}
             >
-              <div className="flex items-center gap-1 rounded-full bg-panel/90 p-1 shadow-lg ring-1 ring-foreground/10 backdrop-blur-xl">
+              <div className="flex items-center gap-1 rounded-full bg-panel/90 p-1 ring-1 ring-foreground/10 backdrop-blur-xl">
                 <Button
                   type="button"
                   size="sm"
@@ -835,10 +864,10 @@ export function HomeCanvas() {
                 <button
                   type="button"
                   onClick={() => openIndustry(visibleIndustries[0].name)}
-                  className="flex h-8 items-center gap-2 rounded-full bg-panel/80 pr-3 pl-1.5 text-[13px] shadow-sm ring-1 ring-foreground/10 backdrop-blur-xl transition-colors hover:bg-panel"
+                  className="flex h-8 items-center gap-2 rounded-full bg-panel/80 pr-3 pl-1.5 text-[13px] ring-1 ring-foreground/10 backdrop-blur-xl transition-colors hover:bg-panel"
                 >
                   {visibleIndustries[0].thumb && (
-                    <span className="size-5 overflow-hidden rounded-md bg-muted">
+                    <span className="size-5 overflow-hidden rounded-full bg-muted">
                       <ThumbImage
                         src={templateImageUrl(visibleIndustries[0].thumb.templateId)}
                         alt=""
@@ -852,7 +881,7 @@ export function HomeCanvas() {
               <button
                 type="button"
                 onClick={exitPivot}
-                className="flex h-8 items-center gap-1.5 rounded-full bg-panel/80 px-3 text-[13px] shadow-sm ring-1 ring-foreground/10 backdrop-blur-xl transition-colors hover:bg-panel"
+                className="flex h-8 items-center gap-1.5 rounded-full bg-panel/80 px-3 text-[13px] ring-1 ring-foreground/10 backdrop-blur-xl transition-colors hover:bg-panel"
               >
                 <XIcon className="size-3.5" />
                 Back to canvas
@@ -864,10 +893,10 @@ export function HomeCanvas() {
                 key={ind.name}
                 type="button"
                 onClick={() => openIndustry(ind.name)}
-                className="flex h-8 items-center gap-2 rounded-full bg-panel/80 pr-3 pl-1.5 text-[13px] shadow-sm ring-1 ring-foreground/10 backdrop-blur-xl transition-colors hover:bg-panel"
+                className="flex h-8 items-center gap-2 rounded-full bg-panel/80 pr-3 pl-1.5 text-[13px] ring-1 ring-foreground/10 backdrop-blur-xl transition-colors hover:bg-panel"
               >
                 {ind.thumb && (
-                  <span className="size-5 overflow-hidden rounded-md bg-muted">
+                  <span className="size-5 overflow-hidden rounded-full bg-muted">
                     <ThumbImage
                       src={templateImageUrl(ind.thumb.templateId)}
                       alt=""
@@ -884,7 +913,7 @@ export function HomeCanvas() {
 
       {showHint && (
         <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center">
-          <p className="rounded-full bg-foreground/85 px-4 py-2 text-sm text-background shadow-lg backdrop-blur-sm">
+          <p className="rounded-full bg-foreground/85 px-4 py-2 text-sm text-background backdrop-blur-sm">
             Drag to explore · click a design to see similar
           </p>
         </div>

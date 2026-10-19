@@ -11,8 +11,6 @@ import type { Page } from "@/lib/url-state";
 
 /** Which top-level page the sidebar has selected (defined with the URL state it mirrors). */
 export type { Page } from "@/lib/url-state";
-/** Grid vs mind-map for the Explore browse area. */
-export type BrowseMode = "grid" | "tree";
 /** Result ordering. */
 export type SortMode = "relevance" | "shuffle";
 
@@ -109,8 +107,6 @@ export interface ExplorerApi {
   searchByImage: (file: File) => Promise<void>;
   page: Page;
   setPage: (p: Page) => void;
-  browseMode: BrowseMode;
-  setBrowseMode: (m: BrowseMode) => void;
   sort: SortMode;
   setSort: (s: SortMode) => void;
   shuffleSeed: number | null;

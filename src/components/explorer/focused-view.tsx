@@ -10,6 +10,7 @@ import { GridView } from "./grid-view";
 import { HEADER_CONTROL, HEADER_CONTROL_IDLE, HEADER_CONTROL_ON } from "./header";
 import { templateImageUrl } from "@/lib/images";
 import { writeTemplateDrag } from "@/lib/template-drag";
+import { SaveButton } from "./save-button";
 import { ThumbImage } from "./thumb-image";
 import { useBoards, useLastUsedBoardId } from "./use-boards";
 import { useMoodboardPinned } from "./use-moodboards";
@@ -17,6 +18,7 @@ import { useGridSettings } from "./use-grid-settings";
 
 /** Compact quick-save overlay on the focused image (same look as grid thumbnails). */
 function FocusedTileSave({ templateId }: { templateId: string }) {
+  const { pinBoard } = useExplorer();
   const { boards, store } = useBoards();
   const activeId = useLastUsedBoardId();
   const active = boards.find((b) => b.id === activeId) ?? boards.find((b) => b.id === SAVED_BOARD_ID);
@@ -30,10 +32,12 @@ function FocusedTileSave({ templateId }: { templateId: string }) {
       title={saved ? `Saved — click to remove` : `Save to “${activeName}”`}
       onClick={(e) => {
         e.stopPropagation();
-        if (active) store.toggle(active.id, templateId);
+        if (!active) return;
+        const nowSaved = store.toggle(active.id, templateId);
+        if (nowSaved) pinBoard(active.id);
       }}
       className={cn(
-        "absolute top-2 right-2 z-10 grid size-7 place-items-center rounded-lg bg-background/80 text-foreground backdrop-blur-sm transition-colors hover:bg-background",
+        "absolute top-2 right-2 z-10 grid size-7 place-items-center rounded-lg bg-background/80 text-foreground opacity-0 backdrop-blur-sm transition-colors hover:bg-background focus-visible:opacity-100 group-hover:opacity-100",
         saved && "text-[#E5484D]",
       )}
     >
@@ -66,7 +70,7 @@ export function FocusedView() {
     pinnedBoardId,
   } = useExplorer();
   const moodboardPinned = useMoodboardPinned();
-  const canDrag = (!!moodboardPinned || !!pinnedBoardId) && page === "explore";
+  const canDrag = !!pinnedBoardId || (moodboardPinned && page === "explore");
   const { radius } = useGridSettings();
   // Callback ref (state, not a ref object): the related grid needs the element to window
   // against, and a plain ref would still be empty when the grid's layout effect runs.
@@ -100,10 +104,15 @@ export function FocusedView() {
     else setView({ kind: "search" });
   };
 
+  const toggleDetail = () => {
+    scrollEl?.scrollTo({ top: 0 });
+    setDetailOpen(!detailOpen);
+  };
+
   return (
     <div
       ref={scrollRef}
-      className="thin-scroll absolute inset-0 z-20 overflow-y-auto overscroll-contain bg-background"
+      className="no-scrollbar absolute inset-0 z-20 overflow-y-auto overscroll-contain bg-background"
       data-testid="focused-view"
       role="dialog"
       aria-modal
@@ -111,25 +120,30 @@ export function FocusedView() {
     >
       {/* The overlay scrolls as a whole, so the controls ride along on a zero-height sticky
           layer: they stay put while the image and the related list pass underneath. The inset
-          and the 40px controls are the shared header tokens, so the back button lines up with
+          and the 32px controls are the shared header tokens, so the back button lines up with
           the related grid's tiles below it. */}
       <div className="sticky top-0 z-30 h-0">
         <div className="pointer-events-none absolute inset-x-0 top-4 flex items-center justify-between px-4">
           <BackButton onClick={goBack} className="pointer-events-auto" />
-          <button
-            type="button"
-            aria-pressed={detailOpen}
-            aria-label="Design info"
-            title="Design info"
-            onClick={() => setDetailOpen(!detailOpen)}
-            className={cn(
-              "pointer-events-auto",
-              HEADER_CONTROL,
-              detailOpen ? HEADER_CONTROL_ON : HEADER_CONTROL_IDLE,
-            )}
-          >
-            <InfoIcon className="size-[18px]" />
-          </button>
+          <div className="pointer-events-auto flex items-center gap-2">
+            <SaveButton
+              templateId={focused.templateId}
+              className="h-8 rounded-lg"
+            />
+            <button
+              type="button"
+              aria-pressed={detailOpen}
+              aria-label="Design info"
+              title="Design info"
+              onClick={toggleDetail}
+              className={cn(
+                HEADER_CONTROL,
+                detailOpen ? HEADER_CONTROL_ON : HEADER_CONTROL_IDLE,
+              )}
+            >
+              <InfoIcon className="size-[18px]" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -144,14 +158,14 @@ export function FocusedView() {
           {/* A definite square (template images are 1:1) so the loading skeleton is the
               size of the picture and the layout doesn't jump when it arrives. Sized off the
               smaller container axis so it stays square on narrow viewports too, where width (not
-              height) is the binding constraint. Radius/shadow live here, which also clips the
+              height) is the binding constraint. Radius lives here, which also clips the
               skeleton to the same corners. */}
           <div
             draggable={canDrag}
             onDragStart={(event) => writeTemplateDrag(event.dataTransfer, focused.templateId)}
             title={canDrag ? "Drag onto the board or moodboard" : undefined}
             className={cn(
-              "relative aspect-square w-[min(100cqw,100cqh)] overflow-hidden shadow-2xl",
+              "group relative aspect-square w-[min(100cqw,100cqh)] overflow-hidden",
               canDrag && "cursor-grab active:cursor-grabbing",
             )}
             style={{ borderRadius: radius }}

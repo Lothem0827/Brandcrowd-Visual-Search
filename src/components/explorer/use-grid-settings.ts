@@ -15,7 +15,7 @@ export interface GridSettings {
 }
 
 export const GRID_LIMITS = {
-  columns: { min: 6, max: 12 },
+  columns: { min: 4, max: 12 },
   gap: { min: 0, max: 32 },
   radius: { min: 0, max: 32 },
 } as const;

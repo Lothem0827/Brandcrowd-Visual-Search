@@ -50,7 +50,7 @@ export function SpectrumSquare({ hsv, onChange }: { hsv: Hsv; onChange: (s: numb
     >
       <span
         aria-hidden
-        className="pointer-events-none absolute size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-[0_0_0_1px_rgba(0,0,0,0.5)]"
+        className="pointer-events-none absolute size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white"
         style={{ left: `${hsv.s * 100}%`, top: `${(1 - hsv.v) * 100}%`, background: hsvToHex(hsv.h, hsv.s, hsv.v) }}
       />
     </div>
@@ -100,7 +100,7 @@ export function HueSlider({ hue, onChange }: { hue: number; onChange: (h: number
     >
       <span
         aria-hidden
-        className="pointer-events-none absolute top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-[0_0_0_1px_rgba(0,0,0,0.4)]"
+        className="pointer-events-none absolute top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white"
         style={{ left: `${(hue / 360) * 100}%`, background: hsvToHex(hue, 1, 1) }}
       />
     </div>

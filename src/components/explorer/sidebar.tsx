@@ -2,13 +2,10 @@
 import {
   BookmarkIcon,
   CompassIcon,
-  MoonIcon,
   RotateCcwIcon,
   SettingsIcon,
   SparklesIcon,
-  SunIcon,
 } from "lucide-react";
-import { useTheme } from "next-themes";
 import { LogoMark } from "./logo";
 import {
   Popover,
@@ -42,7 +39,7 @@ function Brand({ onHome }: { onHome: () => void }) {
       aria-label="Home"
       aria-current={page === "home" ? "page" : undefined}
       onClick={onHome}
-      className="grid size-7 place-items-center rounded-full text-foreground shadow-sm transition-transform hover:scale-105"
+      className="grid size-7 place-items-center rounded-full text-foreground transition-transform hover:scale-105"
     >
       <LogoMark className="size-full" />
     </button>
@@ -211,47 +208,6 @@ function GridSettingsButton() {
   );
 }
 
-function ThemeToggle() {
-  const { resolvedTheme, setTheme } = useTheme();
-  const dark = resolvedTheme === "dark";
-  return (
-    <div
-      className="flex flex-col items-center gap-1.5"
-      role="group"
-      aria-label="Color theme"
-    >
-      <button
-        type="button"
-        aria-label="Light mode"
-        aria-pressed={!dark}
-        onClick={() => setTheme("light")}
-        className={cn(
-          "grid size-10 place-items-center rounded-xl transition-colors",
-          !dark
-            ? "bg-foreground/[0.06] text-foreground"
-            : "text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground",
-        )}
-      >
-        <SunIcon className="size-[18px]" />
-      </button>
-      <button
-        type="button"
-        aria-label="Dark mode"
-        aria-pressed={dark}
-        onClick={() => setTheme("dark")}
-        className={cn(
-          "grid size-10 place-items-center rounded-xl transition-colors",
-          dark
-            ? "bg-foreground/[0.06] text-foreground"
-            : "text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground",
-        )}
-      >
-        <MoonIcon className="size-[18px]" />
-      </button>
-    </div>
-  );
-}
-
 export function Sidebar({ onHome }: { onHome: () => void }) {
   const { page, setPage, setView, unpinBoard } = useExplorer();
   const { boards } = useBoards();
@@ -301,7 +257,6 @@ export function Sidebar({ onHome }: { onHome: () => void }) {
           />
         </nav>
         <div className="flex flex-col items-center gap-1.5">
-          <ThemeToggle />
           <GridSettingsButton />
         </div>
       </aside>
