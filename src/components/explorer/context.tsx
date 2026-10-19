@@ -149,6 +149,12 @@ export interface ExplorerApi {
   startBoardSelect: (boardId: string) => void;
   stopBoardSelect: () => void;
   toggleBoardSelect: (id: string) => void;
+  /** Board docked beside Explore during "Find more design" (null when closed). */
+  pinnedBoardId: string | null;
+  /** Pin a board beside Explore (unpins moodboard). */
+  pinBoard: (boardId: string) => void;
+  /** Close the board panel without navigating. */
+  unpinBoard: () => void;
   focusSearch: () => void;
 }
 

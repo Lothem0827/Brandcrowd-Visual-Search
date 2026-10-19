@@ -18,8 +18,11 @@ import { BrowseArea } from "./browse-area";
 import { FocusedView } from "./focused-view";
 import { FilterPanel } from "./filter-panel";
 import { DetailPanel } from "./detail-panel";
+import { BoardPanel } from "./board-panel";
 import { MoodboardPanel } from "./moodboard-panel";
 import { useMoodboardPinned } from "./use-moodboards";
+import { getMoodboardStore } from "@/lib/moodboards";
+import { getBoardStore } from "@/lib/boards";
 import { BoardSelectBar } from "./board-select-bar";
 import { ImageDropOverlay } from "./image-drop";
 import { OfflineBanner } from "./offline-banner";
@@ -114,6 +117,8 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
   const [hover, setHover] = useState<HoverState | null>(null);
   const [boardSelection, setBoardSelection] = useState<BoardSelection | null>(null);
   const [boardGroup, setBoardGroup] = useState<"layout" | "style">("layout");
+  /** Board docked beside Explore — React state so Find-more survives the page switch. */
+  const [pinnedBoardId, setPinnedBoardId] = useState<string | null>(null);
   const [searchPath, setSearchPath] = useState<SearchStep[]>([]);
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -546,6 +551,20 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
     setPage("explore");
   }, [setPage]);
 
+  const pinBoard = useCallback((boardId: string) => {
+    getMoodboardStore().unpin();
+    getBoardStore().pin(boardId);
+    getBoardStore().setLastUsedBoard(boardId);
+    setPinnedBoardId(boardId);
+  }, []);
+
+  const unpinBoard = useCallback(() => {
+    getBoardStore().unpin();
+    setPinnedBoardId(null);
+  }, []);
+
+  const moodboardPinned = useMoodboardPinned();
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null;
@@ -557,7 +576,12 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
       } else if (e.key === "Escape" && !typing) {
         if (document.querySelector("[data-slot=dialog-content], [role=menu], [data-slot=popover-content]")) return;
         if (activeBoardSelection) stopBoardSelect();
-        else if (detailOpen) setDetailOpen(false);
+        else if (pinnedBoardId && page === "explore") {
+          const id = pinnedBoardId;
+          unpinBoard();
+          setPage("boards");
+          setView({ kind: "board", boardId: id });
+        } else if (detailOpen) setDetailOpen(false);
         else if (filterPanelOpen) setFilterPanelOpen(false);
         // Escape leaves one level: a board goes back to the Boards index (/boards), the
         // index and the Moodboard go back to Home (/).
@@ -569,9 +593,7 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [activeBoardSelection, stopBoardSelect, detailOpen, filterPanelOpen, page, view, setPage]);
-
-  const moodboardPinned = useMoodboardPinned();
+  }, [activeBoardSelection, stopBoardSelect, detailOpen, filterPanelOpen, page, view, setPage, pinnedBoardId, unpinBoard, setView]);
 
   const api: ExplorerApi = {
     all, base, results, browseItems, byId, vocab, tagCounts, category,
@@ -585,6 +607,7 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
     detailsReady, detailsError, loadDetails,
     detailOpen, setDetailOpen, hover, setHover, boardGroup, setBoardGroup, focusSearch,
     boardSelection: activeBoardSelection, startBoardSelect, stopBoardSelect, toggleBoardSelect,
+    pinnedBoardId, pinBoard, unpinBoard,
   };
 
   return (
@@ -617,7 +640,9 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
           ) : null}
         </div>
         <FilterPanel />
-        {moodboardPinned && page === "explore" ? (
+        {pinnedBoardId && page === "explore" ? (
+          <BoardPanel />
+        ) : moodboardPinned && page === "explore" ? (
           <MoodboardPanel />
         ) : (
           detailTemplate && <DetailPanel template={detailTemplate} />

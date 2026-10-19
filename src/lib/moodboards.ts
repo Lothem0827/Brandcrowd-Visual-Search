@@ -4,8 +4,14 @@
  */
 import { normalizeHex } from "./color";
 import { HARMONIES, type HarmonyId } from "./harmony";
+import {
+  readTemplateDrag,
+  TEMPLATE_DRAG_TYPE,
+  writeTemplateDrag,
+} from "./template-drag";
 
-export const MOODBOARD_DRAG_TYPE = "application/x-moodboard-design";
+/** @deprecated Prefer TEMPLATE_DRAG_TYPE — kept for existing imports/tests. */
+export const MOODBOARD_DRAG_TYPE = TEMPLATE_DRAG_TYPE;
 
 const KEY = "template-taxonomy:moodboards:v1";
 const TEMPLATE_ID = /^[A-Za-z0-9_-]{1,64}$/;
@@ -159,15 +165,11 @@ function cloneDraft(draft: MoodboardDraft): MoodboardDraft {
 
 /** Read a design id written by a grid tile or the focused image. */
 export function readMoodboardDrag(data: DataTransfer): string | null {
-  return cleanTemplateId(data.getData(MOODBOARD_DRAG_TYPE)) ?? cleanTemplateId(data.getData("text/plain").replace(/^moodboard:/, ""));
+  return readTemplateDrag(data);
 }
 
 export function writeMoodboardDrag(data: DataTransfer, templateId: string) {
-  const id = cleanTemplateId(templateId);
-  if (!id) return;
-  data.setData(MOODBOARD_DRAG_TYPE, id);
-  data.setData("text/plain", `moodboard:${id}`);
-  data.effectAllowed = "copy";
+  writeTemplateDrag(data, templateId);
 }
 
 export class LocalMoodboardStore {

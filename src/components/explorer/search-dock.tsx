@@ -312,9 +312,10 @@ export function SearchDock({
 }: {
   inputRef: RefObject<HTMLInputElement | null>;
 }) {
-  const { detailOpen } = useExplorer();
+  const { detailOpen, pinnedBoardId } = useExplorer();
   const isMobile = useIsMobile();
-  if (isMobile && detailOpen) return null; // details take the full screen on phones
+  // Details / board panel take the full screen on phones.
+  if (isMobile && (detailOpen || pinnedBoardId)) return null;
   return (
     <div
       className={cn(

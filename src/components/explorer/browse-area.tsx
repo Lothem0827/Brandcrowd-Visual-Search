@@ -7,6 +7,7 @@ import {
   ListChecksIcon,
   NetworkIcon,
   PencilIcon,
+  SearchIcon,
   SlidersHorizontalIcon,
   SparklesIcon,
   TagIcon,
@@ -16,6 +17,7 @@ import { activeFilterCount, sentenceCase, type FacetKey } from "@/lib/facets";
 import { relatedChips } from "@/lib/query";
 import type { Template } from "@/lib/schema";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { BackButton } from "./back-button";
 import { BoardsPage } from "./boards-page";
 import { BriefPage } from "./brief-page";
@@ -442,6 +444,8 @@ function BoardArea() {
     boardSelection,
     startBoardSelect,
     stopBoardSelect,
+    clearAll,
+    pinBoard,
   } = useExplorer();
   const { boards } = useBoards();
   const boardId = boardIdOf(view);
@@ -452,6 +456,14 @@ function BoardArea() {
     .map((id) => byId(id))
     .filter((t): t is Template => !!t);
   const selecting = !!boardSelection;
+
+  const findMore = () => {
+    if (!board) return;
+    clearAll();
+    pinBoard(board.id);
+    setPage("explore");
+  };
+
   return (
     <div className="flex h-full flex-col">
       <div className={cn(HEADER_ROW, "z-10 bg-background")}>
@@ -479,6 +491,18 @@ function BoardArea() {
         >
           {items.length} design{items.length === 1 ? "" : "s"}
         </span>
+        {board && (
+          <Button
+            type="button"
+            size="sm"
+            data-testid="find-more-design"
+            onClick={findMore}
+            className="shrink-0"
+          >
+            <SearchIcon className="size-4" />
+            Find more design
+          </Button>
+        )}
         {browseMode === "grid" && board && (
           <button
             type="button"

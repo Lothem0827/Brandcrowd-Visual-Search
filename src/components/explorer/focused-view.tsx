@@ -9,7 +9,7 @@ import { GridView } from "./grid-view";
 import { HEADER_CONTROL, HEADER_CONTROL_IDLE, HEADER_CONTROL_ON } from "./header";
 import { SaveButton } from "./save-button";
 import { templateImageUrl } from "@/lib/images";
-import { writeMoodboardDrag } from "@/lib/moodboards";
+import { writeTemplateDrag } from "@/lib/template-drag";
 import { ThumbImage } from "./thumb-image";
 import { useMoodboardPinned } from "./use-moodboards";
 import { useGridSettings } from "./use-grid-settings";
@@ -26,9 +26,19 @@ const RELATED_LIMIT = 600;
  * Back restores its scroll.
  */
 export function FocusedView() {
-  const { focused, base, recenter, setView, view, detailOpen, setDetailOpen, page } =
-    useExplorer();
-  const canDrag = useMoodboardPinned() && page === "explore";
+  const {
+    focused,
+    base,
+    recenter,
+    setView,
+    view,
+    detailOpen,
+    setDetailOpen,
+    page,
+    pinnedBoardId,
+  } = useExplorer();
+  const moodboardPinned = useMoodboardPinned();
+  const canDrag = (!!moodboardPinned || !!pinnedBoardId) && page === "explore";
   const { radius } = useGridSettings();
   // Callback ref (state, not a ref object): the related grid needs the element to window
   // against, and a plain ref would still be empty when the grid's layout effect runs.
@@ -112,8 +122,8 @@ export function FocusedView() {
               skeleton to the same corners. */}
           <div
             draggable={canDrag}
-            onDragStart={(event) => writeMoodboardDrag(event.dataTransfer, focused.templateId)}
-            title={canDrag ? "Drag onto the moodboard" : undefined}
+            onDragStart={(event) => writeTemplateDrag(event.dataTransfer, focused.templateId)}
+            title={canDrag ? "Drag onto the board or moodboard" : undefined}
             className={cn(
               "relative aspect-square w-[min(100cqw,100cqh)] overflow-hidden shadow-2xl",
               canDrag && "cursor-grab active:cursor-grabbing",

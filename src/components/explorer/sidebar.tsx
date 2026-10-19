@@ -251,7 +251,7 @@ function ThemeToggle() {
 }
 
 export function Sidebar({ onBrowse }: { onBrowse: () => void }) {
-  const { page, setPage, setView } = useExplorer();
+  const { page, setPage, setView, unpinBoard } = useExplorer();
   const { boards } = useBoards();
   const savedCount = new Set(boards.flatMap((b) => b.templateIds)).size;
   return (
@@ -277,6 +277,7 @@ export function Sidebar({ onBrowse }: { onBrowse: () => void }) {
             badge={savedCount}
             // Always the index: clearing the view turns /boards/<id> into /boards.
             onClick={() => {
+              unpinBoard();
               setView({ kind: "search" });
               setPage("boards");
             }}
@@ -287,6 +288,7 @@ export function Sidebar({ onBrowse }: { onBrowse: () => void }) {
             label="Moodboard"
             active={page === "brief"}
             onClick={() => {
+              unpinBoard();
               getMoodboardStore().unpin();
               setPage("brief");
             }}
