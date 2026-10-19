@@ -1,5 +1,7 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { connection } from "next/server";
 import { notFound } from "next/navigation";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { getProfileByHandle, getPublicMoodboard } from "@/lib/social";
@@ -9,6 +11,7 @@ type Props = { params: Promise<{ handle: string; slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { handle, slug } = await params;
+  if (!isSupabaseConfigured()) return { title: "Moodboard" };
   const profile = await getProfileByHandle(handle);
   if (!profile) return { title: "Moodboard" };
   const mb = await getPublicMoodboard(profile.id, slug);
@@ -19,7 +22,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function PublicMoodboardPage({ params }: Props) {
+async function MoodboardBody({ params }: Props) {
+  await connection();
   if (!isSupabaseConfigured()) notFound();
   const { handle, slug } = await params;
   const profile = await getProfileByHandle(handle);
@@ -79,7 +83,7 @@ export default async function PublicMoodboardPage({ params }: Props) {
             <li key={id}>
               <Link
                 href={`/explore?design=${encodeURIComponent(id)}`}
-                className="block overflow-hidden rounded-md border border-border bg-muted/30 aspect-square"
+                className="block aspect-square overflow-hidden rounded-md border border-border bg-muted/30"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={`${imageBase}/${id}.webp`} alt="" className="size-full object-cover" loading="lazy" />
@@ -89,5 +93,13 @@ export default async function PublicMoodboardPage({ params }: Props) {
         </ul>
       )}
     </div>
+  );
+}
+
+export default function PublicMoodboardPage({ params }: Props) {
+  return (
+    <Suspense fallback={<p className="text-sm text-muted-foreground">Loading moodboard…</p>}>
+      <MoodboardBody params={params} />
+    </Suspense>
   );
 }
