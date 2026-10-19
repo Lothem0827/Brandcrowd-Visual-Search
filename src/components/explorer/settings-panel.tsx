@@ -6,6 +6,7 @@ import { useExplorer } from "./context";
 import { HEADER_CONTROL, HEADER_CONTROL_IDLE } from "./header";
 import { SidePanel } from "./side-panel";
 import { ThemeSwitch } from "./theme-switch";
+import { SettingsAccount } from "@/components/auth/settings-account";
 import {
   GRID_DEFAULTS,
   GRID_LIMITS,
@@ -170,6 +171,8 @@ function Body() {
           </p>
         )}
       </section>
+
+      <SettingsAccount />
     </div>
   );
 }

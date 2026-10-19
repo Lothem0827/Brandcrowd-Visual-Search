@@ -1,0 +1,11 @@
+# Minimal Supabase CLI config. Link a remote project with `supabase link`.
+# Apply migrations with `supabase db push` (or paste supabase/migrations/*.sql in the SQL editor).
+
+project_id = "gridd"
+
+[auth]
+enabled = true
+
+[auth.external.google]
+enabled = true
+# Set client_id / secret in the Supabase dashboard (Auth → Providers → Google).

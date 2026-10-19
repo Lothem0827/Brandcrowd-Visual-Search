@@ -31,8 +31,8 @@ type BoardsTab = "boards" | "saves" | "moodboards";
 /**
  * Full-page boards index (rail "Boards"): a Boards tab of board cards with a dashed
  * "New board" placeholder kept last, a Saves tab that flattens every board's designs
- * into one grid, and a Moodboards tab of saved moodboards. Boards are still local-only,
- * so there's no profile chrome here yet.
+ * into one grid, and a Moodboards tab of saved moodboards. Guests stay local; Sync with
+ * Google (Settings) moves boards to the cloud.
  */
 export function BoardsPage() {
   const { base, byId, setView, setDetailOpen, setPage } = useExplorer();

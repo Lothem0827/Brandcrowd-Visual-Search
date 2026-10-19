@@ -15,6 +15,7 @@ import { relatedChips } from "@/lib/query";
 import type { Template } from "@/lib/schema";
 import { useIsCompact } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
+import { BoardPublicToggle } from "@/components/auth/public-toggle";
 import { Button } from "@/components/ui/button";
 import { BackButton } from "./back-button";
 import { BoardsPage } from "./boards-page";
@@ -418,6 +419,9 @@ function BoardArea() {
         ) : (
           <h2 className={cn(HEADER_TITLE, "flex-1")}>Board</h2>
         )}
+        {board ? (
+          <BoardPublicToggle boardId={board.id} isPublic={board.isPublic} slug={board.slug} />
+        ) : null}
         <span
           className="shrink-0 text-xs text-muted-foreground tabular-nums"
           role="status"

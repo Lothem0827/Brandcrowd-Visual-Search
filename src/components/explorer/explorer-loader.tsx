@@ -2,6 +2,9 @@
 import { useEffect, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { fetchTemplateRepository, type TemplateRepository } from "@/lib/data";
+import { fetchSupabaseTemplateRepository } from "@/lib/data-supabase";
+import { createClient } from "@/lib/supabase/client";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
 
 function LoadingScreen() {
   return (
@@ -18,8 +21,23 @@ const Explorer = dynamic(() => import("./explorer").then((m) => m.Explorer), {
 
 type LoadState = { status: "loading" } | { status: "ready"; repo: TemplateRepository } | { status: "error"; message: string };
 
+async function loadRepository(dataUrl: string, detailsUrl: string | undefined, signal: AbortSignal) {
+  if (isSupabaseConfigured()) {
+    try {
+      const supabase = createClient();
+      const repo = await fetchSupabaseTemplateRepository(supabase);
+      if (signal.aborted) throw new DOMException("Aborted", "AbortError");
+      if (repo.all().length > 0) return repo;
+    } catch (err) {
+      if (signal.aborted) throw err;
+      console.warn("Supabase catalogue unavailable, falling back to static JSON", err);
+    }
+  }
+  return fetchTemplateRepository(dataUrl, detailsUrl, signal);
+}
+
 /**
- * Downloads the prebuilt dataset (static JSON, preloaded from the page head) and the
+ * Loads the template catalogue (Supabase when configured, else static JSON) and the
  * explorer code in parallel, showing the server-rendered `fallback` until both are in.
  */
 export function ExplorerLoader({
@@ -37,7 +55,7 @@ export function ExplorerLoader({
     const ac = new AbortController();
     // Download data and explorer code in parallel; keep the server-rendered fallback up until
     // both are in so the page doesn't flash a second loading screen.
-    Promise.all([fetchTemplateRepository(dataUrl, detailsUrl, ac.signal), import("./explorer")]).then(
+    Promise.all([loadRepository(dataUrl, detailsUrl, ac.signal), import("./explorer")]).then(
       ([repo]) => setState({ status: "ready", repo }),
       (err: unknown) => {
         if (ac.signal.aborted) return;

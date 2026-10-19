@@ -7,6 +7,7 @@ import {
   SparklesIcon,
   XIcon,
 } from "lucide-react";
+import { MoodboardPublicToggle } from "@/components/auth/public-toggle";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -153,6 +154,13 @@ export function MoodboardHeaderActions({
         !compact && "ml-auto",
       )}
     >
+      {draft ? (
+        <MoodboardPublicToggle
+          moodboardId={draft.id}
+          isPublic={draft.isPublic}
+          slug={draft.slug}
+        />
+      ) : null}
       <Button
         type="button"
         variant="outline"

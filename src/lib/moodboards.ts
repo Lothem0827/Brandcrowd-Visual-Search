@@ -37,6 +37,31 @@ export interface MoodboardDraft {
   overrides: Record<string, string>;
   inspoIds: string[];
   updatedAt: number;
+  /** Cloud-only */
+  isPublic?: boolean;
+  slug?: string;
+  ownerId?: string;
+}
+
+/** Storage boundary shared by local and Supabase moodboard stores. */
+export interface MoodboardStore {
+  getState(): MoodboardState;
+  subscribe(cb: () => void): () => void;
+  applyGenerated(input: GeneratedMoodboard): number;
+  setTitles(token: number, titles: string[]): void;
+  miss(query: string): void;
+  setSelected(index: number): void;
+  setHarmony(harmony: HarmonyId): void;
+  setOverride(index: number, hex: string): void;
+  addInspo(templateId: string): void;
+  removeInspo(templateId: string): void;
+  save(): MoodboardDraft | null;
+  createNew(): void;
+  open(id: string): void;
+  removeSaved(id: string): void;
+  pin(): void;
+  unpin(): void;
+  setPublic?(id: string, isPublic: boolean): void | Promise<void>;
 }
 
 export interface MoodboardState {
@@ -172,7 +197,7 @@ export function writeMoodboardDrag(data: DataTransfer, templateId: string) {
   writeTemplateDrag(data, templateId);
 }
 
-export class LocalMoodboardStore {
+export class LocalMoodboardStore implements MoodboardStore {
   private state: MoodboardState;
   private generation = 0;
   private listeners = new Set<() => void>();
@@ -358,9 +383,106 @@ export class LocalMoodboardStore {
   }
 }
 
-let singleton: LocalMoodboardStore | null = null;
+let localSingleton: LocalMoodboardStore | null = null;
 
-export function getMoodboardStore(): LocalMoodboardStore {
-  if (!singleton) singleton = new LocalMoodboardStore(typeof window !== "undefined" ? window.localStorage : null);
-  return singleton;
+function getLocalMoodboardStore(): LocalMoodboardStore {
+  if (!localSingleton) {
+    localSingleton = new LocalMoodboardStore(typeof window !== "undefined" ? window.localStorage : null);
+  }
+  return localSingleton;
+}
+
+class MoodboardStoreFacade implements MoodboardStore {
+  private inner: MoodboardStore = getLocalMoodboardStore();
+  private unsub: (() => void) | null = null;
+  private listeners = new Set<() => void>();
+
+  constructor() {
+    this.bind(this.inner);
+  }
+
+  private bind(store: MoodboardStore) {
+    this.unsub?.();
+    this.inner = store;
+    this.unsub = store.subscribe(() => this.emit());
+  }
+
+  private emit() {
+    this.listeners.forEach((l) => l());
+  }
+
+  use(store: MoodboardStore | null) {
+    this.bind(store ?? getLocalMoodboardStore());
+    this.emit();
+  }
+
+  getState() {
+    return this.inner.getState();
+  }
+  subscribe(cb: () => void) {
+    this.listeners.add(cb);
+    return () => this.listeners.delete(cb);
+  }
+  applyGenerated(input: GeneratedMoodboard) {
+    return this.inner.applyGenerated(input);
+  }
+  setTitles(token: number, titles: string[]) {
+    this.inner.setTitles(token, titles);
+  }
+  miss(query: string) {
+    this.inner.miss(query);
+  }
+  setSelected(index: number) {
+    this.inner.setSelected(index);
+  }
+  setHarmony(harmony: HarmonyId) {
+    this.inner.setHarmony(harmony);
+  }
+  setOverride(index: number, hex: string) {
+    this.inner.setOverride(index, hex);
+  }
+  addInspo(templateId: string) {
+    this.inner.addInspo(templateId);
+  }
+  removeInspo(templateId: string) {
+    this.inner.removeInspo(templateId);
+  }
+  save() {
+    return this.inner.save();
+  }
+  createNew() {
+    this.inner.createNew();
+  }
+  open(id: string) {
+    this.inner.open(id);
+  }
+  removeSaved(id: string) {
+    this.inner.removeSaved(id);
+  }
+  pin() {
+    this.inner.pin();
+  }
+  unpin() {
+    this.inner.unpin();
+  }
+  setPublic(id: string, isPublic: boolean) {
+    return this.inner.setPublic?.(id, isPublic);
+  }
+}
+
+let facade: MoodboardStoreFacade | null = null;
+
+export function getMoodboardStore(): MoodboardStore {
+  if (!facade) facade = new MoodboardStoreFacade();
+  return facade;
+}
+
+export function getLocalMoodboardsSnapshot(): { draft: MoodboardDraft | null; saved: MoodboardDraft[] } {
+  const s = getLocalMoodboardStore().getState();
+  return { draft: s.draft, saved: s.saved };
+}
+
+export function setMoodboardStore(store: MoodboardStore | null) {
+  if (!facade) facade = new MoodboardStoreFacade();
+  facade.use(store);
 }

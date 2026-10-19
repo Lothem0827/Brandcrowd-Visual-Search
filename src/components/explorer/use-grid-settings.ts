@@ -58,6 +58,8 @@ function sanitize(raw: unknown): GridSettings {
 let current: GridSettings = GRID_DEFAULTS;
 let loaded = false;
 const listeners = new Set<() => void>();
+/** When set, grid writes also upsert to Supabase user_settings. */
+let cloudUserId: string | null = null;
 
 function read(): GridSettings {
   try {
@@ -80,6 +82,45 @@ const subscribe = (cb: () => void) => {
 const getSnapshot = () => current;
 const getServerSnapshot = () => GRID_DEFAULTS;
 
+export function getGridSettingsSnapshot(): GridSettings {
+  if (!loaded && typeof window !== "undefined") {
+    loaded = true;
+    current = read();
+  }
+  return current;
+}
+
+export function setGridCloudUser(userId: string | null) {
+  cloudUserId = userId;
+}
+
+export async function pushGridSettingsToCloud(userId: string) {
+  const { createClient } = await import("@/lib/supabase/client");
+  const supabase = createClient();
+  await supabase.from("user_settings").upsert({
+    user_id: userId,
+    grid: getGridSettingsSnapshot() as unknown as import("@/lib/supabase/database.types").Json,
+    updated_at: new Date().toISOString(),
+  });
+}
+
+/** Prefer cloud grid when present; otherwise keep local. */
+export async function pullCloudGridSettings(userId: string) {
+  const { createClient } = await import("@/lib/supabase/client");
+  const supabase = createClient();
+  const { data } = await supabase.from("user_settings").select("grid").eq("user_id", userId).maybeSingle();
+  if (data?.grid && typeof data.grid === "object") {
+    current = sanitize(data.grid);
+    try {
+      window.localStorage.setItem(KEY, JSON.stringify(current));
+    } catch {
+      /* ignore */
+    }
+    listeners.forEach((l) => l());
+  }
+  setGridCloudUser(userId);
+}
+
 export function setGridSettings(patch: Partial<GridSettings>) {
   current = sanitize({ ...current, ...patch });
   try {
@@ -88,6 +129,7 @@ export function setGridSettings(patch: Partial<GridSettings>) {
     /* storage full / unavailable */
   }
   listeners.forEach((l) => l());
+  if (cloudUserId) void pushGridSettingsToCloud(cloudUserId);
 }
 
 export function resetGridSettings() {

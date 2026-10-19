@@ -4,9 +4,11 @@ import { buildVocab } from "@/lib/query";
 import {
   buildAiVocab,
   buildInterpretPrompt,
+  interpretationKey,
   sanitizeInterpretation,
   type InterpretResponse,
 } from "@/lib/llm";
+import { getInterpretCache, setInterpretCache } from "@/lib/llm-cache";
 
 /**
  * Turns a vague query into facet filters by asking an OpenAI-compatible LLM.
@@ -102,6 +104,10 @@ export async function POST(request: Request) {
   if (!apiKey) return json({ status: "disabled" });
 
   const { query, category } = parsed.data;
+  const cacheKey = interpretationKey(category, query);
+  const cached = await getInterpretCache(cacheKey);
+  if (cached) return json({ status: "ok", result: cached, model: "cache" });
+
   const base = serverTemplateRepository().all().filter((t) => t.category === category);
   if (!base.length) return json({ status: "empty" });
 
@@ -125,6 +131,7 @@ export async function POST(request: Request) {
     }
     const result = sanitizeInterpretation(parseJsonLoose(content), allowed);
     if (!result) return json({ status: "empty" });
+    void setInterpretCache(cacheKey, result);
     return json({ status: "ok", result, model });
   } catch (err) {
     const message =

@@ -7,6 +7,7 @@ import {
   sanitizeMoodboardTitles,
   type MoodboardTitlesResponse,
 } from "@/lib/moodboard-titles";
+import { getMoodboardTitlesCache, setMoodboardTitlesCache } from "@/lib/llm-cache";
 
 /**
  * Six catalogue-style titles for a moodboard subject.
@@ -96,6 +97,17 @@ export async function POST(request: Request) {
   const source = moodboardSource(serverTemplateRepository().all(), parsed.data.query);
   if (!source) return json({ status: "empty" });
 
+  const cacheKey = parsed.data.query.trim().toLowerCase().replace(/\s+/g, " ");
+  const cached = await getMoodboardTitlesCache(cacheKey);
+  if (cached?.length) {
+    return json({
+      status: "ok",
+      titles: cached,
+      source: "model",
+      label: source.match.label,
+    });
+  }
+
   const catalogue = () =>
     json({
       status: "ok",
@@ -126,6 +138,7 @@ export async function POST(request: Request) {
     const cleaned = sanitizeMoodboardTitles(parseJsonLoose(content), source.commonTitles);
     const filled = fillMoodboardTitles(cleaned, source.fallbackTitles);
     if (!filled.titles.length) return catalogue();
+    if (filled.source !== "catalogue") void setMoodboardTitlesCache(cacheKey, filled.titles);
     return json({
       status: "ok",
       titles: filled.titles,

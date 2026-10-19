@@ -1,6 +1,6 @@
 /**
- * Board storage boundary. v1 persists to localStorage; v2 can provide a
- * Supabase-backed BoardStore (accounts, sharing) with the same interface.
+ * Board storage boundary. Guests use LocalBoardStore (localStorage);
+ * signed-in users swap in a Supabase-backed BoardStore via setBoardStore().
  */
 export interface Board {
   id: string;
@@ -10,6 +10,12 @@ export interface Board {
   templateIds: string[];
   createdAt: number;
   updatedAt: number;
+  /** Cloud-only: whether the board is publicly viewable. */
+  isPublic?: boolean;
+  /** Cloud-only: public URL slug under /u/[handle]/b/[slug]. */
+  slug?: string;
+  ownerId?: string;
+  kind?: "saved" | "custom";
 }
 
 export interface BoardStore {
@@ -28,6 +34,8 @@ export interface BoardStore {
   pin(boardId: string): void;
   unpin(): void;
   subscribe(cb: () => void): () => void;
+  /** Optional: toggle public visibility (cloud stores). */
+  setPublic?(id: string, isPublic: boolean): void | Promise<void>;
 }
 
 export const SAVED_BOARD_ID = "saved";
@@ -167,8 +175,103 @@ export class LocalBoardStore implements BoardStore {
   }
 }
 
-let singleton: BoardStore | null = null;
+let localSingleton: LocalBoardStore | null = null;
+
+function getLocalBoardStore(): LocalBoardStore {
+  if (!localSingleton) {
+    localSingleton = new LocalBoardStore(typeof window !== "undefined" ? window.localStorage : null);
+  }
+  return localSingleton;
+}
+
+/** Stable facade so React subscribers survive guest ↔ cloud swaps. */
+class BoardStoreFacade implements BoardStore {
+  private inner: BoardStore = getLocalBoardStore();
+  private unsub: (() => void) | null = null;
+  private listeners = new Set<() => void>();
+
+  constructor() {
+    this.bind(this.inner);
+  }
+
+  private bind(store: BoardStore) {
+    this.unsub?.();
+    this.inner = store;
+    this.unsub = store.subscribe(() => this.emit());
+  }
+
+  private emit() {
+    this.listeners.forEach((l) => l());
+  }
+
+  /** Use cloud store while signed in; null restores guest localStorage. */
+  use(store: BoardStore | null) {
+    this.bind(store ?? getLocalBoardStore());
+    this.emit();
+  }
+
+  list() {
+    return this.inner.list();
+  }
+  create(name: string, description?: string) {
+    return this.inner.create(name, description);
+  }
+  rename(id: string, name: string) {
+    this.inner.rename(id, name);
+  }
+  remove(id: string) {
+    this.inner.remove(id);
+  }
+  add(boardId: string, templateId: string) {
+    this.inner.add(boardId, templateId);
+  }
+  removeItem(boardId: string, templateId: string) {
+    this.inner.removeItem(boardId, templateId);
+  }
+  toggle(boardId: string, templateId: string) {
+    return this.inner.toggle(boardId, templateId);
+  }
+  lastUsedBoardId() {
+    return this.inner.lastUsedBoardId();
+  }
+  setLastUsedBoard(id: string) {
+    this.inner.setLastUsedBoard(id);
+  }
+  pinnedBoardId() {
+    return this.inner.pinnedBoardId();
+  }
+  pin(boardId: string) {
+    this.inner.pin(boardId);
+  }
+  unpin() {
+    this.inner.unpin();
+  }
+  setPublic(id: string, isPublic: boolean) {
+    return this.inner.setPublic?.(id, isPublic);
+  }
+  subscribe(cb: () => void) {
+    this.listeners.add(cb);
+    return () => this.listeners.delete(cb);
+  }
+}
+
+let facade: BoardStoreFacade | null = null;
+
 export function getBoardStore(): BoardStore {
-  if (!singleton) singleton = new LocalBoardStore(typeof window !== "undefined" ? window.localStorage : null);
-  return singleton;
+  if (!facade) facade = new BoardStoreFacade();
+  return facade;
+}
+
+/** Snapshot of guest boards for merge-on-login (always from localStorage). */
+export function getLocalBoardsSnapshot(): Board[] {
+  return getLocalBoardStore().list().map((b) => ({
+    ...b,
+    templateIds: [...b.templateIds],
+  }));
+}
+
+/** Swap in a cloud store while signed in; pass null to return to guest local. */
+export function setBoardStore(store: BoardStore | null) {
+  if (!facade) facade = new BoardStoreFacade();
+  facade.use(store);
 }

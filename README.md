@@ -194,11 +194,22 @@ added to the Content-Security-Policy `img-src` automatically.
 - **Style**: Jaccard of aesthetic 0.36, mood 0.18, typography (font styles + case) 0.22, color scheme 0.16, texture 0.08.
 - **Overall**: 0.30 colors + 0.30 layout + 0.32 style + 0.08 tag overlap.
 
-## v2 plans
+## Supabase (optional)
 
-- Grid / masonry browsing mode next to the tree (with adjustable columns).
-- Supabase: accounts, boards synced across devices, shared/team boards, share links, board sections.
-- Palette export (ASE / CSS / Figma) and moodboard sharing.
+Guest boards stay in `localStorage`. To enable Google sync, public profiles, and cloud catalogue:
+
+1. Create a Supabase project and run [`supabase/migrations/20260319120000_init.sql`](supabase/migrations/20260319120000_init.sql) (SQL editor or `supabase db push`).
+2. Auth → Providers → enable **Google**; set redirect URL to `https://<host>/auth/callback` (and `http://localhost:3000/auth/callback` for local).
+3. Copy keys into `.env.local` (see `.env.example`): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (or legacy `NEXT_PUBLIC_SUPABASE_ANON_KEY`), and optionally `SUPABASE_SERVICE_ROLE_KEY`.
+4. Seed the template catalogue: `pnpm data && pnpm seed:templates` (needs the service role key).
+5. Open **Settings** → **Sync with Google** at the bottom. Soft sync prompts appear at 5 / 10 / 15… unique saves.
+
+Public profiles live at `/u/[handle]`; Following feed at `/following`.
+
+## Later plans
+
+- Board sections, team boards, likes/comments.
+- Palette export (ASE / CSS / Figma).
 - **Embeddings for image search and similarity**: compute CLIP/SigLIP image embeddings for every preview offline
   (e.g. a Python script or Supabase Edge Function), store them in `pgvector`, and query by cosine similarity.
   In the browser, either call an API route that embeds the uploaded image, or run a small model client-side
