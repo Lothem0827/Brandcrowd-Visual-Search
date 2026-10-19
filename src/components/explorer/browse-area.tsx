@@ -13,6 +13,7 @@ import {
 import { activeFilterCount, sentenceCase, type FacetKey } from "@/lib/facets";
 import { relatedChips } from "@/lib/query";
 import type { Template } from "@/lib/schema";
+import { useIsCompact } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { BackButton } from "./back-button";
@@ -30,6 +31,7 @@ import {
 } from "./header";
 import { GridView } from "./grid-view";
 import { HomeCanvas } from "./home-canvas";
+import { ThemeSwitch } from "./theme-switch";
 import { useBoards } from "./use-boards";
 import { useDragScroll } from "./use-drag-scroll";
 
@@ -73,15 +75,17 @@ function FilterToggle() {
 
 function ResultsHeading() {
   const { query, parsed, imageQuery, ai } = useExplorer();
+  const isCompact = useIsCompact();
   const q = query.trim();
+  const lead = isCompact ? "Results for" : "Showing results for";
   return (
     <div className="flex min-w-0 shrink items-center gap-2">
       <h2 className="truncate text-xl text-muted-foreground">
         {imageQuery ? (
-          "Showing results for your image"
+          `${lead} your image`
         ) : q ? (
           <>
-            Showing results for{" "}
+            {lead}{" "}
             <span className="font-semibold text-foreground">{q}</span>
           </>
         ) : (
@@ -236,6 +240,7 @@ function ResultCount() {
 /** Explore: popular tags / results heading, filter + theme toggle, then the grid. */
 function ExploreArea() {
   const { hasSearch, browseItems } = useExplorer();
+  const isCompact = useIsCompact();
   return (
     <div className="flex h-full flex-col">
       <div
@@ -261,6 +266,7 @@ function ExploreArea() {
               </div>
             )}
           </div>
+          {!isCompact && <ThemeSwitch />}
         </div>
         {hasSearch ? <RelatedChips /> : <PopularTags />}
       </div>
@@ -383,6 +389,7 @@ function BoardArea() {
     .map((id) => byId(id))
     .filter((t): t is Template => !!t);
   const selecting = !!boardSelection;
+  const isCompact = useIsCompact();
 
   const findMore = () => {
     if (!board) return;
@@ -445,6 +452,7 @@ function BoardArea() {
             <ListChecksIcon className="size-4" />
           </button>
         )}
+        {!isCompact && <ThemeSwitch />}
       </div>
       <div className="relative min-h-0 flex-1">
         <GridView items={items} hideSave />

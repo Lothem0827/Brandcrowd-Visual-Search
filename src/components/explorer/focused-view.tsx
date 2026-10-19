@@ -276,7 +276,17 @@ export function FocusedView() {
           (the floating search dock covers the middle, the tiles either side stay visible).
           `container-type: size` lets the picture box below size itself to the smaller of this
           box's two axes (see the square wrapper). */}
-      <div className="relative flex h-[88%] min-h-[45vh] items-center justify-center px-4 py-16 [container-type:size]">
+      <div
+        className={cn(
+          "relative flex h-[88%] min-h-[45vh] items-center justify-center px-4 py-16 [container-type:size]",
+          isCompact && "touch-pan-y",
+        )}
+        title={isCompact ? "Swipe left or right for related designs" : undefined}
+        onPointerDown={onHeroPointerDown}
+        onPointerMove={onHeroPointerMove}
+        onPointerUp={endHeroGesture}
+        onPointerCancel={endHeroGesture}
+      >
         {/* A flex (not grid) centre: the ThumbImage wrapper takes its height from this
             definite box, so `max-h-full` actually constrains the picture. */}
         <div className="relative flex h-full w-full items-center justify-center">
@@ -288,21 +298,10 @@ export function FocusedView() {
           <div
             draggable={canDrag && !isCompact}
             onDragStart={(event) => writeTemplateDrag(event.dataTransfer, focused.templateId)}
-            title={
-              isCompact
-                ? "Swipe left or right for related designs"
-                : canDrag
-                  ? "Drag onto the board or moodboard"
-                  : undefined
-            }
-            onPointerDown={onHeroPointerDown}
-            onPointerMove={onHeroPointerMove}
-            onPointerUp={endHeroGesture}
-            onPointerCancel={endHeroGesture}
+            title={canDrag && !isCompact ? "Drag onto the board or moodboard" : undefined}
             className={cn(
               "group relative aspect-square w-[min(100cqw,100cqh)] overflow-hidden",
               canDrag && !isCompact && "cursor-grab active:cursor-grabbing",
-              isCompact && "touch-pan-y",
             )}
             style={{
               borderRadius: radius,

@@ -99,15 +99,17 @@ function Body() {
 
   return (
     <div className="no-scrollbar flex-1 space-y-5 overflow-y-auto px-4 pb-24">
-      <section className="space-y-2">
-        <div className="text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
-          Appearance
-        </div>
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-sm">Theme</span>
-          <ThemeSwitch />
-        </div>
-      </section>
+      {isCompact && (
+        <section className="space-y-2">
+          <div className="text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
+            Appearance
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-sm">Theme</span>
+            <ThemeSwitch />
+          </div>
+        </section>
+      )}
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">

@@ -8,7 +8,7 @@ import {
   HEADER_SEGMENT_ITEM,
 } from "./header";
 
-/** Light / dark segmented control (settings panel and any shared callers). */
+/** Light / dark segmented control (browse header on desktop; settings on compact). */
 export function ThemeSwitch() {
   const { resolvedTheme, setTheme } = useTheme();
   const dark = resolvedTheme === "dark";

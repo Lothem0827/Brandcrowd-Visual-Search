@@ -14,7 +14,7 @@ import {
   SearchIcon,
   XIcon,
 } from "lucide-react";
-import { useIsMobile } from "@/lib/use-media-query";
+import { useIsCompact, useIsMobile } from "@/lib/use-media-query";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { MAX_QUERY_LENGTH } from "@/lib/url-state";
 import {
@@ -53,6 +53,7 @@ function SearchBox({
     imageBusy,
     searchByImage,
   } = useExplorer();
+  const isCompact = useIsCompact();
   const [open, setOpen] = useState(false);
   // -1 means "no suggestion highlighted", so a plain Enter searches the typed text.
   const [active, setActive] = useState(-1);
@@ -254,7 +255,10 @@ function SearchBox({
         <ul
           id={listId}
           role="listbox"
-          className="absolute right-0 bottom-15 left-0 z-50 overflow-hidden rounded-xl bg-popover p-1 text-sm"
+          className={cn(
+            "absolute right-0 bottom-15 left-0 z-50 overflow-hidden rounded-xl bg-popover p-1 text-sm",
+            isCompact && "border-0 shadow-none ring-0 outline-none",
+          )}
         >
           {suggestions.map((s, i) => {
             const { before, match, after } = highlightLabel(
@@ -277,9 +281,11 @@ function SearchBox({
                   i === active && "bg-muted",
                 )}
               >
-                <span className="w-24 shrink-0 text-[11px] tracking-wide text-muted-foreground uppercase">
-                  {facetLabel(s.facet)}
-                </span>
+                {!isCompact && (
+                  <span className="w-24 shrink-0 text-[11px] tracking-wide text-muted-foreground uppercase">
+                    {facetLabel(s.facet)}
+                  </span>
+                )}
                 <span className="flex-1 truncate text-muted-foreground">
                   {before}
                   <span className="font-semibold text-foreground">{match}</span>
