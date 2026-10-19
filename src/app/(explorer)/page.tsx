@@ -1,4 +1,4 @@
-/** Home: the shell reads `/` from the URL; the page itself has no server-rendered content. */
+/** Home: search, filters and the grid/tree browse area (`/?q=…`). The page itself renders nothing. */
 export default function HomePage() {
   return null;
 }

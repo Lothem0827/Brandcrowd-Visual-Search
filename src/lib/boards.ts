@@ -23,6 +23,10 @@ export interface BoardStore {
   /** Board that quick-save targets; defaults to "Saved". */
   lastUsedBoardId(): string;
   setLastUsedBoard(id: string): void;
+  /** Board docked beside Explore during "Find more design". In-memory only. */
+  pinnedBoardId(): string | null;
+  pin(boardId: string): void;
+  unpin(): void;
   subscribe(cb: () => void): () => void;
 }
 
@@ -43,6 +47,8 @@ function defaultBoards(): Board[] {
 export class LocalBoardStore implements BoardStore {
   private boards: Board[];
   private activeId: string;
+  /** Session-only: which board is docked beside Explore. */
+  private pinnedId: string | null = null;
   private listeners = new Set<() => void>();
   constructor(private storage: Pick<Storage, "getItem" | "setItem"> | null) {
     this.boards = this.load();
@@ -109,6 +115,10 @@ export class LocalBoardStore implements BoardStore {
     this.commit(this.boards.filter((b) => b.id !== id));
     // Never leave quick-save pointing at a board that no longer exists.
     if (this.activeId === id) this.setLastUsedBoard(SAVED_BOARD_ID);
+    if (this.pinnedId === id) {
+      this.pinnedId = null;
+      this.emit();
+    }
   }
   add(boardId: string, templateId: string) {
     this.patch(boardId, (b) => (b.templateIds.includes(templateId) ? b : { ...b, templateIds: [templateId, ...b.templateIds] }));
@@ -135,6 +145,20 @@ export class LocalBoardStore implements BoardStore {
     } catch {
       /* storage full / unavailable */
     }
+    this.emit();
+  }
+  pinnedBoardId() {
+    return this.pinnedId;
+  }
+  pin(boardId: string) {
+    if (!this.boards.some((b) => b.id === boardId)) return;
+    // Always assign + emit so React subscribers refresh even when re-pinning the same board.
+    this.pinnedId = boardId;
+    this.emit();
+  }
+  unpin() {
+    if (this.pinnedId === null) return;
+    this.pinnedId = null;
     this.emit();
   }
   subscribe(cb: () => void) {

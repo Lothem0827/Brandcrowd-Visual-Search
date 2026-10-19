@@ -17,3 +17,9 @@ export function useLastUsedBoardId() {
   const store = getBoardStore();
   return useSyncExternalStore(subscribe, () => store.lastUsedBoardId(), () => SAVED_BOARD_ID);
 }
+
+/** Board id docked beside Explore during "Find more design", or null. */
+export function useBoardPinned() {
+  const store = getBoardStore();
+  return useSyncExternalStore(subscribe, () => store.pinnedBoardId(), () => null);
+}

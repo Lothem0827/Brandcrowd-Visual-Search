@@ -888,3 +888,100 @@ export function generateBrief(
     tags,
   };
 }
+
+/** How many popular colours the moodboard shows. */
+export const POPULAR_COLOR_LIMIT = 6;
+/** Real titles sent to the model as style examples. */
+export const COMMON_TITLE_LIMIT = 12;
+/** Titles the moodboard asks for, from the model or the deterministic fallback. */
+export const MOODBOARD_TITLE_COUNT = 6;
+
+export interface PopularColor {
+  hex: string;
+  name: string;
+  /** share of the coloured weight in this slice, 0..1 */
+  share: number;
+}
+
+/** Catalogue slice behind one moodboard: tags, popular colours, and title material. */
+export interface MoodboardSource {
+  match: BriefMatch;
+  tags: string[];
+  colors: PopularColor[];
+  /** most common real titles in the slice, most frequent first */
+  commonTitles: string[];
+  /** deterministic stand-ins when the model is missing or short */
+  fallbackTitles: string[];
+}
+
+function commonRealTitles(rows: WeightedTemplate[], limit: number): string[] {
+  const counts = new Map<string, { text: string; weight: number }>();
+  for (const { template, weight } of rows) {
+    const text = template.displayTitle.trim();
+    const key = norm(text);
+    if (!key) continue;
+    const prev = counts.get(key);
+    if (prev) prev.weight += weight;
+    else counts.set(key, { text, weight });
+  }
+  return [...counts.values()]
+    .sort((a, b) => b.weight - a.weight || a.text.localeCompare(b.text))
+    .slice(0, limit)
+    .map((item) => item.text);
+}
+
+function popularFromFamilies(families: HueFamily[], total: number, limit: number): PopularColor[] {
+  return families.slice(0, limit).map((family) => {
+    const hex = hsvToHex(family.hue, family.s, family.v);
+    return {
+      hex,
+      name: nearestColorName(hex),
+      share: total > 0 ? family.weight / total : 0,
+    };
+  });
+}
+
+/**
+ * Resolve a moodboard query into the catalogue facts the page and the title
+ * route share. Returns null when nothing matches.
+ *
+ * Colours are the strongest hue families, not raw hex counts: individual shades
+ * in this dataset almost never repeat.
+ */
+export function moodboardSource(templates: Template[], query: string): MoodboardSource | null {
+  const text = query.trim();
+  if (!text || !templates.length) return null;
+  const resolved = resolve(templates, text);
+  if (!resolved || !resolved.templates.length) return null;
+
+  const samples: ColorSample[] = [];
+  for (const { template, weight } of resolved.templates) {
+    for (const color of template.colors) {
+      samples.push({
+        hex: color.hex,
+        weight: weight * (ROLE_WEIGHT[color.role] ?? DEFAULT_ROLE_WEIGHT),
+        role: color.role,
+      });
+    }
+  }
+  const { families, total } = samples.length ? hueFamilies(samples) : { families: [], total: 0 };
+
+  const tagWeights = new Map<string, number>();
+  for (const { template, weight } of resolved.templates) {
+    for (const tag of template.tags) {
+      const key = tag.trim().toLowerCase();
+      if (key) add(tagWeights, key, weight);
+    }
+  }
+
+  const corpus = buildTitleCorpus(resolved.templates);
+  const subject = subjectForTitle(resolved.match.label);
+
+  return {
+    match: resolved.match,
+    tags: topEntries(tagWeights, TAGS_LIMIT),
+    colors: total > 0 ? popularFromFamilies(families, total, POPULAR_COLOR_LIMIT) : [],
+    commonTitles: commonRealTitles(resolved.templates, COMMON_TITLE_LIMIT),
+    fallbackTitles: generateTitles(subject, corpus, MOODBOARD_TITLE_COUNT),
+  };
+}

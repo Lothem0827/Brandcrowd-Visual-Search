@@ -1,7 +1,6 @@
 "use client";
 import {
   BookmarkIcon,
-  CompassIcon,
   HomeIcon,
   MoonIcon,
   RotateCcwIcon,
@@ -32,14 +31,15 @@ import {
 } from "./use-grid-settings";
 import { cn } from "@/lib/utils";
 import { useExplorer } from "./context";
+import { getMoodboardStore } from "@/lib/moodboards";
 import { useBoards } from "./use-boards";
 
-function Brand({ onHome }: { onHome: () => void }) {
+function Brand({ onBrowse }: { onBrowse: () => void }) {
   return (
     <button
       type="button"
       aria-label="Home"
-      onClick={onHome}
+      onClick={onBrowse}
       className="grid size-7 place-items-center rounded-full text-foreground shadow-sm transition-transform hover:scale-105"
     >
       <LogoMark className="size-full" />
@@ -250,14 +250,8 @@ function ThemeToggle() {
   );
 }
 
-export function Sidebar({
-  onHome,
-  onExplore,
-}: {
-  onHome: () => void;
-  onExplore: () => void;
-}) {
-  const { page, setPage, setView } = useExplorer();
+export function Sidebar({ onBrowse }: { onBrowse: () => void }) {
+  const { page, setPage, setView, unpinBoard } = useExplorer();
   const { boards } = useBoards();
   const savedCount = new Set(boards.flatMap((b) => b.templateIds)).size;
   return (
@@ -266,21 +260,14 @@ export function Sidebar({
         aria-label="Primary"
         className="z-40 flex w-[60px] shrink-0 flex-col items-center gap-1.5 bg-background py-4"
       >
-        <Brand onHome={onHome} />
+        <Brand onBrowse={onBrowse} />
         <nav className="my-auto flex flex-col items-center gap-1.5">
           <RailButton
             id="rail-home"
             icon={HomeIcon}
             label="Home"
-            active={page === "home"}
-            onClick={onHome}
-          />
-          <RailButton
-            id="rail-explore"
-            icon={CompassIcon}
-            label="Explore"
             active={page === "explore"}
-            onClick={onExplore}
+            onClick={onBrowse}
           />
           <RailButton
             id="rail-boards"
@@ -290,6 +277,7 @@ export function Sidebar({
             badge={savedCount}
             // Always the index: clearing the view turns /boards/<id> into /boards.
             onClick={() => {
+              unpinBoard();
               setView({ kind: "search" });
               setPage("boards");
             }}
@@ -297,9 +285,13 @@ export function Sidebar({
           <RailButton
             id="rail-brief"
             icon={SparklesIcon}
-            label="Design brief"
+            label="Moodboard"
             active={page === "brief"}
-            onClick={() => setPage("brief")}
+            onClick={() => {
+              unpinBoard();
+              getMoodboardStore().unpin();
+              setPage("brief");
+            }}
           />
         </nav>
         <div className="flex flex-col items-center gap-1.5">

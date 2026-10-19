@@ -219,8 +219,8 @@ function SearchBox({
         )}
         <button
           type="button"
-          aria-label="Open the design brief workspace"
-          title="Open the design brief (palette, title and tags)"
+          aria-label="Open the moodboard"
+          title="Open the moodboard"
           onClick={() => setPage("brief")}
           className="grid size-10 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
@@ -312,9 +312,10 @@ export function SearchDock({
 }: {
   inputRef: RefObject<HTMLInputElement | null>;
 }) {
-  const { detailOpen } = useExplorer();
+  const { detailOpen, pinnedBoardId } = useExplorer();
   const isMobile = useIsMobile();
-  if (isMobile && detailOpen) return null; // details take the full screen on phones
+  // Details / board panel take the full screen on phones.
+  if (isMobile && (detailOpen || pinnedBoardId)) return null;
   return (
     <div
       className={cn(

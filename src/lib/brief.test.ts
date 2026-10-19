@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import fixture from "../../tests/fixtures/templates.fixture.json";
 import { parseTemplates } from "./schema";
 import { deltaE, hexToHsv } from "./color";
-import { generateBrief, MAX_BRIEF_OPTIONS } from "./brief";
+import { generateBrief, MAX_BRIEF_OPTIONS, moodboardSource } from "./brief";
 
 const { templates } = parseTemplates(fixture);
 
@@ -170,6 +170,28 @@ describe("generateBrief", () => {
     expect(generateBrief(templates, "Construction", 3)).toEqual(
       generateBrief(templates, "Construction", 3),
     );
+  });
+
+  it("reads a moodboard slice: tags, popular colours, and title examples", () => {
+    const source = moodboardSource(templates, "Construction");
+    expect(source?.match.label).toBe("Construction");
+    expect(source?.tags).toHaveLength(6);
+    expect(source?.colors.length).toBeGreaterThan(0);
+    expect(source?.colors.length).toBeLessThanOrEqual(6);
+    expect(source?.colors[0].share).toBeGreaterThanOrEqual(source?.colors.at(-1)?.share ?? 0);
+    for (const color of source?.colors ?? []) {
+      expect(color.hex).toMatch(/^#[0-9A-F]{6}$/);
+      expect(color.name.length).toBeGreaterThan(0);
+      expect(color.share).toBeGreaterThan(0);
+    }
+    expect(new Set(source?.colors.map((color) => color.hex)).size).toBe(source?.colors.length);
+    expect(source?.commonTitles.length).toBeGreaterThan(0);
+    expect(source?.fallbackTitles.length).toBeGreaterThan(0);
+    expect(source?.fallbackTitles.length).toBeLessThanOrEqual(6);
+    for (const title of source?.fallbackTitles ?? []) {
+      expect(title.toLowerCase()).toContain("construction");
+    }
+    expect(moodboardSource(templates, "zzzzxq")).toBeNull();
   });
 
   it("uses the seed to produce different, still deterministic batches", () => {

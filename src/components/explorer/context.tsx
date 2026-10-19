@@ -103,11 +103,6 @@ export interface ExplorerApi {
   imageScores: Map<string, number> | null;
   /** id -> text-relevance score for the current free-text query (null when no text) */
   textScores: Map<string, number> | null;
-  /**
-   * Ad-hoc free-text search against the same worker index, without touching the Explore
-   * query or filters. Used by the brief's inspiration panel.
-   */
-  designSearch: (text: string) => Promise<Map<string, number>>;
   /** an uploaded image is being analysed */
   imageBusy: boolean;
   /** validate + analyse an image and search by its colors + look */
@@ -154,6 +149,12 @@ export interface ExplorerApi {
   startBoardSelect: (boardId: string) => void;
   stopBoardSelect: () => void;
   toggleBoardSelect: (id: string) => void;
+  /** Board docked beside Explore during "Find more design" (null when closed). */
+  pinnedBoardId: string | null;
+  /** Pin a board beside Explore (unpins moodboard). */
+  pinBoard: (boardId: string) => void;
+  /** Close the board panel without navigating. */
+  unpinBoard: () => void;
   focusSearch: () => void;
 }
 
