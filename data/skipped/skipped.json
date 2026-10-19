@@ -835,6 +835,59 @@
     "skipDetail": "dropped during visual tagging (b7): emblem/badge/brand-mark lockup"
   },
   {
+    "templateId": "4f76684f-16c6-48a5-953b-fde634c1c7dc",
+    "slug": "a-knight-s-bust-734683",
+    "category": "Instagram Post",
+    "name": "A Knight's Bust",
+    "displayTitle": "Medieval Knight Celebration Art Instagram Post",
+    "url": "https://www.design.com/instagram-posts/a-knight-s-bust-734683/details",
+    "tags": [
+      "knight",
+      "festival",
+      "dragon",
+      "medieval",
+      "saint",
+      "celebration",
+      "parade",
+      "europe",
+      "st george day"
+    ],
+    "hashtags": [
+      "#dragon",
+      "#knight",
+      "#festival",
+      "#medieval",
+      "#saint",
+      "#celebration",
+      "#parade",
+      "#europe",
+      "#stgeorgeday"
+    ],
+    "description": "Unleash your inner hero with our A Knight's Bust Instagram Post Template! Perfect for celebrating St. George's Day and all things medieval, this vibrant design captures the spirit of a grand festival parade in Europe.",
+    "previewImage": "https://dynamic.design.com/template/preview/design/4f76684f-16c6-48a5-953b-fde634c1c7dc?v=4&designTemplateVersion=1&size=design-preview-standalone-1x&layout=auto-1-1",
+    "thumbnailImage": "https://dynamic.design.com/template/preview/design/4f76684f-16c6-48a5-953b-fde634c1c7dc?v=4&designTemplateVersion=1&size=design-preview-tall-2x&layout=auto",
+    "colors": [
+      {
+        "hex": "#010000",
+        "role": "background",
+        "name": "black"
+      },
+      {
+        "hex": "#8F8E8F",
+        "role": "primary",
+        "name": "gray"
+      },
+      {
+        "hex": "#D71F26",
+        "role": "accent",
+        "name": "red"
+      }
+    ],
+    "source": "tag:celebration",
+    "skipReason": "logo-like",
+    "skipDetail": "dropped during visual tagging (b13): emblem/badge/brand-mark lockup"
+  },
+  {
     "templateId": "016eb4b7-53bc-4b9d-b87d-d2523ba9d902",
     "slug": "a-quiet-place-656860",
     "category": "Instagram Post",
@@ -5418,6 +5471,57 @@
     "source": "search",
     "skipReason": "logo-like",
     "skipDetail": "dropped during visual tagging (b9): emblem/badge/brand-mark lockup"
+  },
+  {
+    "templateId": "0cf2ce6a-fd96-4ddb-9030-e112075867d6",
+    "slug": "bearded-barbers-542054",
+    "category": "Instagram Post",
+    "name": "Bearded Barbers",
+    "displayTitle": "Beard Grooming Excellence Unleashed Instagram Post",
+    "url": "https://www.design.com/instagram-posts/bearded-barbers-542054/details",
+    "tags": [
+      "grooming",
+      "wellness",
+      "salon",
+      "haircut",
+      "barbershop",
+      "beard",
+      "hipster",
+      "men",
+      "mustache",
+      "tattoo",
+      "tattoo shop",
+      "shave"
+    ],
+    "hashtags": [
+      "#salon",
+      "#grooming",
+      "#barbershop",
+      "#tattooshop"
+    ],
+    "description": "Transform your grooming game with our Bearded Barbers Instagram Post template! Perfect for showcasing your barbershop's unique vibe, this template captures the essence of modern masculinity and wellness.",
+    "previewImage": "https://dynamic.design.com/template/preview/design/0cf2ce6a-fd96-4ddb-9030-e112075867d6?v=4&designTemplateVersion=1&size=design-preview-standalone-1x&layout=auto-1-1",
+    "thumbnailImage": "https://dynamic.design.com/template/preview/design/0cf2ce6a-fd96-4ddb-9030-e112075867d6?v=4&designTemplateVersion=1&size=design-preview-tall-2x&layout=auto",
+    "colors": [
+      {
+        "hex": "#343331",
+        "role": "background",
+        "name": "charcoal"
+      },
+      {
+        "hex": "#F1F1F1",
+        "role": "primary",
+        "name": "white"
+      },
+      {
+        "hex": "#AAAAAA",
+        "role": "accent",
+        "name": "light gray"
+      }
+    ],
+    "source": "tag:salon",
+    "skipReason": "logo-like",
+    "skipDetail": "dropped during visual tagging (b13): emblem/badge/brand-mark lockup"
   },
   {
     "templateId": "c60da005-d2de-4e5b-b5e3-189ed7931893",
@@ -15689,6 +15793,60 @@
     "source": "search",
     "skipReason": "logo-like",
     "skipDetail": "dropped during visual tagging (b4): emblem/badge/brand-mark lockup"
+  },
+  {
+    "templateId": "e030770e-d114-4668-9402-222cdcfad29b",
+    "slug": "create-adventures-514339",
+    "category": "Instagram Post",
+    "name": "Create Adventures",
+    "displayTitle": "Adventure Awaits by the Sea Instagram Post",
+    "url": "https://www.design.com/instagram-posts/create-adventures-514339/details",
+    "tags": [
+      "travel",
+      "sunset",
+      "trip",
+      "nature",
+      "beach",
+      "ocean",
+      "sea",
+      "summer",
+      "vacation",
+      "vlogger"
+    ],
+    "hashtags": [
+      "#sunset",
+      "#trip",
+      "#travel",
+      "#nature",
+      "#ocean",
+      "#beach",
+      "#sea",
+      "#summer",
+      "#vacation"
+    ],
+    "description": "Capture the essence of your summer escapades with our Create Adventures Instagram Post template! Perfect for travel enthusiasts and vloggers alike, this vibrant design highlights stunning sunsets, serene beaches, and the breathtaking beauty of nature.",
+    "previewImage": "https://dynamic.design.com/template/preview/design/e030770e-d114-4668-9402-222cdcfad29b?v=4&designTemplateVersion=1&size=design-preview-standalone-1x&layout=auto-1-1",
+    "thumbnailImage": "https://dynamic.design.com/template/preview/design/e030770e-d114-4668-9402-222cdcfad29b?v=4&designTemplateVersion=1&size=design-preview-tall-2x&layout=auto",
+    "colors": [
+      {
+        "hex": "#F3E4CD",
+        "role": "background",
+        "name": "cream"
+      },
+      {
+        "hex": "#B3847A",
+        "role": "primary",
+        "name": "red"
+      },
+      {
+        "hex": "#BC4E07",
+        "role": "accent",
+        "name": "brown"
+      }
+    ],
+    "source": "tag:travel",
+    "skipReason": "logo-like",
+    "skipDetail": "dropped during visual tagging (b13): emblem/badge/brand-mark lockup"
   },
   {
     "templateId": "88acb3fe-4ea9-43e7-bde4-2ac398eb2416",
@@ -35062,6 +35220,59 @@
     "skipDetail": "dropped during visual tagging (b10): emblem/badge/brand-mark lockup"
   },
   {
+    "templateId": "306534be-ce65-463a-a355-2242672991c5",
+    "slug": "high-quality-honey-944693",
+    "category": "Instagram Post",
+    "name": "High Quality Honey",
+    "displayTitle": "Pure Organic Honey Delight Instagram Post",
+    "url": "https://www.design.com/instagram-posts/high-quality-honey-944693/details",
+    "tags": [
+      "business",
+      "bee",
+      "farm",
+      "bee farm",
+      "food",
+      "honey",
+      "natural",
+      "organic",
+      "product",
+      "honey producers"
+    ],
+    "hashtags": [
+      "#bee",
+      "#honey",
+      "#organic",
+      "#beefarm",
+      "#honeyproducers",
+      "#naturalfood",
+      "#farmfresh",
+      "#businessboost"
+    ],
+    "description": "Elevate your honey business with our High-Quality Honey Instagram Post Template! Perfect for bee farms and honey producers, this customizable template captures the essence of your natural and organic products.",
+    "previewImage": "https://dynamic.design.com/template/preview/design/306534be-ce65-463a-a355-2242672991c5?v=4&designTemplateVersion=1&size=design-preview-standalone-1x&layout=auto-1-1",
+    "thumbnailImage": "https://dynamic.design.com/template/preview/design/306534be-ce65-463a-a355-2242672991c5?v=4&designTemplateVersion=1&size=design-preview-tall-2x&layout=auto",
+    "colors": [
+      {
+        "hex": "#513D1C",
+        "role": "background",
+        "name": "dark brown"
+      },
+      {
+        "hex": "#D2B642",
+        "role": "primary",
+        "name": "gold"
+      },
+      {
+        "hex": "#E2DBC0",
+        "role": "accent",
+        "name": "beige"
+      }
+    ],
+    "source": "tag:business",
+    "skipReason": "logo-like",
+    "skipDetail": "dropped during visual tagging (b13): emblem/badge/brand-mark lockup"
+  },
+  {
     "templateId": "63abe5ab-afdf-4651-956e-b4c5fee48a5a",
     "slug": "high-standard-601486",
     "category": "Instagram Post",
@@ -39157,6 +39368,65 @@
     "source": "search",
     "skipReason": "logo-like",
     "skipDetail": "dropped during visual tagging (b6): emblem/badge/brand-mark lockup"
+  },
+  {
+    "templateId": "afefc997-df50-4461-9125-d9802a60c204",
+    "slug": "into-the-woods-783704",
+    "category": "Instagram Post",
+    "name": "Into the Woods",
+    "displayTitle": "Wilderness Adventure Awaits Instagram Post",
+    "url": "https://www.design.com/instagram-posts/into-the-woods-783704/details",
+    "tags": [
+      "nature",
+      "trip",
+      "travel",
+      "mountain",
+      "adventure",
+      "cabin",
+      "camp",
+      "camper",
+      "camping",
+      "hiking",
+      "journey",
+      "river",
+      "tent",
+      "trail",
+      "traveler",
+      "woods"
+    ],
+    "hashtags": [
+      "#trip",
+      "#travel",
+      "#adventure",
+      "#woods",
+      "#intothewoods",
+      "#naturelovers",
+      "#camperlife",
+      "#trailtales"
+    ],
+    "description": "**Into the Woods Instagram Post Template** Capture the magic of your outdoor adventures with our enchanting \"Into the Woods\" Instagram post template!",
+    "previewImage": "https://dynamic.design.com/template/preview/design/afefc997-df50-4461-9125-d9802a60c204?v=4&designTemplateVersion=1&size=design-preview-standalone-1x&layout=auto-1-1",
+    "thumbnailImage": "https://dynamic.design.com/template/preview/design/afefc997-df50-4461-9125-d9802a60c204?v=4&designTemplateVersion=1&size=design-preview-tall-2x&layout=auto",
+    "colors": [
+      {
+        "hex": "#3C461B",
+        "role": "background",
+        "name": "olive"
+      },
+      {
+        "hex": "#FADC92",
+        "role": "primary",
+        "name": "gold"
+      },
+      {
+        "hex": "#F2A11D",
+        "role": "accent",
+        "name": "orange"
+      }
+    ],
+    "source": "tag:travel",
+    "skipReason": "logo-like",
+    "skipDetail": "dropped during visual tagging (b13): emblem/badge/brand-mark lockup"
   },
   {
     "templateId": "d51ec31d-85db-48d2-91be-746442569205",
@@ -44161,6 +44431,63 @@
     "skipDetail": "dropped during visual tagging (b11): emblem/badge/brand-mark lockup"
   },
   {
+    "templateId": "934bb35e-c00c-4698-ac63-78c2f0b975e1",
+    "slug": "love-and-peace-534800",
+    "category": "Instagram Post",
+    "name": "Love and Peace",
+    "displayTitle": "Celebrate Love and Peace Instagram Post",
+    "url": "https://www.design.com/instagram-posts/love-and-peace-534800/details",
+    "tags": [
+      "celebration",
+      "event",
+      "heart",
+      "hope",
+      "greeting",
+      "love",
+      "movement",
+      "peace",
+      "international peace day",
+      "world peace day",
+      "peace day"
+    ],
+    "hashtags": [
+      "#love",
+      "#heart",
+      "#event",
+      "#hope",
+      "#peace",
+      "#movement",
+      "#celebration",
+      "#greeting",
+      "#internationalpeaceday",
+      "#worldpeaceday",
+      "#peaceday"
+    ],
+    "description": "Celebrate the spirit of unity and harmony with our Love and Peace Instagram Post template! Perfect for International Peace Day and World Peace Day, this vibrant design encapsulates the essence of hope and togetherness.",
+    "previewImage": "https://dynamic.design.com/template/preview/design/934bb35e-c00c-4698-ac63-78c2f0b975e1?v=4&designTemplateVersion=1&size=design-preview-standalone-1x&layout=auto-1-1",
+    "thumbnailImage": "https://dynamic.design.com/template/preview/design/934bb35e-c00c-4698-ac63-78c2f0b975e1?v=4&designTemplateVersion=1&size=design-preview-tall-2x&layout=auto",
+    "colors": [
+      {
+        "hex": "#FFF7EB",
+        "role": "background",
+        "name": "white"
+      },
+      {
+        "hex": "#FB8772",
+        "role": "primary",
+        "name": "pink"
+      },
+      {
+        "hex": "#7ECAAA",
+        "role": "accent",
+        "name": "green"
+      }
+    ],
+    "source": "tag:celebration",
+    "skipReason": "logo-like",
+    "skipDetail": "dropped during visual tagging (b13): emblem/badge/brand-mark lockup"
+  },
+  {
     "templateId": "86e7a918-3128-4b79-ab31-aee62bb64483",
     "slug": "love-podcast-540029",
     "category": "Instagram Post",
@@ -46219,6 +46546,59 @@
     "skipDetail": "dropped during visual tagging (b9): emblem/badge/brand-mark lockup"
   },
   {
+    "templateId": "5df6adbb-252e-4e7c-b4db-2682a2104288",
+    "slug": "midnight-mountain-view-401929",
+    "category": "Instagram Post",
+    "name": "Midnight Mountain View",
+    "displayTitle": "Midnight Mountain Adventure Escape Instagram Post",
+    "url": "https://www.design.com/instagram-posts/midnight-mountain-view-401929/details",
+    "tags": [
+      "mountain",
+      "travel",
+      "trip",
+      "adventure",
+      "camper",
+      "camping",
+      "hiking",
+      "midnight",
+      "traveler"
+    ],
+    "hashtags": [
+      "#trip",
+      "#travel",
+      "#mountain",
+      "#adventure",
+      "#camping",
+      "#camper",
+      "#hiking",
+      "#traveler",
+      "#midnight"
+    ],
+    "description": "**Midnight Mountain View Instagram Post Template** Capture the magic of your late-night adventures with our Midnight Mountain View Instagram Post template!",
+    "previewImage": "https://dynamic.design.com/template/preview/design/5df6adbb-252e-4e7c-b4db-2682a2104288?v=4&designTemplateVersion=1&size=design-preview-standalone-1x&layout=auto-1-1",
+    "thumbnailImage": "https://dynamic.design.com/template/preview/design/5df6adbb-252e-4e7c-b4db-2682a2104288?v=4&designTemplateVersion=1&size=design-preview-tall-2x&layout=auto",
+    "colors": [
+      {
+        "hex": "#1A5280",
+        "role": "background",
+        "name": "blue"
+      },
+      {
+        "hex": "#EFF0DB",
+        "role": "primary",
+        "name": "cream"
+      },
+      {
+        "hex": "#6B8DA2",
+        "role": "accent",
+        "name": "blue"
+      }
+    ],
+    "source": "tag:travel",
+    "skipReason": "logo-like",
+    "skipDetail": "dropped during visual tagging (b13): emblem/badge/brand-mark lockup"
+  },
+  {
     "templateId": "55e690a4-7b22-4997-bdb7-1a13fbbc14d6",
     "slug": "military-discount-1481877",
     "category": "Instagram Post",
@@ -46450,6 +46830,60 @@
     "source": "tag:holiday",
     "skipReason": "logo-like",
     "skipDetail": "dropped during visual tagging (b11): emblem/badge/brand-mark lockup"
+  },
+  {
+    "templateId": "c48d4ac0-b0f5-4783-ab91-e16faf341327",
+    "slug": "miner-s-emblems-599481",
+    "category": "Instagram Post",
+    "name": "Miner's Emblems",
+    "displayTitle": "Rustic Miner's Emblems Collection Instagram Post",
+    "url": "https://www.design.com/instagram-posts/miner-s-emblems-599481/details",
+    "tags": [
+      "minimalist",
+      "service",
+      "work",
+      "company",
+      "badge",
+      "hard hat",
+      "hipster",
+      "miner",
+      "mining",
+      "rustic",
+      "rugged",
+      "miner's day",
+      "national miner's day",
+      "hipster style"
+    ],
+    "hashtags": [
+      "#mineralemblems",
+      "#nationalminersday",
+      "#hipstermining",
+      "#ruggedwork",
+      "#miningcommunity"
+    ],
+    "description": "Celebrate National Miner's Day with our exclusive Miner's Emblems Instagram Post template! Designed for the rugged and resilient spirit of the mining community, this minimalist template combines hipster style with a touch of rustic charm.",
+    "previewImage": "https://dynamic.design.com/template/preview/design/c48d4ac0-b0f5-4783-ab91-e16faf341327?v=4&designTemplateVersion=1&size=design-preview-standalone-1x&layout=auto-1-1",
+    "thumbnailImage": "https://dynamic.design.com/template/preview/design/c48d4ac0-b0f5-4783-ab91-e16faf341327?v=4&designTemplateVersion=1&size=design-preview-tall-2x&layout=auto",
+    "colors": [
+      {
+        "hex": "#B2AE5F",
+        "role": "background",
+        "name": "khaki"
+      },
+      {
+        "hex": "#FBF9DC",
+        "role": "primary",
+        "name": "cream"
+      },
+      {
+        "hex": "#453F26",
+        "role": "accent",
+        "name": "dark brown"
+      }
+    ],
+    "source": "tag:minimalist",
+    "skipReason": "logo-like",
+    "skipDetail": "dropped during visual tagging (b13): emblem/badge/brand-mark lockup"
   },
   {
     "templateId": "bf994fd9-4d19-40e0-a710-2f5e554e56f2",
@@ -61754,6 +62188,57 @@
     "skipDetail": "dropped during visual tagging (b8): emblem/badge/brand-mark lockup"
   },
   {
+    "templateId": "ef2daf52-e3a1-4827-b815-8277a313b4e4",
+    "slug": "positive-vibes-607722",
+    "category": "Instagram Post",
+    "name": "Positive Vibes",
+    "displayTitle": "Uplifting Daily Inspiration Instagram Post",
+    "url": "https://www.design.com/instagram-posts/positive-vibes-607722/details",
+    "tags": [
+      "earth",
+      "generic",
+      "happy",
+      "motivation",
+      "quirky",
+      "inspirational quotes",
+      "daily quote",
+      "inspiration",
+      "quotes",
+      "positivity",
+      "quotes of the day"
+    ],
+    "hashtags": [
+      "#happy",
+      "#motivation",
+      "#inspiration",
+      "#quotesoftheday",
+      "#positivevibes"
+    ],
+    "description": "Elevate your Instagram game with our Positive Vibes Post Template! Perfect for spreading joy and inspiration, this template is designed to brighten your feed with a splash of color and creativity.",
+    "previewImage": "https://dynamic.design.com/template/preview/design/ef2daf52-e3a1-4827-b815-8277a313b4e4?v=4&designTemplateVersion=1&size=design-preview-standalone-1x&layout=auto-1-1",
+    "thumbnailImage": "https://dynamic.design.com/template/preview/design/ef2daf52-e3a1-4827-b815-8277a313b4e4?v=4&designTemplateVersion=1&size=design-preview-tall-2x&layout=auto",
+    "colors": [
+      {
+        "hex": "#FFEBE4",
+        "role": "background",
+        "name": "off-white"
+      },
+      {
+        "hex": "#FFB207",
+        "role": "primary",
+        "name": "orange"
+      },
+      {
+        "hex": "#4B8DC5",
+        "role": "accent",
+        "name": "blue"
+      }
+    ],
+    "source": "tag:generic",
+    "skipReason": "logo-like",
+    "skipDetail": "dropped during visual tagging (b13): emblem/badge/brand-mark lockup"
+  },
+  {
     "templateId": "1fc3a30d-b841-4058-9613-745a66516202",
     "slug": "pot-of-gold-701580",
     "category": "Instagram Post",
@@ -72085,6 +72570,73 @@
     "skipDetail": "dropped during visual tagging (b9): emblem/badge/brand-mark lockup"
   },
   {
+    "templateId": "27cece89-fba7-418c-9302-804436c36da1",
+    "slug": "shadow-of-honor-580375",
+    "category": "Instagram Post",
+    "name": "Shadow Of Honor",
+    "displayTitle": "Tribute to Military Valor Instagram Post",
+    "url": "https://www.design.com/instagram-posts/shadow-of-honor-580375/details",
+    "tags": [
+      "country",
+      "army",
+      "celebration",
+      "dignity",
+      "glory",
+      "honor",
+      "military",
+      "patriot",
+      "parade",
+      "pride",
+      "service",
+      "soldier",
+      "tribute",
+      "remembrance",
+      "veterans",
+      "acknowledgement"
+    ],
+    "hashtags": [
+      "#service",
+      "#soldier",
+      "#honor",
+      "#remembrance",
+      "#army",
+      "#military",
+      "#pride",
+      "#tribute",
+      "#celebration",
+      "#acknowledgement",
+      "#veterans",
+      "#patriot",
+      "#dignity",
+      "#glory",
+      "#country",
+      "#parade"
+    ],
+    "description": "**Introducing the Shadow of Honor Instagram Post Template!** Celebrate the brave souls who serve our country with this striking template designed to honor our military heroes.",
+    "previewImage": "https://dynamic.design.com/template/preview/design/27cece89-fba7-418c-9302-804436c36da1?v=4&designTemplateVersion=1&size=design-preview-standalone-1x&layout=auto-1-1",
+    "thumbnailImage": "https://dynamic.design.com/template/preview/design/27cece89-fba7-418c-9302-804436c36da1?v=4&designTemplateVersion=1&size=design-preview-tall-2x&layout=auto",
+    "colors": [
+      {
+        "hex": "#F4E7C5",
+        "role": "background",
+        "name": "cream"
+      },
+      {
+        "hex": "#151B2E",
+        "role": "primary",
+        "name": "charcoal"
+      },
+      {
+        "hex": "#9E2D2D",
+        "role": "accent",
+        "name": "red"
+      }
+    ],
+    "source": "tag:celebration",
+    "skipReason": "logo-like",
+    "skipDetail": "dropped during visual tagging (b13): emblem/badge/brand-mark lockup"
+  },
+  {
     "templateId": "36446d59-5e68-4e6b-837e-09ff620c72e8",
     "slug": "sheep-eid-al-adha-1166086",
     "category": "Instagram Post",
@@ -78926,6 +79478,59 @@
     "skipDetail": "dropped during visual tagging (b6): emblem/badge/brand-mark lockup"
   },
   {
+    "templateId": "2c23b95f-d1c3-442d-8144-0788af8d952e",
+    "slug": "sustainable-bee-farming-931582",
+    "category": "Instagram Post",
+    "name": "Sustainable Bee Farming",
+    "displayTitle": "Eco-Friendly Bee Farming Tips Instagram Post",
+    "url": "https://www.design.com/instagram-posts/sustainable-bee-farming-931582/details",
+    "tags": [
+      "food",
+      "natural",
+      "dessert",
+      "farm",
+      "honey",
+      "organic",
+      "bees",
+      "bee farming"
+    ],
+    "hashtags": [
+      "#food",
+      "#natural",
+      "#honey",
+      "#farm",
+      "#organic",
+      "#dessert",
+      "#bees",
+      "#beefarming",
+      "#sustainablefarming",
+      "#beelove"
+    ],
+    "description": "**Sustainable Bee Farming: Nature's Sweetest Gift!** Discover the beauty of sustainable bee farming with our Instagram Post Template!",
+    "previewImage": "https://dynamic.design.com/template/preview/design/2c23b95f-d1c3-442d-8144-0788af8d952e?v=4&designTemplateVersion=1&size=design-preview-standalone-1x&layout=auto-1-1",
+    "thumbnailImage": "https://dynamic.design.com/template/preview/design/2c23b95f-d1c3-442d-8144-0788af8d952e?v=4&designTemplateVersion=1&size=design-preview-tall-2x&layout=auto",
+    "colors": [
+      {
+        "hex": "#C99221",
+        "role": "background",
+        "name": "orange"
+      },
+      {
+        "hex": "#FEFDFC",
+        "role": "primary",
+        "name": "white"
+      },
+      {
+        "hex": "#8D4706",
+        "role": "accent",
+        "name": "brown"
+      }
+    ],
+    "source": "tag:food",
+    "skipReason": "logo-like",
+    "skipDetail": "dropped during visual tagging (b13): emblem/badge/brand-mark lockup"
+  },
+  {
     "templateId": "fd0e8650-d5a2-4b34-84a9-3931bd591865",
     "slug": "sustainable-travel-tips-1584459",
     "category": "Instagram Post",
@@ -80470,6 +81075,59 @@
     "skipDetail": "dropped during visual tagging (b10): emblem/badge/brand-mark lockup"
   },
   {
+    "templateId": "1c499bd6-44ad-4284-8698-37281e34846d",
+    "slug": "the-knight-723905",
+    "category": "Instagram Post",
+    "name": "The Knight",
+    "displayTitle": "Medieval Knight Celebration Scene Instagram Post",
+    "url": "https://www.design.com/instagram-posts/the-knight-723905/details",
+    "tags": [
+      "festival",
+      "celebration",
+      "dragon",
+      "europe",
+      "knight",
+      "medieval",
+      "parade",
+      "saint",
+      "st george day"
+    ],
+    "hashtags": [
+      "#dragon",
+      "#knight",
+      "#festival",
+      "#medieval",
+      "#saint",
+      "#celebration",
+      "#parade",
+      "#europe",
+      "#stgeorgeday"
+    ],
+    "description": "Unleash your inner hero with our captivating Knight Instagram Post template! Perfect for celebrating St. George's Day, this vibrant design brings the medieval festival to life.",
+    "previewImage": "https://dynamic.design.com/template/preview/design/1c499bd6-44ad-4284-8698-37281e34846d?v=4&designTemplateVersion=1&size=design-preview-standalone-1x&layout=auto-1-1",
+    "thumbnailImage": "https://dynamic.design.com/template/preview/design/1c499bd6-44ad-4284-8698-37281e34846d?v=4&designTemplateVersion=1&size=design-preview-tall-2x&layout=auto",
+    "colors": [
+      {
+        "hex": "#160E09",
+        "role": "background",
+        "name": "black"
+      },
+      {
+        "hex": "#CCC891",
+        "role": "primary",
+        "name": "beige"
+      },
+      {
+        "hex": "#A23535",
+        "role": "accent",
+        "name": "red"
+      }
+    ],
+    "source": "tag:celebration",
+    "skipReason": "logo-like",
+    "skipDetail": "dropped during visual tagging (b13): emblem/badge/brand-mark lockup"
+  },
+  {
     "templateId": "80b0ff97-54c2-48cc-a20d-9e41fb213379",
     "slug": "the-online-medic-531325",
     "category": "Instagram Post",
@@ -81524,6 +82182,66 @@
     "source": "search",
     "skipReason": "logo-like",
     "skipDetail": "dropped during visual tagging (b8): emblem/badge/brand-mark lockup"
+  },
+  {
+    "templateId": "e687db7e-a235-4e75-8c4c-112e1186fd90",
+    "slug": "top-badged-security-599273",
+    "category": "Instagram Post",
+    "name": "Top Badged Security",
+    "displayTitle": "Premier Security Badge Solutions Instagram Post",
+    "url": "https://www.design.com/instagram-posts/top-badged-security-599273/details",
+    "tags": [
+      "security",
+      "minimalist",
+      "secure",
+      "security service",
+      "badge",
+      "guard",
+      "illustration",
+      "job",
+      "protection",
+      "safety",
+      "surveillance",
+      "worker",
+      "employer",
+      "icons",
+      "officer",
+      "private security",
+      "protector",
+      "hiring",
+      "security guard",
+      "event security",
+      "company security",
+      "flat art"
+    ],
+    "hashtags": [
+      "#securityservice",
+      "#hiring",
+      "#eventsecurity"
+    ],
+    "description": "Introducing our Top Badged Security Instagram Post Template, designed for security services looking to make a bold statement!",
+    "previewImage": "https://dynamic.design.com/template/preview/design/e687db7e-a235-4e75-8c4c-112e1186fd90?v=4&designTemplateVersion=1&size=design-preview-standalone-1x&layout=auto-1-1",
+    "thumbnailImage": "https://dynamic.design.com/template/preview/design/e687db7e-a235-4e75-8c4c-112e1186fd90?v=4&designTemplateVersion=1&size=design-preview-tall-2x&layout=auto",
+    "colors": [
+      {
+        "hex": "#222222",
+        "role": "background",
+        "name": "charcoal"
+      },
+      {
+        "hex": "#F4C342",
+        "role": "primary",
+        "name": "gold"
+      },
+      {
+        "hex": "#F3E6AB",
+        "role": "accent",
+        "name": "cream"
+      }
+    ],
+    "source": "tag:hiring",
+    "skipReason": "logo-like",
+    "skipDetail": "dropped during visual tagging (b13): emblem/badge/brand-mark lockup"
   },
   {
     "templateId": "4d774df6-a595-49b5-a892-0aa457630441",
