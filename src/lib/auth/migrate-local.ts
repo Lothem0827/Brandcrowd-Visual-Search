@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { SAVED_BOARD_ID, clearLocalBoards, type Board } from "@/lib/boards";
+import { SAVED_BOARD_ID, type Board } from "@/lib/boards";
 import type { MoodboardDraft } from "@/lib/moodboards";
 import type { GridSettings } from "@/components/explorer/use-grid-settings";
 import type { Database, Json } from "@/lib/supabase/database.types";
@@ -37,10 +37,11 @@ function uniqueSlug(base: string, used: Set<string>): string {
 }
 
 /**
- * Copy guest boards (incl. "Saved") into the account, then empty the guest copy.
+ * Copy guest boards (incl. "Saved") into the account.
  * Runs on every sign-in, not just the first: it's a no-op when there's nothing
  * local, and a set-difference merge so it never duplicates. Throws on failure
  * so the local copy is kept for the next attempt instead of being lost.
+ * Does not clear localStorage — AuthProvider does that after the cloud store is live.
  */
 async function migrateLocalBoards(supabase: SupabaseClient<Database>, userId: string, localBoards: Board[]) {
   const hasData = localBoards.some((b) => b.templateIds.length > 0 || b.id !== SAVED_BOARD_ID);
@@ -66,16 +67,38 @@ async function migrateLocalBoards(supabase: SupabaseClient<Database>, userId: st
       .filter((id) => !have.has(id))
       .map((template_id, i) => ({ board_id: saved.id, template_id, position: i }));
     if (rows.length) {
-      const { error: upErr } = await supabase.from("board_items").upsert(rows);
+      const { error: upErr } = await supabase.from("board_items").upsert(rows, { onConflict: "board_id,template_id" });
       if (upErr) throw upErr;
     }
   }
 
-  // Custom boards (skip empty duplicates of existing names)
-  const existingNames = new Set(boards.map((b) => b.name.toLowerCase()));
+  // Custom boards: merge into an existing same-name board, otherwise insert.
+  const byName = new Map(
+    boards.filter((b) => b.kind !== "saved").map((b) => [b.name.toLowerCase(), b] as const),
+  );
   for (const board of localBoards) {
     if (board.id === SAVED_BOARD_ID) continue;
-    if (!board.templateIds.length && existingNames.has(board.name.toLowerCase())) continue;
+
+    const existing = byName.get(board.name.toLowerCase());
+    if (existing) {
+      if (!board.templateIds.length) continue;
+      const { data: items, error } = await supabase
+        .from("board_items")
+        .select("template_id")
+        .eq("board_id", existing.id);
+      if (error) throw error;
+      const have = new Set((items ?? []).map((i) => i.template_id));
+      const rows = board.templateIds
+        .filter((id) => !have.has(id))
+        .map((template_id, position) => ({ board_id: existing.id, template_id, position }));
+      if (rows.length) {
+        const { error: itemsErr } = await supabase
+          .from("board_items")
+          .upsert(rows, { onConflict: "board_id,template_id" });
+        if (itemsErr) throw itemsErr;
+      }
+      continue;
+    }
 
     const slug = uniqueSlug(board.name, usedSlugs);
     const { data: created, error } = await supabase
@@ -91,7 +114,7 @@ async function migrateLocalBoards(supabase: SupabaseClient<Database>, userId: st
       .select("id")
       .single();
     if (error || !created) throw error ?? new Error("Board insert failed");
-    existingNames.add(board.name.toLowerCase());
+    byName.set(board.name.toLowerCase(), { ...created, kind: "custom", slug, name: board.name });
     if (board.templateIds.length) {
       const { error: itemsErr } = await supabase.from("board_items").insert(
         board.templateIds.map((template_id, position) => ({
@@ -103,8 +126,6 @@ async function migrateLocalBoards(supabase: SupabaseClient<Database>, userId: st
       if (itemsErr) throw itemsErr;
     }
   }
-
-  clearLocalBoards();
 }
 
 /** Push guest local data into the signed-in account. */
@@ -120,10 +141,7 @@ export async function migrateLocalToCloud(
 ): Promise<void> {
   await migrateLocalBoards(supabase, userId, opts.boards);
 
-  // Moodboards / grid: first sign-in only (unchanged behaviour).
-  if (wasMigrated(userId)) return;
-
-  // Moodboards
+  // Moodboards: every sign-in, skip ids that already exist so cloud edits are never overwritten.
   const { data: existingMb } = await supabase.from("moodboards").select("id").eq("owner_id", userId);
   const haveMb = new Set((existingMb ?? []).map((m) => m.id));
   const mbUsed = new Set<string>();
@@ -131,7 +149,7 @@ export async function migrateLocalToCloud(
   const upsertMb = async (draft: MoodboardDraft, isDraft: boolean) => {
     if (haveMb.has(draft.id)) return;
     const slug = uniqueSlug(draft.query || draft.id, mbUsed);
-    await supabase.from("moodboards").upsert({
+    const { error } = await supabase.from("moodboards").upsert({
       id: draft.id,
       owner_id: userId,
       query: draft.query,
@@ -147,18 +165,20 @@ export async function migrateLocalToCloud(
       is_public: false,
       updated_at: new Date(draft.updatedAt || Date.now()).toISOString(),
     });
+    if (error) throw error;
     haveMb.add(draft.id);
   };
 
   for (const mb of opts.moodboards) await upsertMb(mb, false);
   if (opts.draft) await upsertMb(opts.draft, true);
 
-  // Grid settings — push local only if cloud still has defaults / empty timestamp handling: prefer local on first migrate
-  await supabase.from("user_settings").upsert({
+  // Grid: first sign-in only so later cloud prefs are not clobbered by leftover local.
+  if (wasMigrated(userId)) return;
+
+  const { error: gridErr } = await supabase.from("user_settings").upsert({
     user_id: userId,
     grid: opts.grid as unknown as Json,
     updated_at: new Date().toISOString(),
   });
-
-  markMigrated(userId);
+  if (gridErr) throw gridErr;
 }

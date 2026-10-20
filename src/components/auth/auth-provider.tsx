@@ -10,11 +10,11 @@ import {
   type ReactNode,
 } from "react";
 import type { User } from "@supabase/supabase-js";
-import { getLocalBoardsSnapshot, setBoardStore } from "@/lib/boards";
+import { clearLocalBoards, getLocalBoardsSnapshot, SAVED_BOARD_ID, setBoardStore } from "@/lib/boards";
 import { SupabaseBoardStore } from "@/lib/boards-supabase";
-import { migrateLocalToCloud } from "@/lib/auth/migrate-local";
+import { markMigrated, migrateLocalToCloud } from "@/lib/auth/migrate-local";
 import { EMPTY_AUTH, type AuthState } from "@/lib/auth/session";
-import { getLocalMoodboardsSnapshot, setMoodboardStore } from "@/lib/moodboards";
+import { clearLocalMoodboards, getLocalMoodboardsSnapshot, setMoodboardStore } from "@/lib/moodboards";
 import { SupabaseMoodboardStore } from "@/lib/moodboards-supabase";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile } from "@/lib/supabase/database.types";
@@ -43,12 +43,14 @@ async function loadProfile(userId: string): Promise<Profile | null> {
 
 async function activateCloud(user: User) {
   const supabase = createClient();
-  await migrateLocalToCloud(supabase, user.id, {
+  const snapshot = () => ({
     boards: getLocalBoardsSnapshot(),
     moodboards: getLocalMoodboardsSnapshot().saved,
     draft: getLocalMoodboardsSnapshot().draft,
     grid: getGridSettingsSnapshot(),
   });
+
+  await migrateLocalToCloud(supabase, user.id, snapshot());
 
   const boardStore = new SupabaseBoardStore(supabase, user.id);
   await boardStore.load();
@@ -59,6 +61,26 @@ async function activateCloud(user: User) {
   setMoodboardStore(mbStore);
 
   await pullCloudGridSettings(user.id);
+
+  // Saves that landed in localStorage while we were swapping to the cloud store.
+  const leftover = getLocalBoardsSnapshot();
+  for (const board of leftover) {
+    if (board.id === SAVED_BOARD_ID) {
+      for (const id of board.templateIds) boardStore.add(SAVED_BOARD_ID, id);
+      continue;
+    }
+    const existing = boardStore.list().find(
+      (b) => b.id !== SAVED_BOARD_ID && b.name.toLowerCase() === board.name.toLowerCase(),
+    );
+    if (existing) {
+      for (const id of board.templateIds) boardStore.add(existing.id, id);
+    }
+  }
+  await migrateLocalToCloud(supabase, user.id, snapshot());
+  await boardStore.flush();
+  markMigrated(user.id);
+  clearLocalBoards();
+  clearLocalMoodboards();
 }
 
 function deactivateCloud() {

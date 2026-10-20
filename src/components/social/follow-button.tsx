@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
+import { toast } from "@/components/ui/toast";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -33,11 +34,25 @@ export function FollowButton({
     try {
       const supabase = createClient();
       if (following) {
-        await supabase.from("follows").delete().eq("follower_id", user.id).eq("following_id", targetUserId);
+        const { error } = await supabase
+          .from("follows")
+          .delete()
+          .eq("follower_id", user.id)
+          .eq("following_id", targetUserId);
+        if (error) {
+          toast.error("Couldn’t unfollow. Try again.");
+          return;
+        }
         setLocal(false);
         onFollowChange?.(false);
       } else {
-        await supabase.from("follows").insert({ follower_id: user.id, following_id: targetUserId });
+        const { error } = await supabase
+          .from("follows")
+          .insert({ follower_id: user.id, following_id: targetUserId });
+        if (error) {
+          toast.error("Couldn’t follow. Try again.");
+          return;
+        }
         setLocal(true);
         onFollowChange?.(true);
       }

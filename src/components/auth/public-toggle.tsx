@@ -29,6 +29,8 @@ export function BoardPublicToggle({
     try {
       await getBoardStore().setPublic?.(boardId, !isPublic);
       toast.success(!isPublic ? "Board is public" : "Board is private");
+    } catch {
+      toast.error("Couldn’t update board visibility.");
     } finally {
       setBusy(false);
     }
@@ -89,6 +91,8 @@ export function MoodboardPublicToggle({
     try {
       await getMoodboardStore().setPublic?.(moodboardId, !isPublic);
       toast.success(!isPublic ? "Moodboard is public" : "Moodboard is private");
+    } catch {
+      toast.error("Couldn’t update moodboard visibility.");
     } finally {
       setBusy(false);
     }

@@ -97,11 +97,12 @@ export function setGridCloudUser(userId: string | null) {
 export async function pushGridSettingsToCloud(userId: string) {
   const { createClient } = await import("@/lib/supabase/client");
   const supabase = createClient();
-  await supabase.from("user_settings").upsert({
+  const { error } = await supabase.from("user_settings").upsert({
     user_id: userId,
     grid: getGridSettingsSnapshot() as unknown as import("@/lib/supabase/database.types").Json,
     updated_at: new Date().toISOString(),
   });
+  if (error) console.error("Failed to sync grid settings", error);
 }
 
 /** Prefer cloud grid when present; otherwise keep local. */

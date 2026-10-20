@@ -60,6 +60,8 @@ export function BoardMenu({
       await store.setPublic?.(board.id, true);
       await copyLink();
       setSharePrompt(false);
+    } catch {
+      toast.error("Couldn’t make this board public.");
     } finally {
       setBusy(false);
     }
@@ -82,7 +84,11 @@ export function BoardMenu({
       await signInWithGoogle("/boards");
       return;
     }
-    await store.setPublic?.(board.id, !nextPrivate);
+    try {
+      await store.setPublic?.(board.id, !nextPrivate);
+    } catch {
+      toast.error("Couldn’t update board visibility.");
+    }
   };
 
   const openEdit = () => {
@@ -99,7 +105,12 @@ export function BoardMenu({
     store.rename(board.id, clean);
     store.setDescription(board.id, description);
     if (user && !isPrivate !== !!board.isPublic) {
-      await store.setPublic?.(board.id, !isPrivate);
+      try {
+        await store.setPublic?.(board.id, !isPrivate);
+      } catch {
+        toast.error("Couldn’t update board visibility.");
+        return;
+      }
     } else if (!user && !isPrivate) {
       await signInWithGoogle("/boards");
       return;

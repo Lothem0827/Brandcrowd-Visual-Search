@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { slugify } from "@/lib/slug";
 import type { Database, Json } from "@/lib/supabase/database.types";
+import { runQuery } from "@/lib/supabase/run-query";
 import {
   EMPTY_MOODBOARD_STATE,
   type GeneratedMoodboard,
@@ -104,14 +105,25 @@ export class SupabaseMoodboardStore implements MoodboardStore {
 
   private persistDraft(draft: MoodboardDraft | null) {
     if (!draft) {
-      void this.supabase.from("moodboards").delete().eq("owner_id", this.userId).eq("is_draft", true);
+      void runQuery(
+        this.supabase.from("moodboards").delete().eq("owner_id", this.userId).eq("is_draft", true),
+        (error) => console.error("Failed to clear moodboard draft", error),
+      );
       return;
     }
-    void this.supabase.from("moodboards").upsert(draftPayload(draft, this.userId, true));
+    void runQuery(
+      this.supabase.from("moodboards").upsert(draftPayload(draft, this.userId, true)),
+      (error) => console.error("Failed to save moodboard draft", error),
+    );
   }
 
   private persistSaved(draft: MoodboardDraft) {
-    void this.supabase.from("moodboards").upsert(draftPayload({ ...draft, isPublic: draft.isPublic ?? false }, this.userId, false));
+    void runQuery(
+      this.supabase.from("moodboards").upsert(
+        draftPayload({ ...draft, isPublic: draft.isPublic ?? false }, this.userId, false),
+      ),
+      (error) => console.error("Failed to save moodboard", error),
+    );
   }
 
   applyGenerated(input: GeneratedMoodboard): number {
@@ -251,8 +263,17 @@ export class SupabaseMoodboardStore implements MoodboardStore {
   }
 
   removeSaved(id: string) {
+    const removed = this.state.saved.find((item) => item.id === id);
     this.commit({ ...this.state, saved: this.state.saved.filter((item) => item.id !== id) });
-    void this.supabase.from("moodboards").delete().eq("id", id).eq("owner_id", this.userId);
+    void runQuery(
+      this.supabase.from("moodboards").delete().eq("id", id).eq("owner_id", this.userId),
+      (error) => {
+        console.error("Failed to delete moodboard", error);
+        if (!removed) return;
+        if (this.state.saved.some((item) => item.id === id)) return;
+        this.commit({ ...this.state, saved: [removed, ...this.state.saved] });
+      },
+    );
   }
 
   pin() {
@@ -266,9 +287,19 @@ export class SupabaseMoodboardStore implements MoodboardStore {
   }
 
   async setPublic(id: string, isPublic: boolean) {
+    const prevSaved = this.state.saved;
+    const prevDraft = this.state.draft;
     const saved = this.state.saved.map((item) => (item.id === id ? { ...item, isPublic } : item));
     const draft = this.state.draft?.id === id ? { ...this.state.draft, isPublic } : this.state.draft;
     this.commit({ ...this.state, saved, draft });
-    await this.supabase.from("moodboards").update({ is_public: isPublic, is_draft: false }).eq("id", id).eq("owner_id", this.userId);
+    const { error } = await this.supabase
+      .from("moodboards")
+      .update({ is_public: isPublic, is_draft: false })
+      .eq("id", id)
+      .eq("owner_id", this.userId);
+    if (error) {
+      this.commit({ ...this.state, saved: prevSaved, draft: prevDraft });
+      throw error;
+    }
   }
 }
