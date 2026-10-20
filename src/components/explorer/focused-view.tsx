@@ -322,7 +322,7 @@ export function FocusedView() {
         </div>
       </div>
 
-      <GridView items={related} onPick={onPickRelated} scrollContainer={scrollEl} />
+      <GridView items={related} onPick={onPickRelated} scrollContainer={scrollEl} thumbs />
     </div>
   );
 }

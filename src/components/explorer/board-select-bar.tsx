@@ -31,6 +31,7 @@ export function BoardSelectBar() {
 
   const boardItems = (id: string): Template[] =>
     (boards.find((b) => b.id === id)?.templateIds ?? [])
+      .slice(0, 4)
       .map((t) => byId(t))
       .filter((t): t is Template => !!t);
 

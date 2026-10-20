@@ -272,7 +272,7 @@ function ExploreArea() {
         {hasSearch ? <RelatedChips /> : <PopularTags />}
       </div>
       <div className="relative min-h-0 flex-1">
-        <GridView items={browseItems} />
+        <GridView items={browseItems} thumbs />
         {browseItems.length === 0 && <EmptyState />}
       </div>
     </div>
@@ -386,9 +386,11 @@ function BoardArea() {
   const board = boardId
     ? boards.find((b) => b.id === boardId)
     : undefined;
-  const items = (board?.templateIds ?? [])
-    .map((id) => byId(id))
-    .filter((t): t is Template => !!t);
+  const templateIds = board?.templateIds;
+  const items = useMemo(
+    () => (templateIds ?? []).map((id) => byId(id)).filter((t): t is Template => !!t),
+    [templateIds, byId],
+  );
   const selecting = !!boardSelection;
   const isCompact = useIsCompact();
 
@@ -459,7 +461,7 @@ function BoardArea() {
         {!isCompact && <ThemeSwitch />}
       </div>
       <div className="relative min-h-0 flex-1">
-        <GridView items={items} hideSave />
+        <GridView items={items} hideSave overscan={1} eagerRows={1} thumbs />
         {items.length === 0 && (
           <div className="absolute inset-0 grid place-items-center p-6">
             <div className="flex max-w-sm flex-col items-center gap-1.5 text-center">

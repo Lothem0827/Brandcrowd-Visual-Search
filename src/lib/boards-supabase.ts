@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { slugify } from "@/lib/slug";
 import type { Database } from "@/lib/supabase/database.types";
-import { type Board, type BoardStore, SAVED_BOARD_ID } from "./boards";
+import { uniqueTemplateCount, type Board, type BoardStore, SAVED_BOARD_ID } from "./boards";
 
 type Client = SupabaseClient<Database>;
 
@@ -11,6 +11,7 @@ function toMs(iso: string) {
 
 export class SupabaseBoardStore implements BoardStore {
   private boards: Board[] = [];
+  private uniqueSaved = 0;
   private activeId: string = SAVED_BOARD_ID;
   private pinnedId: string | null = null;
   private listeners = new Set<() => void>();
@@ -25,6 +26,12 @@ export class SupabaseBoardStore implements BoardStore {
 
   private emit() {
     this.listeners.forEach((l) => l());
+  }
+
+  /** Replace the board list and refresh the cached distinct-save count. */
+  private setBoards(next: Board[]) {
+    this.boards = next;
+    this.uniqueSaved = uniqueTemplateCount(next);
   }
 
   private cloudId(localId: string): string | null {
@@ -53,7 +60,7 @@ export class SupabaseBoardStore implements BoardStore {
     type BoardJoin = Database["public"]["Tables"]["boards"]["Row"] & {
       board_items: { template_id: string; position: number }[] | null;
     };
-    this.boards = ((rows ?? []) as unknown as BoardJoin[]).map((row) => {
+    this.setBoards(((rows ?? []) as unknown as BoardJoin[]).map((row) => {
       const items = row.board_items ?? [];
       items.sort((a, b) => a.position - b.position);
       const id = this.localId(row.id, row.kind);
@@ -69,21 +76,24 @@ export class SupabaseBoardStore implements BoardStore {
         ownerId: row.owner_id,
         kind: row.kind,
       } satisfies Board;
-    });
+    }));
 
     // Ensure Saved exists in the list (trigger should have created it)
     if (!this.boards.some((b) => b.id === SAVED_BOARD_ID)) {
-      this.boards.unshift({
-        id: SAVED_BOARD_ID,
-        name: "Saved",
-        templateIds: [],
-        createdAt: 0,
-        updatedAt: 0,
-        kind: "saved",
-        isPublic: false,
-        slug: "saved",
-        ownerId: this.userId,
-      });
+      this.setBoards([
+        {
+          id: SAVED_BOARD_ID,
+          name: "Saved",
+          templateIds: [],
+          createdAt: 0,
+          updatedAt: 0,
+          kind: "saved",
+          isPublic: false,
+          slug: "saved",
+          ownerId: this.userId,
+        },
+        ...this.boards,
+      ]);
     }
 
     const { data: settings } = await this.supabase
@@ -102,6 +112,10 @@ export class SupabaseBoardStore implements BoardStore {
 
   list() {
     return this.boards;
+  }
+
+  savedCount() {
+    return this.uniqueSaved;
   }
 
   subscribe(cb: () => void) {
@@ -145,7 +159,7 @@ export class SupabaseBoardStore implements BoardStore {
   }
 
   private patchLocal(id: string, fn: (b: Board) => Board) {
-    this.boards = this.boards.map((b) => (b.id === id ? { ...fn(b), updatedAt: Date.now() } : b));
+    this.setBoards(this.boards.map((b) => (b.id === id ? { ...fn(b), updatedAt: Date.now() } : b)));
     this.emit();
   }
 
@@ -166,7 +180,7 @@ export class SupabaseBoardStore implements BoardStore {
       ownerId: this.userId,
       kind: "custom",
     };
-    this.boards = [...this.boards, board];
+    this.setBoards([...this.boards, board]);
     this.setLastUsedBoard(tempId);
     this.emit();
 
@@ -185,10 +199,12 @@ export class SupabaseBoardStore implements BoardStore {
       if (error || !data) return;
       this.idMap.delete(tempId);
       this.idMap.set(data.id, data.id);
-      this.boards = this.boards.map((b) =>
-        b.id === tempId
-          ? { ...b, id: data.id, slug: data.slug, createdAt: toMs(data.created_at), updatedAt: toMs(data.updated_at) }
-          : b,
+      this.setBoards(
+        this.boards.map((b) =>
+          b.id === tempId
+            ? { ...b, id: data.id, slug: data.slug, createdAt: toMs(data.created_at), updatedAt: toMs(data.updated_at) }
+            : b,
+        ),
       );
       if (this.activeId === tempId) this.activeId = data.id;
       if (this.pinnedId === tempId) this.pinnedId = data.id;
@@ -209,7 +225,7 @@ export class SupabaseBoardStore implements BoardStore {
   remove(id: string) {
     if (id === SAVED_BOARD_ID) return;
     const cloud = this.cloudId(id);
-    this.boards = this.boards.filter((b) => b.id !== id);
+    this.setBoards(this.boards.filter((b) => b.id !== id));
     this.idMap.delete(id);
     if (this.activeId === id) this.activeId = SAVED_BOARD_ID;
     if (this.pinnedId === id) this.pinnedId = null;

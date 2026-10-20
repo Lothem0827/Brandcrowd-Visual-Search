@@ -1,5 +1,5 @@
 "use client";
-import { moodboardSource } from "@/lib/brief";
+import { matchIndustry } from "@/lib/brief";
 import { paletteFromHarmony } from "@/lib/harmony";
 import type { MoodboardDraft } from "@/lib/moodboards";
 import type { Template } from "@/lib/schema";
@@ -50,8 +50,7 @@ export function MoodboardCover({
 
 /** Industry when the subject resolves to one; otherwise the text that was saved. */
 export function moodboardCardTitle(templates: Template[], query: string): string {
-  const source = moodboardSource(templates, query);
-  return source?.match.kind === "industry" ? source.match.label : query;
+  return matchIndustry(templates, query) ?? query;
 }
 
 function SwatchRow({ hexes }: { hexes: string[] }) {

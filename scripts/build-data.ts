@@ -12,6 +12,7 @@ import path from "node:path";
 import { parseTemplates } from "../src/lib/schema";
 import { splitTemplate, type DetailsMap } from "../src/lib/data-split";
 import type { DataManifest } from "../src/lib/data-manifest";
+import { sampleOrbitIds } from "../src/lib/orbit";
 
 const root = process.cwd();
 const src = path.join(root, "data", "templates.json");
@@ -64,6 +65,7 @@ const manifest: DataManifest = {
   skipped: errors.length,
   categories: count((t) => t.category),
   industries: count((t) => t.industry),
+  orbitIds: sampleOrbitIds(slim),
 };
 writeFileSync(path.join(outDir, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n");
 console.log(

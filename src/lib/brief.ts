@@ -162,6 +162,22 @@ function scoreTemplate(t: Template, q: string, qTokens: Set<string>): number {
   return score;
 }
 
+function bestIndustry(labels: Iterable<string>, q: string, qTokens: Set<string>): string | null {
+  let best: { label: string; score: number } | null = null;
+  for (const label of labels) {
+    const score = industryScore(label, q, qTokens);
+    if (!best || score > best.score) best = { label, score };
+  }
+  return best && best.score >= 0.5 ? best.label : null;
+}
+
+/** The industry a query resolves to (the first step of `resolve`), or null. */
+export function matchIndustry(templates: Template[], rawQuery: string): string | null {
+  const q = norm(rawQuery);
+  if (!q) return null;
+  return bestIndustry(new Set(templates.map((t) => t.industry)), q, new Set(q.split(" ")));
+}
+
 /** Resolve a free-text industry/query into a weighted slice of the dataset. */
 function resolve(templates: Template[], rawQuery: string): Resolved | null {
   const q = norm(rawQuery);
@@ -175,15 +191,11 @@ function resolve(templates: Template[], rawQuery: string): Resolved | null {
     if (list) list.push(t);
     else industries.set(t.industry, [t]);
   }
-  let bestIndustry: { label: string; score: number } | null = null;
-  for (const label of industries.keys()) {
-    const score = industryScore(label, q, qTokens);
-    if (!bestIndustry || score > bestIndustry.score) bestIndustry = { label, score };
-  }
-  if (bestIndustry && bestIndustry.score >= 0.5) {
-    const list = industries.get(bestIndustry.label) ?? [];
+  const industry = bestIndustry(industries.keys(), q, qTokens);
+  if (industry) {
+    const list = industries.get(industry) ?? [];
     return {
-      match: { kind: "industry", label: bestIndustry.label, templates: list.length },
+      match: { kind: "industry", label: industry, templates: list.length },
       templates: list.map((template) => ({ template, weight: 1 })),
     };
   }

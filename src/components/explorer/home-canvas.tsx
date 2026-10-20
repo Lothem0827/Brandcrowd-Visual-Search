@@ -14,7 +14,7 @@ import { BookmarkCheckIcon, BookmarkIcon, InfoIcon, XIcon } from "lucide-react";
 import type { Template } from "@/lib/schema";
 import { SAVED_BOARD_ID } from "@/lib/boards";
 import { rankByOverall } from "@/lib/similarity";
-import { templateImageUrl } from "@/lib/images";
+import { templateImageUrl, templateThumbSmUrl, templateThumbUrl } from "@/lib/images";
 import { rng } from "@/lib/color";
 import { cn } from "@/lib/utils";
 import { useExplorer } from "./context";
@@ -166,7 +166,8 @@ const CanvasTile = memo(function CanvasTile({
         style={{ borderRadius: radius }}
       >
         <ThumbImage
-          src={templateImageUrl(template.templateId)}
+          src={templateThumbUrl(template.templateId)}
+          fallbackSrc={templateImageUrl(template.templateId)}
           alt={label}
           className="size-full object-cover transition-opacity duration-300"
         />
@@ -987,7 +988,8 @@ export function HomeCanvas() {
                   {visibleIndustries[0].thumb && (
                     <span className="size-5 overflow-hidden rounded-full bg-muted">
                       <ThumbImage
-                        src={templateImageUrl(visibleIndustries[0].thumb.templateId)}
+                        src={templateThumbSmUrl(visibleIndustries[0].thumb.templateId)}
+                        fallbackSrc={templateImageUrl(visibleIndustries[0].thumb.templateId)}
                         alt=""
                         className="size-full object-cover"
                       />
@@ -1016,7 +1018,8 @@ export function HomeCanvas() {
                 {ind.thumb && (
                   <span className="size-5 overflow-hidden rounded-full bg-muted">
                     <ThumbImage
-                      src={templateImageUrl(ind.thumb.templateId)}
+                      src={templateThumbSmUrl(ind.thumb.templateId)}
+                      fallbackSrc={templateImageUrl(ind.thumb.templateId)}
                       alt=""
                       className="size-full object-cover"
                     />

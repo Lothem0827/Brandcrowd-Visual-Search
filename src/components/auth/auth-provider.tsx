@@ -96,7 +96,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       if (!force && user.id === activeUserId) {
-        setState((s) => ({ ...s, ready: true, user }));
+        setState((s) =>
+          s.ready && s.user?.id === user.id && s.user.updated_at === user.updated_at ? s : { ...s, ready: true, user },
+        );
         return;
       }
       activeUserId = user.id;
@@ -106,15 +108,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!cancelled) setState({ ready: true, user, profile });
       } catch (err) {
         console.error("Failed to activate cloud stores", err);
+        activeUserId = null;
         if (!cancelled) setState({ ready: true, user, profile: null });
       }
     };
 
     supabase.auth.getSession().then(({ data }) => applySession(data.session?.user ?? null, true));
 
+    // supabase-js re-emits SIGNED_IN whenever the tab becomes visible again, so the event
+    // alone doesn't mean a new sign-in: only a different user reloads the cloud stores.
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "TOKEN_REFRESHED") return;
-      void applySession(session?.user ?? null, event === "SIGNED_IN");
+      void applySession(session?.user ?? null);
     });
 
     return () => {

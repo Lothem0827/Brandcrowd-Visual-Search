@@ -23,3 +23,8 @@ export function useBoardPinned() {
   const store = getBoardStore();
   return useSyncExternalStore(subscribe, () => store.pinnedBoardId(), () => null);
 }
+
+/** Distinct designs saved on any board. The store caches this, so a render does not rescan. */
+export function useSavedCount() {
+  return useSyncExternalStore(subscribe, () => getBoardStore().savedCount(), () => 0);
+}

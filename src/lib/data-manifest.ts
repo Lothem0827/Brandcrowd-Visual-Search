@@ -12,6 +12,11 @@ export interface DataManifest {
   skipped: number;
   categories: { name: string; count: number }[];
   industries: { name: string; count: number }[];
+  /**
+   * Template ids for the loading-screen orbit (12 spokes × 4 rings).
+   * Written by the data build. Missing on an older manifest — the intro still renders.
+   */
+  orbitIds?: string[];
 }
 
 /** Server/build-time only: read the manifest produced by `pnpm data`. */

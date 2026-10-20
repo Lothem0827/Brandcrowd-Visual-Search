@@ -31,8 +31,6 @@ describe("URL state", () => {
       color: { colors: ["#F07B22"], mode: "any" },
       design: ["e3426df5-a252-4977-983c-77751087ac14", "abc"],
       scope: "all",
-      sort: "shuffle",
-      shuffleSeed: 1234,
     });
     const search = toSearch(state);
     expect(search).toContain("q=retro+serif+cutout");
@@ -69,8 +67,6 @@ describe("URL state", () => {
     expect(st.color).toBeNull();
     expect(st.design).toEqual(["ok-id"]);
     expect(st.board).toBeNull();
-    expect(st.shuffleSeed).toBe(1);
-    expect(st.sort).toBe("shuffle");
     expect(st.scope).toBe("industry");
     expect(st.facets).toEqual({});
   });

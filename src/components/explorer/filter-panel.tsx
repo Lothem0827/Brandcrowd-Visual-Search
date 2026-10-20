@@ -1,5 +1,5 @@
 "use client";
-import { PanelRightCloseIcon, ShuffleIcon } from "lucide-react";
+import { PanelRightCloseIcon } from "lucide-react";
 import { activeFilterCount, FACET_MAP } from "@/lib/facets";
 import { cn } from "@/lib/utils";
 import { useExplorer } from "./context";
@@ -13,56 +13,6 @@ import {
 import { ActiveChips } from "./chips";
 import { HEADER_CONTROL, HEADER_CONTROL_IDLE } from "./header";
 import { SidePanel } from "./side-panel";
-
-function SortControl() {
-  const { sort, setSort, setShuffleSeed } = useExplorer();
-  return (
-    <Section title="Sort">
-      <div className="flex items-center gap-1.5">
-        <div
-          className="grid flex-1 grid-cols-2 gap-0.5 rounded-lg bg-muted p-0.5 text-[13px]"
-          role="radiogroup"
-          aria-label="Sort order"
-        >
-          {(["relevance", "shuffle"] as const).map((s) => (
-            <button
-              key={s}
-              type="button"
-              role="radio"
-              aria-checked={sort === s}
-              onClick={() => {
-                setSort(s);
-                if (s === "shuffle")
-                  setShuffleSeed(Math.floor(Math.random() * 1_000_000));
-              }}
-              className={cn(
-                "h-7 min-w-0 truncate rounded-md px-2 capitalize transition-colors",
-                sort === s
-                  ? "bg-foreground text-background"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
-        {sort === "shuffle" && (
-          <button
-            type="button"
-            aria-label="Shuffle again"
-            title="Shuffle again"
-            onClick={() =>
-              setShuffleSeed(Math.floor(Math.random() * 1_000_000))
-            }
-            className="grid size-8 shrink-0 place-items-center rounded-lg bg-panel ring-1 ring-foreground/10 hover:bg-muted"
-          >
-            <ShuffleIcon className="size-4" />
-          </button>
-        )}
-      </div>
-    </Section>
-  );
-}
 
 function Body() {
   const { clearAll, effective, filters } = useExplorer();
@@ -82,10 +32,20 @@ function Body() {
         </span>
       </div>
       <ActiveChips />
-      <SortControl />
+      <FilterGroup
+        title="Industry & content type"
+        facets={["industry", "contentType"]}
+      >
+        <Section title="Industry">
+          <OptionList facet="industry" />
+        </Section>
+        <Section title="Content type">
+          <OptionList facet="contentType" />
+        </Section>
+      </FilterGroup>
       <FilterGroup
         title="Style"
-        facets={["aesthetic", "mood", "colorScheme", "texture"]}
+        facets={["aesthetic", "mood", "texture"]}
         defaultOpen
       >
         <Section title="Aesthetic">
@@ -93,9 +53,6 @@ function Body() {
         </Section>
         <Section title="Mood">
           <OptionList facet="mood" />
-        </Section>
-        <Section title="Colour scheme">
-          <OptionList facet="colorScheme" />
         </Section>
         <Section title="Texture">
           <OptionList facet="texture" />
@@ -110,13 +67,7 @@ function Body() {
       </FilterGroup>
       <FilterGroup
         title="Layout"
-        facets={[
-          "structure",
-          "alignment",
-          "balance",
-          "whitespace",
-          "textDensity",
-        ]}
+        facets={["structure", "alignment"]}
         defaultOpen
       >
         <Section title="Structure">
@@ -124,15 +75,6 @@ function Body() {
         </Section>
         <Section title="Alignment">
           <OptionList facet="alignment" />
-        </Section>
-        <Section title="Balance">
-          <OptionList facet="balance" />
-        </Section>
-        <Section title="Whitespace">
-          <OptionList facet="whitespace" />
-        </Section>
-        <Section title="Text amount">
-          <OptionList facet="textDensity" />
         </Section>
       </FilterGroup>
       <FilterGroup
@@ -172,7 +114,7 @@ function Body() {
   );
 }
 
-/** Right-hand filter panel (Style / Colour / Layout / Image / More / Sort). */
+/** Right-hand filter panel (Style / Colour / Layout / Image / More). */
 export function FilterPanel() {
   const { filterPanelOpen, setFilterPanelOpen } = useExplorer();
   return (

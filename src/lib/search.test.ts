@@ -3,7 +3,15 @@ import fixture from "../../tests/fixtures/templates.fixture.json";
 import { parseTemplates } from "./schema";
 import { buildSearchIndex } from "./search";
 import { createLocalSearchClient, createSearchClient } from "./search-client";
-import { IMAGE_BASE, imageBaseOrigin, normalizeImageBase, templateImageUrl, withRetry } from "./images";
+import {
+  IMAGE_BASE,
+  imageBaseOrigin,
+  normalizeImageBase,
+  templateImageUrl,
+  templateThumbSmUrl,
+  templateThumbUrl,
+  withRetry,
+} from "./images";
 
 const { templates } = parseTemplates(fixture);
 const nameOf = (id: string) => templates.find((t) => t.templateId === id)?.name;
@@ -96,6 +104,18 @@ describe("template image URLs", () => {
     expect(imageBaseOrigin("https://img.example.com/templates")).toBe("https://img.example.com");
     expect(imageBaseOrigin("/images")).toBeNull();
     expect(imageBaseOrigin(undefined)).toBeNull();
+  });
+  it("puts grid thumbnails in thumbs/ under the same base", () => {
+    expect(templateThumbUrl(id)).toBe(`/images/thumbs/${id}.webp`);
+    expect(templateThumbUrl(id, "https://img.example.com/templates/")).toBe(
+      `https://img.example.com/templates/thumbs/${id}.webp`,
+    );
+  });
+  it("puts compact thumbnails in thumbs-sm/ under the same base", () => {
+    expect(templateThumbSmUrl(id)).toBe(`/images/thumbs-sm/${id}.webp`);
+    expect(templateThumbSmUrl(id, "https://img.example.com/templates/")).toBe(
+      `https://img.example.com/templates/thumbs-sm/${id}.webp`,
+    );
   });
   it("adds a cache-busting retry counter", () => {
     expect(withRetry("https://a.com/x.png", 0)).toBe("https://a.com/x.png");

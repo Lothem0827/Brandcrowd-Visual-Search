@@ -80,7 +80,7 @@ as before. The key stays server-side; the browser only ever calls `/api/interpre
 - **Image search**: click the image button in the search box, or drop an image anywhere. Three dominant colors are
   extracted in the browser (k-means in OKLab on a 72×72 canvas, background = largest cluster) and templates are
   ranked by palette similarity. Nothing is uploaded.
-- **Shareable URLs**: the query, filters, colour filter, open design trail, board, scope and shuffle are kept in
+- **Shareable URLs**: the query, filters, colour filter, open design trail, board and scope are kept in
   the address bar (`?q=retro+serif&industry=Construction&design=<id>`), so Back/Forward step through searches and
   designs, and links can be bookmarked or shared. A typing run is one history entry. Uploaded images stay local.
 - Light/dark toggle in the top bar. `Esc` closes panels.
@@ -102,16 +102,28 @@ loads them (see *Template images* below).
 
 ### Template images (self-hosted)
 
-The app never requests images. Every template has one self-hosted image, `<templateId>.webp`
-(1200×1200 WebP, ~76 KB), used for both thumbnails and previews. The URL is built from the record's `templateId`
-in one place (`templateImageUrl` in `src/lib/images.ts`): `${NEXT_PUBLIC_IMAGE_BASE}/${templateId}.webp`.
+The app never requests images from design.com. Every template has a self-hosted full image,
+`<templateId>.webp` (1200×1200 WebP), plus pre-built thumbs. URLs are built in `src/lib/images.ts`
+from `NEXT_PUBLIC_IMAGE_BASE` (default `/images`).
 
 **Local:** copy all the `.webp` files into `public/images/` (e.g. on Windows
 `copy C:\Users\CARL\Projects\template-images\full\*.webp public\images\`). They are served at
 `/images/<templateId>.webp`. The folder is gitignored (~1 GB), so the images never go to GitHub.
 
-**Cloudflare R2 (or any CDN):** upload the same files to the bucket root (or a folder), then set the public base
-URL in `.env.local` / your host's env and rebuild:
+**Sizes (quality-first, WebP q80 via `pnpm thumbs`):**
+
+| Size | Path | Used for |
+| --- | --- | --- |
+| 1200 | `{base}/{id}.webp` | FocusedView hero, home pivot |
+| 600 | `{base}/thumbs/{id}.webp` | Explore / board / home grids, focused related grid |
+| 480 | `{base}/thumbs-sm/{id}.webp` | Panels, covers, orbit, design inspo, industry chips |
+
+`pnpm thumbs` writes both thumb folders and skips files that already exist; delete a folder to
+force a re-encode. It also runs before `pnpm dev` and `pnpm build`. A missing thumb falls back
+to the full 1200 image.
+
+**Cloudflare R2 (or any CDN):** upload the originals plus both `thumbs/` and `thumbs-sm/` next to
+them, then set the public base URL in `.env.local` / your host's env and rebuild:
 
 ```bash
 NEXT_PUBLIC_IMAGE_BASE=https://images.example.com/templates   # default: /images

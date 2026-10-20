@@ -23,7 +23,7 @@ import { useExplorer } from "./context";
 import { GridView } from "./grid-view";
 import { HEADER_ROW, HEADER_TITLE } from "./header";
 import { MoodboardCover, moodboardCardTitle } from "./moodboard-cover";
-import { useBoards } from "./use-boards";
+import { useBoards, useSavedCount } from "./use-boards";
 import { useMoodboards } from "./use-moodboards";
 
 type BoardsTab = "boards" | "saves" | "moodboards";
@@ -37,6 +37,7 @@ type BoardsTab = "boards" | "saves" | "moodboards";
 export function BoardsPage() {
   const { base, byId, setView, setDetailOpen, setPage } = useExplorer();
   const { boards, store } = useBoards();
+  const savedCount = useSavedCount();
   const { saved, store: moodboards } = useMoodboards();
   const [tab, setTab] = useState<BoardsTab>("boards");
   const [creating, setCreating] = useState(false);
@@ -59,13 +60,10 @@ export function BoardsPage() {
     setNewDescription("");
   };
 
-  const savedCount = useMemo(
-    () => new Set(boards.flatMap((b) => b.templateIds)).size,
-    [boards],
-  );
-
-  // Every saved design once, most recently touched board first.
+  // Every saved design once, most recently touched board first. Built only for the Saves
+  // tab so opening Boards does not resolve every id.
   const saves = useMemo(() => {
+    if (tab !== "saves") return [];
     const seen = new Set<string>();
     const out: Template[] = [];
     for (const b of [...boards].sort((x, y) => y.updatedAt - x.updatedAt)) {
@@ -77,7 +75,7 @@ export function BoardsPage() {
       }
     }
     return out;
-  }, [boards, byId]);
+  }, [tab, boards, byId]);
 
   const titles = useMemo(() => {
     const map = new Map<string, string>();
@@ -157,6 +155,7 @@ export function BoardsPage() {
                 >
                   <BoardCover
                     items={b.templateIds
+                      .slice(0, 4)
                       .map((id) => byId(id))
                       .filter((t): t is Template => !!t)}
                     className="aspect-[3/2] w-full"
@@ -196,7 +195,7 @@ export function BoardsPage() {
           </div>
         ) : tab === "saves" ? (
           saves.length ? (
-            <GridView items={saves} hideSave scrollContainer={scrollEl} />
+            <GridView items={saves} hideSave scrollContainer={scrollEl} overscan={1} eagerRows={1} thumbs />
           ) : (
             <div className="flex flex-col items-center gap-1.5 px-4 py-24 text-center">
               <BookmarkIcon className="size-7 text-muted-foreground" />

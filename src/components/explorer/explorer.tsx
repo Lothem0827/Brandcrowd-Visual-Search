@@ -2,16 +2,15 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import type { TemplateRepository } from "@/lib/data";
 import { applyFilters, EMPTY_FILTERS, mergeSelections, replaceSelections, restoreSelections, type FacetKey, type FacetSelection, type FilterState } from "@/lib/facets";
-import { buildVocab, chipsToSelection, isUnsearchableQuery, parseQuery, removeChipFromQuery } from "@/lib/query";
+import { buildVocab, chipsToSelection, isUnsearchableQuery, parseQuery, removeChipFromQuery, type VocabTerm } from "@/lib/query";
 import { createSearchClient, type SearchClient } from "@/lib/search-client";
 import { fromUrl, historyAction, toUrl, type Page, type UrlState } from "@/lib/url-state";
 import { findAllSimilar, rankByImage } from "@/lib/similarity";
-import { rng } from "@/lib/color";
 import { SITE_NAME, SITE_TITLE } from "@/lib/site";
 import { paletteFromFile } from "@/lib/image-search";
 import { toast } from "@/components/ui/toast";
 import { useAiInterpretation } from "./use-ai-interpretation";
-import { ExplorerContext, type BoardSelection, type ExplorerApi, type HoverState, type ImageQuery, type Origin, type SearchStep, type SortMode, type View } from "./context";
+import { ExplorerContext, type BoardSelection, type ExplorerApi, type HoverState, type ImageQuery, type Origin, type SearchStep, type View } from "./context";
 import { BottomNav, Sidebar } from "./sidebar";
 import { SearchDock } from "./search-dock";
 import { BrowseArea } from "./browse-area";
@@ -28,6 +27,7 @@ import { ImageDropOverlay } from "./image-drop";
 import { OfflineBanner } from "./offline-banner";
 
 const IMAGE_RESULTS = 60;
+const NO_VOCAB: VocabTerm[] = [];
 
 /** View described by the URL; design ids that aren't in the dataset are dropped. */
 function viewFromUrl(u: UrlState, exists: (id: string) => boolean): View {
@@ -49,22 +49,11 @@ function viewFromUrl(u: UrlState, exists: (id: string) => boolean): View {
 const searchKey = (query: string, filters: FilterState, imageUrl: string | undefined, category: string) =>
   JSON.stringify([query, filters, imageUrl, category]);
 
-function seededShuffle<T>(list: T[], seed: number): T[] {
-  const r = rng(seed);
-  const a = [...list];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(r() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
 export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateRepository; dataUrl: string; detailsUrl?: string }) {
   const all = repo.all();
   const categories = useMemo(() => repo.categories(), [repo]);
   const [category] = useState(categories[0] ?? "Instagram Post");
   const base = useMemo(() => all.filter((t) => t.category === category), [all, category]);
-  const vocab = useMemo(() => buildVocab(base), [base]);
   // The text index is built in a Web Worker (see search-client.ts), never on the main thread.
   const [searchClient, setSearchClient] = useState<SearchClient | null>(null);
   const baseRef = useRef(base);
@@ -100,10 +89,23 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
   // Initial state comes from the URL (/?q=…&design=…, /boards/<id>), see lib/url-state.ts.
   const [initialUrl] = useState(() => fromUrl(window.location.pathname, window.location.search));
   const [query, setQuery] = useState(initialUrl.query);
+  // Building the vocabulary walks the whole catalogue (hundreds of ms). Only chip detection and
+  // autocomplete use it, so it waits for idle time unless a query needs it right away.
+  const [vocabWanted, setVocabWanted] = useState(() => initialUrl.query.trim() !== "");
+  useEffect(() => {
+    if (vocabWanted) return;
+    const want = () => setVocabWanted(true);
+    if (typeof window.requestIdleCallback === "function") {
+      const id = window.requestIdleCallback(want, { timeout: 3000 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const id = window.setTimeout(want, 1000);
+    return () => window.clearTimeout(id);
+  }, [vocabWanted]);
+  const needVocab = vocabWanted || query.trim() !== "";
+  const vocab = useMemo(() => (needVocab ? buildVocab(base) : NO_VOCAB), [needVocab, base]);
   const [filters, setFilters] = useState<FilterState>({ facets: initialUrl.facets, color: initialUrl.color });
   const [imageQuery, setImageQuery] = useState<ImageQuery | null>(null);
-  const [sort, setSort] = useState<SortMode>(initialUrl.sort);
-  const [shuffleSeed, setShuffleSeed] = useState<number | null>(initialUrl.shuffleSeed);
   const [view, setView] = useState<View>(() => viewFromUrl(initialUrl, (id) => !!repo.byId(id)));
   const [page, setPageState] = useState<Page>(() => initialUrl.page);
   const [homePivotId, setHomePivotId] = useState<string | null>(() =>
@@ -242,9 +244,8 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
     if (imageScores) {
       list = [...list].sort((a, b) => imageScores.get(b.templateId)! - imageScores.get(a.templateId)!).slice(0, IMAGE_RESULTS);
     }
-    if (sort === "shuffle" && shuffleSeed !== null) list = seededShuffle(list, shuffleSeed);
     return list;
-  }, [base, effective, liveHits, aiText, parsed.text, imageScores, sort, shuffleSeed, unsearchable]);
+  }, [base, effective, liveHits, aiText, parsed.text, imageScores, unsearchable]);
 
   // A free-text query that found nothing (and wasn't just filters narrowing the set)
   // is a "no close match", distinct from "remove a chip / clear the filters".
@@ -509,10 +510,8 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
               : null
             : null,
       scope: simScope,
-      sort,
-      shuffleSeed,
     }),
-    [page, query, filters, view, simScope, sort, shuffleSeed, homePivotId],
+    [page, query, filters, view, simScope, homePivotId],
   );
   const lastUrl = useRef<UrlState | null>(null);
   const typingRun = useRef(false);
@@ -557,8 +556,6 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
         u.page === "home" && u.design[0] && byId(u.design[0]) ? u.design[0] : null,
       );
       setSimScope(u.scope);
-      setSort(u.sort);
-      setShuffleSeed(u.shuffleSeed);
       setSearchPath([]);
       setHover(null);
       setDetailOpen(nextView.kind === "similar");
@@ -635,7 +632,7 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
     ai, aiStatus, aiEnabled, dismissAi,
     searchPath, searchWithin, backOneStep, jumpToStep,
     imageQuery, setImageQuery, imageScores, textScores, imageBusy, searchByImage,
-    page, setPage, sort, setSort, shuffleSeed, setShuffleSeed,
+    page, setPage,
     filterPanelOpen, setFilterPanelOpen,
     settingsOpen, setSettingsOpen,
     view, setView, openTemplate, openSimilar, recenter, recenterDetail, focused, simScope, setSimScope, similar, center,

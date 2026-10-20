@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState, type DragEvent } from "react";
+import { useLayoutEffect, useRef, useState, type DragEvent } from "react";
 import { CheckIcon, ChevronDownIcon, PanelRightCloseIcon } from "lucide-react";
 import {
   Popover,
@@ -7,7 +7,8 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { toast } from "@/components/ui/toast";
-import { templateImageUrl } from "@/lib/images";
+import { templateImageUrl, templateThumbSmUrl } from "@/lib/images";
+import { computeWindow } from "./use-windowed-grid";
 import type { Template } from "@/lib/schema";
 import { readTemplateDrag, writeTemplateDrag } from "@/lib/template-drag";
 import { cn } from "@/lib/utils";
@@ -42,12 +43,52 @@ export function BoardPanel() {
     ? boards.find((b) => b.id === pinnedBoardId)
     : undefined;
   const openPanel = !!board;
-  const items = (board?.templateIds ?? [])
-    .map((id) => byId(id))
-    .filter((t): t is Template => !!t);
+  const ids = board?.templateIds ?? [];
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const scrollFrame = useRef(0);
+  const [box, setBox] = useState({ width: 0, height: 0 });
+  const [scrollTop, setScrollTop] = useState(0);
+
+  useLayoutEffect(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    const measure = () => {
+      setBox({ width: scroller.clientWidth, height: scroller.clientHeight });
+      setScrollTop(scroller.scrollTop);
+    };
+    measure();
+    const onScroll = () => {
+      if (scrollFrame.current) return;
+      scrollFrame.current = requestAnimationFrame(() => {
+        scrollFrame.current = 0;
+        setScrollTop(scroller.scrollTop);
+      });
+    };
+    scroller.addEventListener("scroll", onScroll, { passive: true });
+    const ro = new ResizeObserver(measure);
+    ro.observe(scroller);
+    return () => {
+      scroller.removeEventListener("scroll", onScroll);
+      if (scrollFrame.current) cancelAnimationFrame(scrollFrame.current);
+      scrollFrame.current = 0;
+      ro.disconnect();
+    };
+  }, [openPanel, ids.length]);
+
+  const panelGap = gap / 2;
+  const grid = computeWindow({
+    count: ids.length,
+    columns: 3,
+    gap: panelGap,
+    width: box.width,
+    height: box.height,
+    scrollTop,
+    overscan: 1,
+  });
 
   const boardItems = (id: string): Template[] =>
     (boards.find((b) => b.id === id)?.templateIds ?? [])
+      .slice(0, 4)
       .map((t) => byId(t))
       .filter((t): t is Template => !!t);
 
@@ -173,7 +214,7 @@ export function BoardPanel() {
 
       <div
         className={cn(
-          "no-scrollbar min-h-0 flex-1 overflow-y-auto px-4 pb-4",
+          "flex min-h-0 flex-1 flex-col px-4 pb-4",
           dragOver && "bg-muted",
         )}
         data-testid="board-panel-drop"
@@ -189,42 +230,61 @@ export function BoardPanel() {
         onDragLeave={(event) => setPanelHover(event, false)}
         onDrop={onDrop}
       >
-        <p className="mb-3 text-sm text-muted-foreground">
-          {items.length} design{items.length === 1 ? "" : "s"} · Drop to add ·
+        <p className="mb-3 shrink-0 text-sm text-muted-foreground">
+          {ids.length} design{ids.length === 1 ? "" : "s"} · Drop to add ·
           Drag out to remove
         </p>
-        {items.length === 0 ? (
+        {ids.length === 0 ? (
           <div className="grid place-items-center rounded-2xl border border-dashed border-border/80 px-4 py-10 text-center">
             <p className="text-sm font-medium">Drag designs here</p>
           </div>
         ) : (
-          <div className="grid grid-cols-3" style={{ gap: gap / 2 }}>
-            {items.map((t) => {
-              const label = t.displayTitle || t.slug;
-              return (
-                <div
-                  key={t.templateId}
-                  className="min-w-0"
-                  draggable
-                  title="Drag out to remove"
-                  onDragStart={(event) =>
-                    onItemDragStart(event, t.templateId)
-                  }
-                  onDragEnd={onItemDragEnd}
-                >
+          <div ref={scrollerRef} className="no-scrollbar min-h-0 flex-1 overflow-y-auto">
+            <div className="relative w-full" style={{ height: grid.totalHeight }}>
+              {Array.from({ length: Math.max(0, grid.lastRow - grid.firstRow) }, (_, i) => {
+                const row = grid.firstRow + i;
+                const start = row * grid.cols;
+                return (
                   <div
-                    className="aspect-square cursor-grab overflow-hidden bg-muted ring-1 ring-black/5 active:cursor-grabbing"
-                    style={{ borderRadius: radius }}
+                    key={row}
+                    className="absolute inset-x-0 grid grid-cols-3"
+                    style={{
+                      top: row * grid.rowHeight,
+                      height: grid.tileHeight,
+                      gap: panelGap,
+                    }}
                   >
-                    <ThumbImage
-                      src={templateImageUrl(t.templateId)}
-                      alt={label}
-                      className="pointer-events-none size-full object-cover"
-                    />
+                    {ids.slice(start, start + grid.cols).map((id) => {
+                      const template = byId(id);
+                      if (!template) return <div key={id} />;
+                      const label = template.displayTitle || template.slug;
+                      return (
+                        <div
+                          key={template.templateId}
+                          className="min-w-0"
+                          draggable
+                          title="Drag out to remove"
+                          onDragStart={(event) => onItemDragStart(event, template.templateId)}
+                          onDragEnd={onItemDragEnd}
+                        >
+                          <div
+                            className="aspect-square cursor-grab overflow-hidden bg-muted ring-1 ring-black/5 active:cursor-grabbing"
+                            style={{ borderRadius: radius }}
+                          >
+                            <ThumbImage
+                              src={templateThumbSmUrl(template.templateId)}
+                              fallbackSrc={templateImageUrl(template.templateId)}
+                              alt={label}
+                              className="pointer-events-none size-full object-cover"
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         )}
       </div>

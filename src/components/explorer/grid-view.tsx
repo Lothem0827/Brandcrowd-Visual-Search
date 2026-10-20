@@ -10,7 +10,7 @@ import { useBoards, useLastUsedBoardId } from "./use-boards";
 import { SCROLL_PAD_DOCK } from "./header";
 import { useEffectiveGridSettings } from "./use-grid-settings";
 import { computeWindow } from "./use-windowed-grid";
-import { templateImageUrl } from "@/lib/images";
+import { templateImageUrl, templateThumbUrl } from "@/lib/images";
 import { writeTemplateDrag } from "@/lib/template-drag";
 import { ThumbImage } from "./thumb-image";
 import { useMoodboardPinned } from "./use-moodboards";
@@ -51,6 +51,7 @@ const GridTile = memo(function GridTile({
   eager,
   onPick,
   hideSave,
+  thumb,
 }: {
   template: Template;
   radius: number;
@@ -58,6 +59,8 @@ const GridTile = memo(function GridTile({
   onPick?: (id: string) => void;
   /** Boards have no per-tile save toggle: every design in them is already saved. */
   hideSave?: boolean;
+  /** 600px grid thumbnail instead of the 1200px file. */
+  thumb?: boolean;
 }) {
   const { openTemplate, boardSelection, toggleBoardSelect, page, pinnedBoardId } =
     useExplorer();
@@ -79,7 +82,8 @@ const GridTile = memo(function GridTile({
         style={{ borderRadius: radius }}
       >
         <ThumbImage
-          src={templateImageUrl(template.templateId)}
+          src={thumb ? templateThumbUrl(template.templateId) : templateImageUrl(template.templateId)}
+          fallbackSrc={thumb ? templateImageUrl(template.templateId) : undefined}
           alt={label}
           eager={eager}
           className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
@@ -121,6 +125,9 @@ export const GridView = memo(function GridView({
   onPick,
   scrollContainer,
   hideSave,
+  overscan = 4,
+  eagerRows = 2,
+  thumbs = false,
 }: {
   items: Template[];
   className?: string;
@@ -133,6 +140,12 @@ export const GridView = memo(function GridView({
   scrollContainer?: HTMLElement | null;
   /** Hide the per-tile save bookmark (boards, where everything is already saved). */
   hideSave?: boolean;
+  /** Extra rows mounted above and below the viewport. Explore keeps 4; boards pass 1. */
+  overscan?: number;
+  /** Leading rows that load their image immediately. */
+  eagerRows?: number;
+  /** Use the 600px grid thumbnail instead of the full image. */
+  thumbs?: boolean;
 }) {
   const { columns, gap, radius } = useEffectiveGridSettings();
   const isCompact = useIsCompact();
@@ -195,6 +208,7 @@ export const GridView = memo(function GridView({
     width: box.width,
     height: box.height,
     scrollTop,
+    overscan,
   });
 
   const rows = [];
@@ -216,9 +230,10 @@ export const GridView = memo(function GridView({
             key={t.templateId}
             template={t}
             radius={radius}
-            eager={r < 2}
+            eager={r < eagerRows}
             onPick={onPick}
             hideSave={hideSaveOnCompact}
+            thumb={thumbs}
           />
         ))}
       </div>,

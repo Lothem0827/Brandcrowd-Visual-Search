@@ -48,9 +48,14 @@ export const OptionList = memo(function OptionList({
     const all = facetOptions(base, facet, effective, {
       limit: filterText ? undefined : limit,
     });
-    if (!filterText) return all;
+    // Hide zero-count chips; keep selected so they can be cleared.
+    const active = effective.facets[facet] ?? [];
+    const visible = all.filter((o) => o.count > 0 || active.includes(o.value));
+    if (!filterText) return visible;
     const needle = filterText.toLowerCase();
-    return all.filter((o) => o.label.toLowerCase().includes(needle)).slice(0, limit ?? 50);
+    return visible
+      .filter((o) => o.label.toLowerCase().includes(needle))
+      .slice(0, limit ?? 50);
   }, [base, facet, effective, filterText, limit]);
   if (!opts.length)
     return (
@@ -304,11 +309,7 @@ export function ColorFilterBody() {
 }
 
 export const MORE_FACET_GROUPS: { title: string; facets: FacetKey[] }[] = [
-  { title: "Industry & topic", facets: ["industry", "topic"] },
-  { title: "Content type", facets: ["contentType"] },
-  { title: "Mood", facets: ["mood"] },
-  { title: "Typography", facets: ["fontStyle", "case", "effects"] },
-  { title: "Graphic elements", facets: ["elements", "texture"] },
-  { title: "Contains", facets: ["contains"] },
+  { title: "Typography", facets: ["fontStyle", "effects"] },
+  { title: "Graphic elements", facets: ["elements"] },
   { title: "Tags", facets: ["tag"] },
 ];

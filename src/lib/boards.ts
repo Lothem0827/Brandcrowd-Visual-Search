@@ -34,8 +34,20 @@ export interface BoardStore {
   pin(boardId: string): void;
   unpin(): void;
   subscribe(cb: () => void): () => void;
+  /**
+   * Distinct designs saved on any board. Cached and refreshed when items change,
+   * so a render can read it without walking every saved id.
+   */
+  savedCount(): number;
   /** Optional: toggle public visibility (cloud stores). */
   setPublic?(id: string, isPublic: boolean): void | Promise<void>;
+}
+
+/** How many distinct template ids appear across these boards. */
+export function uniqueTemplateCount(boards: readonly { templateIds: readonly string[] }[]): number {
+  const ids = new Set<string>();
+  for (const b of boards) for (const id of b.templateIds) ids.add(id);
+  return ids.size;
 }
 
 export const SAVED_BOARD_ID = "saved";
@@ -55,11 +67,14 @@ function defaultBoards(): Board[] {
 export class LocalBoardStore implements BoardStore {
   private boards: Board[];
   private activeId: string;
+  /** Distinct template ids across `boards`, refreshed in `commit`. */
+  private uniqueSaved: number;
   /** Session-only: which board is docked beside Explore. */
   private pinnedId: string | null = null;
   private listeners = new Set<() => void>();
   constructor(private storage: Pick<Storage, "getItem" | "setItem"> | null) {
     this.boards = this.load();
+    this.uniqueSaved = uniqueTemplateCount(this.boards);
     this.activeId = this.loadActive();
   }
   private load(): Board[] {
@@ -93,6 +108,7 @@ export class LocalBoardStore implements BoardStore {
   }
   private commit(next: Board[]) {
     this.boards = next;
+    this.uniqueSaved = uniqueTemplateCount(next);
     try {
       this.storage?.setItem(KEY, JSON.stringify(next));
     } catch {
@@ -105,6 +121,9 @@ export class LocalBoardStore implements BoardStore {
   }
   list() {
     return this.boards;
+  }
+  savedCount() {
+    return this.uniqueSaved;
   }
   create(name: string, description?: string) {
     const clean = name.trim() || "Untitled board";
@@ -223,6 +242,9 @@ class BoardStoreFacade implements BoardStore {
 
   list() {
     return this.inner.list();
+  }
+  savedCount() {
+    return this.inner.savedCount();
   }
   create(name: string, description?: string) {
     return this.inner.create(name, description);

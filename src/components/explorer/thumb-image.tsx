@@ -8,9 +8,11 @@ import { cn } from "@/lib/utils";
  * <img> with a skeleton while loading and a fallback when it fails. Failed images retry
  * once automatically and again whenever the browser comes back online. With `retryButton`
  * (only where it isn't nested in another button) a manual "Retry" is shown as well.
+ * With `fallbackSrc`, the first failure switches to that URL instead (a missing thumbnail).
  */
 export function ThumbImage({
-  src,
+  src: primarySrc,
+  fallbackSrc,
   alt,
   className,
   style,
@@ -18,6 +20,7 @@ export function ThumbImage({
   retryButton,
 }: {
   src: string;
+  fallbackSrc?: string;
   alt: string;
   className?: string;
   style?: CSSProperties;
@@ -26,14 +29,21 @@ export function ThumbImage({
 }) {
   const [attempt, setAttempt] = useState(0);
   const [status, setStatus] = useState<"loading" | "loaded" | "error">("loading");
+  const [usingFallback, setUsingFallback] = useState(false);
   // Reset the skeleton for a new src. Done in the render phase (not an effect) so the skeleton
   // paints with the new src instead of a frame later. Matters in the lightbox, where details
   // swap the cached thumbnail for the full preview after mount.
-  const [loadedSrc, setLoadedSrc] = useState(src);
-  if (loadedSrc !== src) {
-    setLoadedSrc(src);
+  const [loadedSrc, setLoadedSrc] = useState(primarySrc);
+  if (loadedSrc !== primarySrc) {
+    setLoadedSrc(primarySrc);
     setStatus("loading");
+    setUsingFallback(false);
   }
+  const src = usingFallback && fallbackSrc ? fallbackSrc : primarySrc;
+  const onError = () => {
+    if (fallbackSrc && !usingFallback) setUsingFallback(true);
+    else setStatus("error");
+  };
   const retry = () => {
     setStatus("loading");
     setAttempt((a) => a + 1);
@@ -83,8 +93,10 @@ export function ThumbImage({
           decoding="async"
           draggable={false}
           onLoad={() => setStatus("loaded")}
-          onError={() => setStatus("error")}
-          className={cn(className, status === "error" && "invisible")}
+          onError={onError}
+          // `relative` stacks the image over the skeleton: a cached image shows the moment it's
+          // drawn, instead of staying hidden until `load` fires a frame or more later.
+          className={cn("relative", className, status === "error" && "invisible")}
           style={style}
         />
       )}

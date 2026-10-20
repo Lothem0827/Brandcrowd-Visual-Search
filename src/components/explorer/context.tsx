@@ -11,8 +11,6 @@ import type { Page } from "@/lib/url-state";
 
 /** Which top-level page the sidebar has selected (defined with the URL state it mirrors). */
 export type { Page } from "@/lib/url-state";
-/** Result ordering. */
-export type SortMode = "relevance" | "shuffle";
 
 /** Where an opened design / drill-down started, so Back can return there. */
 export type Origin = { kind: "search" } | { kind: "board"; boardId: string };
@@ -107,11 +105,7 @@ export interface ExplorerApi {
   searchByImage: (file: File) => Promise<void>;
   page: Page;
   setPage: (p: Page) => void;
-  sort: SortMode;
-  setSort: (s: SortMode) => void;
-  shuffleSeed: number | null;
-  setShuffleSeed: (s: number | null) => void;
-  /** side filter panel (Style / Color / Layout / Image / More / Sort) visibility */
+  /** side filter panel (Style / Color / Layout / Image / More) visibility */
   filterPanelOpen: boolean;
   setFilterPanelOpen: (o: boolean) => void;
   /** settings panel (theme + grid appearance) visibility */

@@ -22,7 +22,7 @@ import { useExplorer } from "./context";
 import { HEADER_CONTROL, HEADER_CONTROL_IDLE } from "./header";
 import { SaveButton } from "./save-button";
 import { ImageIcon, LayoutIcon } from "./icons";
-import { templateImageUrl } from "@/lib/images";
+import { templateImageUrl, templateThumbSmUrl } from "@/lib/images";
 import { SidePanel } from "./side-panel";
 import { ThumbImage } from "./thumb-image";
 import { useEffectiveGridSettings } from "./use-grid-settings";
@@ -109,7 +109,8 @@ function SimilarGroup({
                 style={{ borderRadius: radius }}
               >
                 <ThumbImage
-                  src={templateImageUrl(h.template.templateId)}
+                  src={templateThumbSmUrl(h.template.templateId)}
+                  fallbackSrc={templateImageUrl(h.template.templateId)}
                   alt=""
                   className="size-full object-cover"
                 />

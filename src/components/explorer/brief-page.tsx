@@ -19,7 +19,7 @@ import { sentenceCase } from "@/lib/facets";
 import { paletteFromHarmony, HARMONIES, type HarmonyId } from "@/lib/harmony";
 import { readMoodboardDrag, type MoodboardDraft } from "@/lib/moodboards";
 import type { MoodboardTitlesResponse } from "@/lib/moodboard-titles";
-import { templateImageUrl } from "@/lib/images";
+import { templateImageUrl, templateThumbSmUrl } from "@/lib/images";
 import { cn } from "@/lib/utils";
 import { BackButton } from "./back-button";
 import { BriefOrbit } from "./brief-orbit";
@@ -531,7 +531,8 @@ export function MoodboardBody({ compact = false }: { compact?: boolean }) {
                 >
                   {template ? (
                     <ThumbImage
-                      src={templateImageUrl(id)}
+                      src={templateThumbSmUrl(id)}
+                      fallbackSrc={templateImageUrl(id)}
                       alt={label}
                       className="size-full object-cover"
                     />

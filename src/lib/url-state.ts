@@ -10,13 +10,11 @@ export type Page = "home" | "explore" | "boards" | "brief";
  *
  *   /?design=<id>                         (home canvas pivot)
  *   /explore?q=retro&industry=Construction&aesthetic=bold&color=F07B22&cm=any
- *   /explore?design=<id>&view=focus&scope=all&sort=shuffle
+ *   /explore?design=<id>&view=focus&scope=all
  *   /boards/<id>?design=<id>&view=focus
  *
  * (An uploaded image can't be put in a URL; it stays local.)
  */
-export type SortMode = "relevance" | "shuffle";
-
 export interface UrlState {
   /** which top-level page (pathname: /, /explore, /boards, /brief) */
   page: Page;
@@ -30,9 +28,6 @@ export interface UrlState {
   /** board open on the Boards page (/boards/<id>), or the board a similar trail started from */
   board: string | null;
   scope: "industry" | "all";
-  sort: SortMode;
-  /** seed for shuffle; present iff `sort === "shuffle"` */
-  shuffleSeed: number | null;
 }
 
 export const EMPTY_URL_STATE: UrlState = {
@@ -44,8 +39,6 @@ export const EMPTY_URL_STATE: UrlState = {
   focused: false,
   board: null,
   scope: "industry",
-  sort: "relevance",
-  shuffleSeed: null,
 };
 
 const PAGE_PATH: Record<Page, string> = {
@@ -82,10 +75,6 @@ export function toSearch(s: UrlState): string {
     if (s.focused) p.set("view", "focus");
   }
   if (s.scope === "all") p.set("scope", "all");
-  if (s.sort === "shuffle") {
-    p.set("sort", "shuffle");
-    if (s.shuffleSeed != null) p.set("shuffle", String(s.shuffleSeed));
-  }
   const str = p.toString();
   return str ? `?${str}` : "";
 }
@@ -118,13 +107,12 @@ export function boardFromPath(pathname: string): string | null {
 }
 
 /**
- * True when the search describes a browse/search view (query, facets, colour, sort) rather than
+ * True when the search describes a browse/search view (query, facets, colour) rather than
  * a home-canvas pivot (`design` alone). Used to fold old `/?q=…` links onto `/explore`.
  */
 function hasBrowseSearch(s: UrlState): boolean {
   if (s.query.trim()) return true;
   if (s.color) return true;
-  if (s.sort === "shuffle") return true;
   if (s.focused) return true;
   if (s.design.length > 1) return true;
   for (const k of FACET_KEYS) {
@@ -150,8 +138,6 @@ export function toUrl(s: UrlState): string {
       design: s.design,
       focused: s.focused,
       scope: s.scope,
-      sort: s.sort,
-      shuffleSeed: s.shuffleSeed,
     };
     return `/boards/${encodeURIComponent(s.board)}${toSearch(shown)}`;
   }
@@ -191,9 +177,6 @@ export function fromSearch(search: string): UrlState {
     .slice(-MAX_TRAIL);
   // `?board=` is only read for links made before the Boards page had its own route.
   const board = p.get("board");
-  const sort: SortMode = p.get("sort") === "shuffle" || p.has("shuffle") ? "shuffle" : "relevance";
-  const seedNum = Number(p.get("shuffle"));
-  const shuffleSeed = sort === "shuffle" ? (Number.isInteger(seedNum) ? seedNum : 1) : null;
   return {
     page: "home",
     query: (p.get("q") ?? "").slice(0, MAX_QUERY_LENGTH),
@@ -203,8 +186,6 @@ export function fromSearch(search: string): UrlState {
     focused: p.get("view") === "focus" && design.length > 0,
     board: board && ID.test(board) ? board : null,
     scope: p.get("scope") === "all" ? "all" : "industry",
-    sort,
-    shuffleSeed,
   };
 }
 
@@ -223,7 +204,7 @@ export function fromUrl(pathname: string, search = ""): UrlState {
   if (page === "explore") return { ...state, page: "explore" };
   // `/` with browse params (old home-was-search links) folds onto /explore.
   if (hasBrowseSearch(state)) return { ...state, page: "explore" };
-  return { ...state, page: "home", query: "", facets: {}, color: null, sort: "relevance", shuffleSeed: null, focused: false, design: state.design.slice(-1) };
+  return { ...state, page: "home", query: "", facets: {}, color: null, focused: false, design: state.design.slice(-1) };
 }
 
 /** True when only the free-text query differs (i.e. the user is typing). */

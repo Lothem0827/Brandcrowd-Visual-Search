@@ -16,7 +16,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useExplorer } from "./context";
 import { getMoodboardStore } from "@/lib/moodboards";
-import { useBoards } from "./use-boards";
+import { useSavedCount } from "./use-boards";
 import { BOTTOM_NAV_HEIGHT_PX } from "./header";
 
 function Brand({ onHome }: { onHome: () => void }) {
@@ -91,8 +91,7 @@ function useNavActions(onHome: () => void) {
     settingsOpen,
     setSettingsOpen,
   } = useExplorer();
-  const { boards } = useBoards();
-  const savedCount = new Set(boards.flatMap((b) => b.templateIds)).size;
+  const savedCount = useSavedCount();
 
   return {
     page,
