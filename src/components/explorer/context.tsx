@@ -7,7 +7,7 @@ import type { SimilarHit, SimilarKind } from "@/lib/similarity";
 import type { AiInterpretation } from "@/lib/llm";
 import type { RoleColor } from "@/lib/color";
 import type { ImageFeatures } from "@/lib/image-features";
-import type { Page } from "@/lib/url-state";
+import type { Page, ProfileKind } from "@/lib/url-state";
 
 /** Which top-level page the sidebar has selected (defined with the URL state it mirrors). */
 export type { Page } from "@/lib/url-state";
@@ -105,12 +105,21 @@ export interface ExplorerApi {
   searchByImage: (file: File) => Promise<void>;
   page: Page;
   setPage: (p: Page) => void;
+  /** Public profile handle when `page` is `"profile"`. */
+  profileHandle: string | null;
+  profileKind: ProfileKind;
+  profileSlug: string | null;
+  /** Open `/u/{handle}` (or a public board/moodboard) inside the explorer shell. */
+  openProfile: (handle: string, dest?: { kind: "board" | "moodboard"; slug: string }) => void;
   /** side filter panel (Style / Color / Layout / Image / More) visibility */
   filterPanelOpen: boolean;
   setFilterPanelOpen: (o: boolean) => void;
   /** settings panel (theme + grid appearance) visibility */
   settingsOpen: boolean;
   setSettingsOpen: (o: boolean) => void;
+  /** design assistant side panel */
+  assistantOpen: boolean;
+  setAssistantOpen: (o: boolean) => void;
   view: View;
   setView: (v: View) => void;
   /** open a design from the grid (focused lightbox) */
@@ -160,4 +169,8 @@ export function useExplorer() {
   const v = useContext(ExplorerContext);
   if (!v) throw new Error("useExplorer outside provider");
   return v;
+}
+
+export function useExplorerOptional() {
+  return useContext(ExplorerContext);
 }

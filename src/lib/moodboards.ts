@@ -381,6 +381,11 @@ export class LocalMoodboardStore implements MoodboardStore {
     if (!this.state.pinned) return;
     this.commit({ ...this.state, pinned: false }, false);
   }
+
+  /** Drop guest drafts/saves after an account wipe so they cannot resurrect. */
+  reset() {
+    this.commit({ ...EMPTY_MOODBOARD_STATE }, true);
+  }
 }
 
 let localSingleton: LocalMoodboardStore | null = null;
@@ -480,6 +485,10 @@ export function getMoodboardStore(): MoodboardStore {
 export function getLocalMoodboardsSnapshot(): { draft: MoodboardDraft | null; saved: MoodboardDraft[] } {
   const s = getLocalMoodboardStore().getState();
   return { draft: s.draft, saved: s.saved };
+}
+
+export function clearLocalMoodboards() {
+  getLocalMoodboardStore().reset();
 }
 
 export function setMoodboardStore(store: MoodboardStore | null) {

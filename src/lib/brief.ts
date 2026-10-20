@@ -122,12 +122,13 @@ function industryScore(label: string, q: string, qTokens: Set<string>): number {
   if (!n) return 0;
   if (n === q) return 1;
   if (q.startsWith(`${n} `) || q.endsWith(` ${n}`) || q.includes(` ${n} `)) return 0.95;
-  // Either half of a paired label is a valid shorthand: "Food & Drink" -> "food".
+  // Either half of a paired label is a shorthand only when the query is that
+  // half: "food" -> "Food & Drink". A longer subject that merely contains the
+  // word ("gym membership design") is not that industry.
   const segments = n.split(/\s*&\s*/).filter(Boolean);
   if (segments.length > 1) {
     for (const segment of segments) {
-      const segmentTokens = segment.split(" ");
-      if (segmentTokens.every((word) => qTokens.has(word))) return 0.85;
+      if (segment === q) return 0.85;
     }
   }
   const tokens = n.split(" ").filter((t) => t !== "&");

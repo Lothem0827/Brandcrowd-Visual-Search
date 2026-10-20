@@ -1,10 +1,9 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 import {
   BookmarkIcon,
   CompassIcon,
   ListChecksIcon,
-  PencilIcon,
   SlidersHorizontalIcon,
   SparklesIcon,
   TagIcon,
@@ -15,10 +14,13 @@ import { relatedChips } from "@/lib/query";
 import type { Template } from "@/lib/schema";
 import { useIsCompact } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
-import { BoardPublicToggle } from "@/components/auth/public-toggle";
 import { Button } from "@/components/ui/button";
 import { BackButton } from "./back-button";
+import { BoardMenu } from "./board-menu";
 import { BoardsPage } from "./boards-page";
+import { PublicBoardArea, PublicMoodboardArea } from "./public-item-area";
+import { PublicProfilePage } from "./public-profile-page";
+import { DesignerRow } from "./designer-row";
 import { BriefPage } from "./brief-page";
 import { HeaderDetectedChips } from "./chips";
 import { useExplorer, type View } from "./context";
@@ -57,6 +59,7 @@ function FilterToggle() {
       aria-pressed={filterPanelOpen}
       aria-label="Filters"
       title="Filters"
+      data-onboarding="filter"
       onClick={() => setFilterPanelOpen(!filterPanelOpen)}
       className={cn(
         "relative",
@@ -270,88 +273,12 @@ function ExploreArea() {
           {!isCompact && <ThemeSwitch />}
         </div>
         {hasSearch ? <RelatedChips /> : <PopularTags />}
+        {!hasSearch ? <DesignerRow /> : null}
       </div>
       <div className="relative min-h-0 flex-1">
-        <GridView items={browseItems} thumbs />
+        <GridView items={browseItems} thumbs markDropTarget />
         {browseItems.length === 0 && <EmptyState />}
       </div>
-    </div>
-  );
-}
-
-/**
- * Board title with inline rename: the pencil swaps the heading for a text input, Enter or blur
- * commits through `store.rename`, Escape discards. Lives here (not in the boards panel) so the
- * header is the single place a board's name is edited.
- */
-function BoardName({ id, name }: { id: string; name: string }) {
-  const { store } = useBoards();
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(name);
-  // Escape must not save the discarded draft, and the blur React may still fire afterwards must
-  // not save it either — nor may a save run twice (blur after Enter).
-  const cancelled = useRef(false);
-  const settled = useRef(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const start = () => {
-    setDraft(name);
-    cancelled.current = false;
-    settled.current = false;
-    setEditing(true);
-  };
-  const settle = (save: boolean) => {
-    if (settled.current) return;
-    settled.current = true;
-    if (save && !cancelled.current) store.rename(id, draft.trim() || name);
-    setEditing(false);
-  };
-
-  // Focus and pre-select the whole name so typing replaces it. Done here rather than with
-  // `autoFocus` + `onFocus`: the effect is guaranteed to run after the input commits, so the
-  // selection cannot be wiped by the browser finishing the focus it was given.
-  useEffect(() => {
-    if (!editing) return;
-    const el = inputRef.current;
-    if (!el) return;
-    el.focus();
-    el.select();
-  }, [editing]);
-
-  if (editing) {
-    return (
-      <input
-        ref={inputRef}
-        value={draft}
-        aria-label="Board name"
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={() => settle(true)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            settle(true);
-          } else if (e.key === "Escape") {
-            e.preventDefault();
-            cancelled.current = true;
-            settle(false);
-          }
-        }}
-        className="h-8 w-full min-w-0 rounded-md bg-panel px-2 text-[15px] font-semibold ring-1 ring-foreground/15 outline-none"
-      />
-    );
-  }
-  return (
-    <div className="flex min-w-0 items-center gap-1">
-      <h2 className={HEADER_TITLE}>{name}</h2>
-      <button
-        type="button"
-        aria-label="Rename board"
-        title="Rename board"
-        onClick={start}
-        className="grid size-8 shrink-0 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-      >
-        <PencilIcon className="size-4" />
-      </button>
     </div>
   );
 }
@@ -415,14 +342,18 @@ function BoardArea() {
           }}
         />
         {board ? (
-          <div className="min-w-0 flex-1">
-            <BoardName id={board.id} name={board.name} />
-          </div>
+          <h2 className={cn(HEADER_TITLE, "min-w-0 flex-1")}>{board.name}</h2>
         ) : (
           <h2 className={cn(HEADER_TITLE, "flex-1")}>Board</h2>
         )}
         {board ? (
-          <BoardPublicToggle boardId={board.id} isPublic={board.isPublic} slug={board.slug} />
+          <BoardMenu
+            board={board}
+            onDeleted={() => {
+              setView({ kind: "search" });
+              setPage("boards");
+            }}
+          />
         ) : null}
         <span
           className="shrink-0 text-xs text-muted-foreground tabular-nums"
@@ -479,9 +410,14 @@ function BoardArea() {
 }
 
 export function BrowseArea() {
-  const { page, view } = useExplorer();
+  const { page, view, profileKind } = useExplorer();
   if (page === "home") return <HomeCanvas />;
   if (page === "brief") return <BriefPage />;
+  if (page === "profile") {
+    if (profileKind === "board") return <PublicBoardArea />;
+    if (profileKind === "moodboard") return <PublicMoodboardArea />;
+    return <PublicProfilePage />;
+  }
   // /boards is the index; /boards/<id> is one board, which stays behind a design opened in it.
   if (page === "boards") return boardIdOf(view) ? <BoardArea /> : <BoardsPage />;
   if (view.kind === "board") return <BoardArea />;

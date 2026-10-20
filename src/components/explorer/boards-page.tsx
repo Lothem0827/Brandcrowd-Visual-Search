@@ -17,11 +17,10 @@ import { SAVED_BOARD_ID, type Board } from "@/lib/boards";
 import type { MoodboardDraft } from "@/lib/moodboards";
 import type { Template } from "@/lib/schema";
 import { cn } from "@/lib/utils";
-import { BackButton } from "./back-button";
+import { BoardsProfileHeader } from "./boards-profile-header";
 import { BoardCover } from "./board-cover";
 import { useExplorer } from "./context";
 import { GridView } from "./grid-view";
-import { HEADER_ROW, HEADER_TITLE } from "./header";
 import { MoodboardCover, moodboardCardTitle } from "./moodboard-cover";
 import { useBoards, useSavedCount } from "./use-boards";
 import { useMoodboards } from "./use-moodboards";
@@ -105,43 +104,39 @@ export function BoardsPage() {
       data-testid="boards-page"
     >
       <div className="mx-auto w-full pb-28">
-        <div className={HEADER_ROW}>
-          <BackButton label="Back" onClick={() => setPage("explore")} />
-          <h1 className={HEADER_TITLE}>Boards</h1>
-          {/* Tabs center in the space right of the title; the underline track matches the
-              detail panel's tab pattern (border-b + -mb-px indicator). */}
-          <div className="flex min-w-0 flex-1 justify-center">
-            <div
-              className="flex items-stretch border-b border-border/60"
-              role="tablist"
-              aria-label="Boards views"
-            >
-              {(
-                [
-                  ["boards", `Boards ${boards.length}`],
-                  ["saves", `Saves ${savedCount}`],
-                  ["moodboards", `Moodboards ${saved.length}`],
-                ] as const
-              ).map(([id, label]) => (
-                <button
-                  key={id}
-                  type="button"
-                  role="tab"
-                  aria-selected={tab === id}
-                  onClick={() => setTab(id)}
-                  className={cn(
-                    "-mb-px h-10 border-b-2 px-4 text-[13px] font-medium whitespace-nowrap transition-colors",
-                    tab === id
-                      ? "border-foreground text-foreground"
-                      : "border-transparent text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+        <BoardsProfileHeader onBack={() => setPage("explore")} />
+        <div className="mt-6 flex justify-center px-4">
+          <div
+            className="flex items-stretch border-b border-border/60"
+            role="tablist"
+            aria-label="Boards views"
+          >
+            {(
+              [
+                ["boards", `Boards ${boards.length}`],
+                ["saves", `Saves ${savedCount}`],
+                ["moodboards", `Moodboards ${saved.length}`],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={tab === id}
+                onClick={() => setTab(id)}
+                className={cn(
+                  "-mb-px h-10 border-b-2 px-4 text-[13px] font-medium whitespace-nowrap transition-colors",
+                  tab === id
+                    ? "border-foreground text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {label}
+              </button>
+            ))}
           </div>
         </div>
+        <div className="mt-5" />
 
         {tab === "boards" ? (
           <div className="grid grid-cols-2 gap-x-5 gap-y-7 px-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">

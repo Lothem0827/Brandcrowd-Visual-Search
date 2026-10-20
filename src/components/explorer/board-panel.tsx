@@ -11,6 +11,7 @@ import { templateImageUrl, templateThumbSmUrl } from "@/lib/images";
 import { computeWindow } from "./use-windowed-grid";
 import type { Template } from "@/lib/schema";
 import { readTemplateDrag, writeTemplateDrag } from "@/lib/template-drag";
+import { reportOnboardingSignal } from "@/lib/onboarding";
 import { cn } from "@/lib/utils";
 import { BoardCover } from "./board-cover";
 import { useExplorer } from "./context";
@@ -122,6 +123,7 @@ export function BoardPanel() {
       return;
     }
     store.add(board.id, id);
+    reportOnboardingSignal({ type: "drop" });
     toast(`Added to “${board.name}”`);
   };
 
@@ -218,6 +220,7 @@ export function BoardPanel() {
           dragOver && "bg-muted",
         )}
         data-testid="board-panel-drop"
+        data-onboarding="board-drop"
         onDragEnter={(event) => setPanelHover(event, true)}
         onDragOver={(event) => {
           event.preventDefault();

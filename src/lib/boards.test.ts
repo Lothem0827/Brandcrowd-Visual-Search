@@ -38,3 +38,15 @@ describe("unique save count", () => {
     expect(store.savedCount()).toBe(0);
   });
 });
+
+describe("board description", () => {
+  it("stores a blurb and clears it when empty", () => {
+    const store = new LocalBoardStore(memoryStorage());
+    const board = store.create("Pitches", "for clients");
+    expect(store.list().find((b) => b.id === board.id)?.description).toBe("for clients");
+    store.setDescription(board.id, "  revised  ");
+    expect(store.list().find((b) => b.id === board.id)?.description).toBe("revised");
+    store.setDescription(board.id, "   ");
+    expect(store.list().find((b) => b.id === board.id)?.description).toBeUndefined();
+  });
+});

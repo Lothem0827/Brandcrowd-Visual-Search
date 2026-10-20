@@ -39,6 +39,12 @@ describe("generateBrief", () => {
     expect(generateBrief(templates, "food & drink")?.match.label).toBe("Food & Drink");
   });
 
+  it("does not treat one half of a paired label as the industry inside a longer subject", () => {
+    const brief = generateBrief(templates, "gym membership drink");
+    expect(brief?.match.label).not.toBe("Food & Drink");
+    expect(brief?.tags).toEqual(expect.arrayContaining(["gym", "membership"]));
+  });
+
   it("builds four distinct, valid palette colours in role order", () => {
     const brief = generateBrief(templates, "Construction");
     expect(brief?.palette.map((c) => c.role)).toEqual(["main", "secondary", "accent", "ink"]);

@@ -4,7 +4,8 @@ import type { TemplateRepository } from "@/lib/data";
 import { applyFilters, EMPTY_FILTERS, mergeSelections, replaceSelections, restoreSelections, type FacetKey, type FacetSelection, type FilterState } from "@/lib/facets";
 import { buildVocab, chipsToSelection, isUnsearchableQuery, parseQuery, removeChipFromQuery, type VocabTerm } from "@/lib/query";
 import { createSearchClient, type SearchClient } from "@/lib/search-client";
-import { fromUrl, historyAction, toUrl, type Page, type UrlState } from "@/lib/url-state";
+import { fromUrl, historyAction, toUrl, type Page, type ProfileKind, type UrlState } from "@/lib/url-state";
+import { useAuth } from "@/components/auth/auth-provider";
 import { findAllSimilar, rankByImage } from "@/lib/similarity";
 import { SITE_NAME, SITE_TITLE } from "@/lib/site";
 import { paletteFromFile } from "@/lib/image-search";
@@ -25,6 +26,8 @@ import { getBoardStore } from "@/lib/boards";
 import { BoardSelectBar } from "./board-select-bar";
 import { ImageDropOverlay } from "./image-drop";
 import { OfflineBanner } from "./offline-banner";
+import { OnboardingTour } from "./onboarding-tour";
+import { AssistantPanel, AssistantToggle } from "./assistant-panel";
 
 const IMAGE_RESULTS = 60;
 const NO_VOCAB: VocabTerm[] = [];
@@ -50,6 +53,7 @@ const searchKey = (query: string, filters: FilterState, imageUrl: string | undef
   JSON.stringify([query, filters, imageUrl, category]);
 
 export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateRepository; dataUrl: string; detailsUrl?: string }) {
+  const { profile: authProfile } = useAuth();
   const all = repo.all();
   const categories = useMemo(() => repo.categories(), [repo]);
   const [category] = useState(categories[0] ?? "Instagram Post");
@@ -108,6 +112,9 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
   const [imageQuery, setImageQuery] = useState<ImageQuery | null>(null);
   const [view, setView] = useState<View>(() => viewFromUrl(initialUrl, (id) => !!repo.byId(id)));
   const [page, setPageState] = useState<Page>(() => initialUrl.page);
+  const [profileHandle, setProfileHandle] = useState<string | null>(() => initialUrl.profileHandle);
+  const [profileKind, setProfileKind] = useState<ProfileKind>(() => initialUrl.profileKind);
+  const [profileSlug, setProfileSlug] = useState<string | null>(() => initialUrl.profileSlug);
   const [homePivotId, setHomePivotId] = useState<string | null>(() =>
     initialUrl.page === "home" && initialUrl.design[0] && repo.byId(initialUrl.design[0])
       ? initialUrl.design[0]
@@ -115,13 +122,27 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
   );
   const [filterPanelOpen, setFilterPanelOpenState] = useState(false);
   const [settingsOpen, setSettingsOpenState] = useState(false);
+  const [assistantOpen, setAssistantOpenState] = useState(false);
   const setFilterPanelOpen = useCallback((o: boolean) => {
     setFilterPanelOpenState(o);
-    if (o) setSettingsOpenState(false);
+    if (o) {
+      setSettingsOpenState(false);
+      setAssistantOpenState(false);
+    }
   }, []);
   const setSettingsOpen = useCallback((o: boolean) => {
     setSettingsOpenState(o);
-    if (o) setFilterPanelOpenState(false);
+    if (o) {
+      setFilterPanelOpenState(false);
+      setAssistantOpenState(false);
+    }
+  }, []);
+  const setAssistantOpen = useCallback((o: boolean) => {
+    setAssistantOpenState(o);
+    if (o) {
+      setFilterPanelOpenState(false);
+      setSettingsOpenState(false);
+    }
   }, []);
   const [simScope, setSimScope] = useState<"industry" | "all">(initialUrl.scope);
   const [detailOpen, setDetailOpen] = useState(() => view.kind === "similar");
@@ -146,9 +167,46 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
     // The filter panel belongs to Explore; leaving it must not leave the panel over another page.
     setFilterPanelOpen(false);
     setSettingsOpen(false);
+    setAssistantOpen(false);
     setView((v) => (v.kind === "search" ? v : { kind: "search" }));
     if (next !== "home") setHomePivotId(null);
+    if (next !== "profile") {
+      setProfileHandle(null);
+      setProfileKind("index");
+      setProfileSlug(null);
+    }
   }, [page]);
+
+  const openProfile = useCallback(
+    (handle: string, dest?: { kind: "board" | "moodboard"; slug: string }) => {
+      const next = handle.toLowerCase();
+      if (authProfile?.handle && authProfile.handle === next && !dest) {
+        setPage("boards");
+        return;
+      }
+      setProfileHandle(next);
+      setProfileKind(dest?.kind ?? "index");
+      setProfileSlug(dest?.slug ?? null);
+      setDetailOpen(false);
+      setHover(null);
+      setFilterPanelOpen(false);
+      setSettingsOpen(false);
+      setAssistantOpen(false);
+      setView({ kind: "search" });
+      setHomePivotId(null);
+      setPageState("profile");
+    },
+    [authProfile?.handle, setPage],
+  );
+
+  if (
+    page === "profile" &&
+    profileKind === "index" &&
+    authProfile?.handle &&
+    profileHandle === authProfile.handle
+  ) {
+    setPage("boards");
+  }
 
   // Navigation is a history push rather than a Next route change, so the title the route
   // metadata set on load would otherwise stick to every page after it.
@@ -162,9 +220,17 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
           ? "Moodboard"
           : page === "explore"
             ? "Explore"
-            : null;
+            : page === "profile"
+              ? profileHandle
+                ? profileKind === "index"
+                  ? `@${profileHandle}`
+                  : profileKind === "moodboard"
+                    ? `Moodboard · @${profileHandle}`
+                    : `Board · @${profileHandle}`
+                : "Profile"
+              : null;
     document.title = title ? `${title} | ${SITE_NAME}` : SITE_TITLE;
-  }, [page, view]);
+  }, [page, view, profileHandle, profileKind]);
 
   // The search dock debounces typing before it reaches `query`, so no further debounce is needed
   // here — the whole explorer already updates once per typing pause.
@@ -510,8 +576,11 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
               : null
             : null,
       scope: simScope,
+      profileHandle: page === "profile" ? profileHandle : null,
+      profileKind: page === "profile" ? profileKind : "index",
+      profileSlug: page === "profile" ? profileSlug : null,
     }),
-    [page, query, filters, view, simScope, homePivotId],
+    [page, query, filters, view, simScope, homePivotId, profileHandle, profileKind, profileSlug],
   );
   const lastUrl = useRef<UrlState | null>(null);
   const typingRun = useRef(false);
@@ -552,6 +621,9 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
       setView(nextView);
       // raw setter: the URL already decided the page, so no view normalising here
       setPageState(u.page);
+      setProfileHandle(u.profileHandle);
+      setProfileKind(u.profileKind);
+      setProfileSlug(u.profileSlug);
       setHomePivotId(
         u.page === "home" && u.design[0] && byId(u.design[0]) ? u.design[0] : null,
       );
@@ -601,11 +673,17 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
         else if (pinnedBoardId) unpinBoard();
         else if (settingsOpen) setSettingsOpen(false);
         else if (filterPanelOpen) setFilterPanelOpen(false);
+        else if (assistantOpen) setAssistantOpen(false);
         // Escape leaves one level: a board goes back to the Boards index (/boards), the
         // index and the Moodboard go back to Explore.
         else if (page === "boards" && (view.kind === "board" || view.kind === "focused" || view.kind === "similar")) {
           setView({ kind: "search" });
-        } else if (page === "boards" || page === "brief") setPage("explore");
+        } else if (page === "profile" && (view.kind === "focused" || view.kind === "similar")) {
+          setView({ kind: "search" });
+        } else if (page === "profile" && profileKind !== "index") {
+          setProfileKind("index");
+          setProfileSlug(null);
+        } else if (page === "boards" || page === "brief" || page === "profile") setPage("explore");
         else setHover(null);
       }
     };
@@ -617,8 +695,10 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
     detailOpen,
     filterPanelOpen,
     settingsOpen,
+    assistantOpen,
     page,
     view,
+    profileKind,
     setPage,
     pinnedBoardId,
     unpinBoard,
@@ -632,9 +712,10 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
     ai, aiStatus, aiEnabled, dismissAi,
     searchPath, searchWithin, backOneStep, jumpToStep,
     imageQuery, setImageQuery, imageScores, textScores, imageBusy, searchByImage,
-    page, setPage,
+    page, setPage, profileHandle, profileKind, profileSlug, openProfile,
     filterPanelOpen, setFilterPanelOpen,
     settingsOpen, setSettingsOpen,
+    assistantOpen, setAssistantOpen,
     view, setView, openTemplate, openSimilar, recenter, recenterDetail, focused, simScope, setSimScope, similar, center,
     detailsReady, detailsError, loadDetails,
     detailOpen, setDetailOpen, hover, setHover, boardGroup, setBoardGroup, focusSearch,
@@ -674,9 +755,11 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
               ) : page === "explore" || page === "home" ? (
                 <SearchDock inputRef={searchRef} />
               ) : null}
+              <AssistantToggle />
             </div>
             <FilterPanel />
             <SettingsPanel />
+            <AssistantPanel />
             {pinnedBoardId && <BoardPanel />}
             {moodboardPinned && page === "explore" && <MoodboardPanel />}
             {detailTemplate && <DetailPanel template={detailTemplate} />}
@@ -686,6 +769,7 @@ export function Explorer({ repo, dataUrl, detailsUrl }: { repo: TemplateReposito
       </div>
       <ImageDropOverlay />
       <OfflineBanner />
+      <OnboardingTour />
     </ExplorerContext.Provider>
   );
 }

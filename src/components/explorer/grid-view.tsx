@@ -52,6 +52,7 @@ const GridTile = memo(function GridTile({
   onPick,
   hideSave,
   thumb,
+  markDrop,
 }: {
   template: Template;
   radius: number;
@@ -61,6 +62,8 @@ const GridTile = memo(function GridTile({
   hideSave?: boolean;
   /** 600px grid thumbnail instead of the 1200px file. */
   thumb?: boolean;
+  /** The one design the drop step tells you to drag onto the board. */
+  markDrop?: boolean;
 }) {
   const { openTemplate, boardSelection, toggleBoardSelect, page, pinnedBoardId } =
     useExplorer();
@@ -70,7 +73,11 @@ const GridTile = memo(function GridTile({
   const selected = !!boardSelection?.ids.includes(template.templateId);
   const label = template.displayTitle || template.slug;
   return (
-    <div className="group relative aspect-square" style={{ borderRadius: radius }}>
+    <div
+      className="group relative aspect-square"
+      style={{ borderRadius: radius }}
+      {...(markDrop ? { "data-onboarding": "drop-design" } : {})}
+    >
       <button
         type="button"
         draggable={canDrag && !selecting}
@@ -128,6 +135,7 @@ export const GridView = memo(function GridView({
   overscan = 4,
   eagerRows = 2,
   thumbs = false,
+  markDropTarget = false,
 }: {
   items: Template[];
   className?: string;
@@ -146,8 +154,12 @@ export const GridView = memo(function GridView({
   eagerRows?: number;
   /** Use the 600px grid thumbnail instead of the full image. */
   thumbs?: boolean;
+  /** Mark the first design that is not already on the pinned board. */
+  markDropTarget?: boolean;
 }) {
   const { columns, gap, radius } = useEffectiveGridSettings();
+  const { pinnedBoardId } = useExplorer();
+  const { boards } = useBoards();
   const isCompact = useIsCompact();
   const hideSaveOnCompact = hideSave || isCompact;
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -211,6 +223,13 @@ export const GridView = memo(function GridView({
     overscan,
   });
 
+  const onBoard = markDropTarget
+    ? new Set(boards.find((b) => b.id === pinnedBoardId)?.templateIds ?? [])
+    : null;
+  const dropId = onBoard
+    ? (items.find((t) => !onBoard.has(t.templateId)) ?? items[0])?.templateId
+    : undefined;
+
   const rows = [];
   for (let r = grid.firstRow; r < grid.lastRow; r++) {
     const start = r * grid.cols;
@@ -234,6 +253,7 @@ export const GridView = memo(function GridView({
             onPick={onPick}
             hideSave={hideSaveOnCompact}
             thumb={thumbs}
+            markDrop={t.templateId === dropId}
           />
         ))}
       </div>,

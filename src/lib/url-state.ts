@@ -2,7 +2,10 @@ import { FACETS, type ColorFilter, type FacetKey, type FacetSelection } from "./
 import { normalizeHex, type ColorMatchMode } from "./color";
 
 /** Which top-level page the URL names. */
-export type Page = "home" | "explore" | "boards" | "brief";
+export type Page = "home" | "explore" | "boards" | "brief" | "profile";
+
+/** Sub-view of `/u/{handle}`: the profile index, a public board, or a public moodboard. */
+export type ProfileKind = "index" | "board" | "moodboard";
 
 /**
  * The shareable part of the explorer state, mirrored in the URL so pages can be refreshed,
@@ -12,11 +15,14 @@ export type Page = "home" | "explore" | "boards" | "brief";
  *   /explore?q=retro&industry=Construction&aesthetic=bold&color=F07B22&cm=any
  *   /explore?design=<id>&view=focus&scope=all
  *   /boards/<id>?design=<id>&view=focus
+ *   /u/{handle}
+ *   /u/{handle}/b/{slug}
+ *   /u/{handle}/m/{slug}
  *
  * (An uploaded image can't be put in a URL; it stays local.)
  */
 export interface UrlState {
-  /** which top-level page (pathname: /, /explore, /boards, /brief) */
+  /** which top-level page (pathname: /, /explore, /boards, /brief, /u/…) */
   page: Page;
   query: string;
   facets: FacetSelection;
@@ -28,6 +34,10 @@ export interface UrlState {
   /** board open on the Boards page (/boards/<id>), or the board a similar trail started from */
   board: string | null;
   scope: "industry" | "all";
+  /** Public profile handle when `page` is `"profile"`. */
+  profileHandle: string | null;
+  profileKind: ProfileKind;
+  profileSlug: string | null;
 }
 
 export const EMPTY_URL_STATE: UrlState = {
@@ -39,9 +49,12 @@ export const EMPTY_URL_STATE: UrlState = {
   focused: false,
   board: null,
   scope: "industry",
+  profileHandle: null,
+  profileKind: "index",
+  profileSlug: null,
 };
 
-const PAGE_PATH: Record<Page, string> = {
+const PAGE_PATH: Record<Exclude<Page, "profile">, string> = {
   home: "/",
   explore: "/explore",
   boards: "/boards",
@@ -53,6 +66,8 @@ const FACET_SET = new Set<string>(FACET_KEYS);
 export const MAX_QUERY_LENGTH = 200;
 const MAX_TRAIL = 20;
 const ID = /^[A-Za-z0-9_-]{1,64}$/;
+const HANDLE = /^[a-z0-9_]{3,32}$/;
+const SLUG = /^[a-z0-9_-]{1,64}$/;
 
 /** Serialise the query string ("" or "?…") with a stable parameter order. */
 export function toSearch(s: UrlState): string {
@@ -86,11 +101,38 @@ function trimPath(pathname: string): string {
 
 /** Map a pathname to the page it names. */
 export function pageFromPath(pathname: string): Page {
+  if (profileFromPath(pathname)) return "profile";
   const path = trimPath(pathname);
   if (path === "/boards" || path.startsWith("/boards/")) return "boards";
   if (path === "/brief") return "brief";
   if (path === "/explore") return "explore";
   return "home";
+}
+
+/** `/u/{handle}`, `/u/{handle}/b/{slug}`, `/u/{handle}/m/{slug}`. */
+export function profileFromPath(pathname: string): {
+  handle: string;
+  kind: ProfileKind;
+  slug: string | null;
+} | null {
+  const match = /^\/u\/([^/]+)(?:\/(b|m)\/([^/]+))?$/.exec(trimPath(pathname));
+  if (!match) return null;
+  let handle: string;
+  try {
+    handle = decodeURIComponent(match[1]).toLowerCase();
+  } catch {
+    return null;
+  }
+  if (!HANDLE.test(handle)) return null;
+  if (!match[2]) return { handle, kind: "index", slug: null };
+  let slug: string;
+  try {
+    slug = decodeURIComponent(match[3]);
+  } catch {
+    return null;
+  }
+  if (!SLUG.test(slug)) return null;
+  return { handle, kind: match[2] === "b" ? "board" : "moodboard", slug };
 }
 
 /** `/boards/<id>` → id; null for the index and for ids that fail validation. */
@@ -127,6 +169,27 @@ function hasBrowseSearch(s: UrlState): boolean {
  * Home keeps only `design` (canvas pivot).
  */
 export function toUrl(s: UrlState): string {
+  if (s.page === "profile") {
+    if (!s.profileHandle) return PAGE_PATH.explore;
+    const base = `/u/${encodeURIComponent(s.profileHandle)}`;
+    const path =
+      s.profileKind === "board" && s.profileSlug
+        ? `${base}/b/${encodeURIComponent(s.profileSlug)}`
+        : s.profileKind === "moodboard" && s.profileSlug
+          ? `${base}/m/${encodeURIComponent(s.profileSlug)}`
+          : base;
+    const shown: UrlState = {
+      ...EMPTY_URL_STATE,
+      page: "profile",
+      profileHandle: s.profileHandle,
+      profileKind: s.profileKind,
+      profileSlug: s.profileSlug,
+      design: s.design,
+      focused: s.focused,
+      scope: s.scope,
+    };
+    return `${path}${toSearch(shown)}`;
+  }
   if (s.page === "boards") {
     if (!s.board) return PAGE_PATH.boards;
     // A board is a fixed set of designs: only what it can show (an opened design, the
@@ -186,6 +249,9 @@ export function fromSearch(search: string): UrlState {
     focused: p.get("view") === "focus" && design.length > 0,
     board: board && ID.test(board) ? board : null,
     scope: p.get("scope") === "all" ? "all" : "industry",
+    profileHandle: null,
+    profileKind: "index",
+    profileSlug: null,
   };
 }
 
@@ -196,6 +262,17 @@ export function fromSearch(search: string): UrlState {
  */
 export function fromUrl(pathname: string, search = ""): UrlState {
   const state = fromSearch(search);
+  const profile = profileFromPath(pathname);
+  if (profile) {
+    return {
+      ...state,
+      page: "profile",
+      board: null,
+      profileHandle: profile.handle,
+      profileKind: profile.kind,
+      profileSlug: profile.slug,
+    };
+  }
   const page = pageFromPath(pathname);
   const board = boardFromPath(pathname) ?? state.board;
   if (board) return { ...state, page: "boards", board };

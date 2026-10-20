@@ -95,6 +95,111 @@ export async function isFollowing(followerId: string, followingId: string): Prom
   return !!data;
 }
 
+export async function getFollowers(userId: string): Promise<Profile[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = createPublicClient();
+  const { data: rows } = await supabase
+    .from("follows")
+    .select("follower_id, created_at")
+    .eq("following_id", userId)
+    .order("created_at", { ascending: false });
+  const ids = (rows ?? []).map((r) => r.follower_id);
+  if (!ids.length) return [];
+  const { data: profiles } = await supabase.from("profiles").select("*").in("id", ids);
+  const byId = new Map((profiles ?? []).map((p) => [p.id, p]));
+  return ids.map((id) => byId.get(id)).filter((p): p is Profile => !!p);
+}
+
+export async function getFollowing(userId: string): Promise<Profile[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = createPublicClient();
+  const { data: rows } = await supabase
+    .from("follows")
+    .select("following_id, created_at")
+    .eq("follower_id", userId)
+    .order("created_at", { ascending: false });
+  const ids = (rows ?? []).map((r) => r.following_id);
+  if (!ids.length) return [];
+  const { data: profiles } = await supabase.from("profiles").select("*").in("id", ids);
+  const byId = new Map((profiles ?? []).map((p) => [p.id, p]));
+  return ids.map((id) => byId.get(id)).filter((p): p is Profile => !!p);
+}
+
+export async function getFollowingIds(userId: string): Promise<Set<string>> {
+  if (!isSupabaseConfigured()) return new Set();
+  const supabase = createPublicClient();
+  const { data } = await supabase.from("follows").select("following_id").eq("follower_id", userId);
+  return new Set((data ?? []).map((r) => r.following_id));
+}
+
+export type ExploreDesigner = {
+  id: string;
+  handle: string;
+  display_name: string;
+  avatar_url: string | null;
+  coverTemplateIds: string[];
+  publicSaves: number;
+};
+
+const EXPLORE_MIN_SAVES = 15;
+
+export async function getExploreDesigners(opts?: {
+  excludeUserId?: string;
+  limit?: number;
+}): Promise<ExploreDesigner[]> {
+  if (!isSupabaseConfigured()) return [];
+  const limit = opts?.limit ?? 12;
+  const exclude = opts?.excludeUserId;
+  const supabase = createPublicClient();
+  const { data } = await supabase
+    .from("boards")
+    .select("id, owner_id, updated_at, board_items(template_id, position)")
+    .eq("is_public", true)
+    .order("updated_at", { ascending: false })
+    .limit(200);
+  type BoardJoin = {
+    id: string;
+    owner_id: string;
+    updated_at: string;
+    board_items: { template_id: string; position: number }[] | null;
+  };
+  const covers = new Map<string, string[]>();
+  for (const row of (data ?? []) as unknown as BoardJoin[]) {
+    if (exclude && row.owner_id === exclude) continue;
+    if (covers.has(row.owner_id)) continue;
+    const items = [...(row.board_items ?? [])].sort((a, b) => a.position - b.position);
+    if (items.length < EXPLORE_MIN_SAVES) continue;
+    covers.set(row.owner_id, items.map((i) => i.template_id));
+    if (covers.size >= limit) break;
+  }
+  const ownerIds = [...covers.keys()];
+  if (!ownerIds.length) return [];
+
+  const [{ data: allPublic }, { data: profiles }] = await Promise.all([
+    supabase.from("boards").select("owner_id, board_items(template_id)").in("owner_id", ownerIds).eq("is_public", true),
+    supabase.from("profiles").select("id, handle, display_name, avatar_url").in("id", ownerIds),
+  ]);
+  const saves = new Map<string, number>();
+  for (const row of (allPublic ?? []) as { owner_id: string; board_items: { template_id: string }[] | null }[]) {
+    saves.set(row.owner_id, (saves.get(row.owner_id) ?? 0) + (row.board_items?.length ?? 0));
+  }
+  const byId = new Map((profiles ?? []).map((p) => [p.id, p]));
+  const out: ExploreDesigner[] = [];
+  for (const id of ownerIds) {
+    const profile = byId.get(id);
+    if (!profile) continue;
+    out.push({
+      id: profile.id,
+      handle: profile.handle,
+      display_name: profile.display_name,
+      avatar_url: profile.avatar_url,
+      coverTemplateIds: covers.get(id) ?? [],
+      publicSaves: saves.get(id) ?? 0,
+    });
+  }
+  return out;
+}
+
 export async function getFollowingFeed(userId: string, limit = 40) {
   if (!isSupabaseConfigured()) return [];
   const supabase = createPublicClient();

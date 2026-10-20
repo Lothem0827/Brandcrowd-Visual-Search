@@ -15,6 +15,7 @@ import type { Template } from "@/lib/schema";
 import { SAVED_BOARD_ID } from "@/lib/boards";
 import { rankByOverall } from "@/lib/similarity";
 import { templateImageUrl, templateThumbSmUrl, templateThumbUrl } from "@/lib/images";
+import { PAN_THRESHOLD_PX, reportOnboardingSignal } from "@/lib/onboarding";
 import { rng } from "@/lib/color";
 import { cn } from "@/lib/utils";
 import { useExplorer } from "./context";
@@ -41,7 +42,6 @@ const OVERSCAN = 1;
 const SIMILAR_COUNT = 150;
 /** How many grid cells the grown pivot spans (was 3; slightly smaller reads better). */
 const PIVOT_SPAN = 2;
-const HINT_KEY = "template-taxonomy:home-hint:v1";
 const SHUFFLE_SEED = 0xc0ffee;
 
 type Cell = { c: number; r: number };
@@ -244,12 +244,12 @@ export function HomeCanvas() {
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [range, setRange] = useState({ c0: 0, c1: 0, r0: 0, r1: 0 });
   const [dragging, setDragging] = useState(false);
-  const [showHint, setShowHint] = useState(false);
   const [pivotAnim, setPivotAnim] = useState(0); // 0..1 grow progress
   const [rippleRing, setRippleRing] = useState(0);
   const pivotCellRef = useRef<Cell | null>(null);
   const [pivotCell, setPivotCell] = useState<Cell | null>(null);
   const layoutRef = useRef({ tile: 180, step: 192, gap: 12 });
+  const userPanRef = useRef(0);
 
   const pools = useMemo(() => {
     const map = new Map<string, Template[]>();
@@ -363,6 +363,7 @@ export function HomeCanvas() {
       scaleRef.current = s1;
       if (pivotCellRef.current) userPannedPivotRef.current = true;
       schedulePaint();
+      reportOnboardingSignal({ type: "zoom" });
     },
     [schedulePaint],
   );
@@ -425,21 +426,13 @@ export function HomeCanvas() {
     applyTransform();
   }, [size, updateRange, applyTransform]);
 
-  useEffect(() => {
-    try {
-      if (!window.localStorage.getItem(HINT_KEY)) setShowHint(true);
-    } catch {
-      setShowHint(true);
-    }
-  }, []);
-
-  const dismissHint = useCallback(() => {
-    setShowHint(false);
-    try {
-      window.localStorage.setItem(HINT_KEY, "1");
-    } catch {
-      /* ignore */
-    }
+  const noteUserPan = useCallback((px: number) => {
+    if (px <= 0) return;
+    userPanRef.current += px;
+    if (userPanRef.current < PAN_THRESHOLD_PX) return;
+    const distance = userPanRef.current;
+    userPanRef.current = 0;
+    reportOnboardingSignal({ type: "pan", distance });
   }, []);
 
   const stopInertia = useCallback(() => {
@@ -548,7 +541,7 @@ export function HomeCanvas() {
       userPannedPivotRef.current = false;
       setPivotCell(cell);
       setHomePivotId(id);
-      dismissHint();
+      reportOnboardingSignal({ type: "pivot" });
       setRippleRing(0);
       setPivotAnim(prefersReducedMotion() ? 1 : 0);
       await centerOnCell(cell.c, cell.r);
@@ -572,7 +565,7 @@ export function HomeCanvas() {
         setRippleRing(maxRing);
       }
     },
-    [centerOnCell, dismissHint, maxRing, setHomePivotId, size],
+    [centerOnCell, maxRing, setHomePivotId, size],
   );
 
   const exitPivot = useCallback(() => {
@@ -642,7 +635,6 @@ export function HomeCanvas() {
     (e: WheelEvent) => {
       e.preventDefault();
       stopInertia();
-      dismissHint();
       // Pinch-on-trackpad / ctrl+wheel → zoom; otherwise pan.
       if (e.ctrlKey || e.metaKey) {
         const factor = Math.exp(-e.deltaY * 0.01);
@@ -654,8 +646,9 @@ export function HomeCanvas() {
       const dx = -(e.shiftKey ? e.deltaY : e.deltaX) * scale;
       const dy = -(e.shiftKey ? 0 : e.deltaY) * scale;
       panBy(dx, dy);
+      noteUserPan(Math.hypot(dx, dy));
     },
-    [dismissHint, panBy, size.h, stopInertia, zoomTo],
+    [noteUserPan, panBy, size.h, stopInertia, zoomTo],
   );
 
   useEffect(() => {
@@ -681,7 +674,6 @@ export function HomeCanvas() {
         midY: (pts[0].y + pts[1].y) / 2,
       };
       pannedRef.current = true;
-      dismissHint();
       return;
     }
     if (pinchRef.current) return;
@@ -732,7 +724,6 @@ export function HomeCanvas() {
       pannedRef.current = true;
       if (pivotCellRef.current) userPannedPivotRef.current = true;
       setDragging(true);
-      dismissHint();
       try {
         e.currentTarget.setPointerCapture(e.pointerId);
       } catch {
@@ -745,6 +736,7 @@ export function HomeCanvas() {
       x: ((e.clientX - d.lastX) / dt) * 16,
       y: ((e.clientY - d.lastY) / dt) * 16,
     };
+    noteUserPan(Math.hypot(e.clientX - d.lastX, e.clientY - d.lastY));
     d.lastX = e.clientX;
     d.lastY = e.clientY;
     d.lastT = now;
@@ -1031,14 +1023,6 @@ export function HomeCanvas() {
           )}
         </div>
       </div>
-
-      {showHint && (
-        <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center">
-          <p className="rounded-full bg-foreground/85 px-4 py-2 text-sm text-background backdrop-blur-sm">
-            Drag to explore · click a design to see similar
-          </p>
-        </div>
-      )}
 
       {!all.length && (
         <div className="absolute inset-0 grid place-items-center text-sm text-muted-foreground">

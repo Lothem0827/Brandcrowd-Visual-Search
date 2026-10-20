@@ -222,6 +222,13 @@ export class SupabaseBoardStore implements BoardStore {
     if (cloud) void this.supabase.from("boards").update({ name: clean }).eq("id", cloud);
   }
 
+  setDescription(id: string, description: string) {
+    const desc = description.trim() || undefined;
+    this.patchLocal(id, (b) => ({ ...b, description: desc }));
+    const cloud = this.cloudId(id);
+    if (cloud) void this.supabase.from("boards").update({ description: desc ?? null }).eq("id", cloud);
+  }
+
   remove(id: string) {
     if (id === SAVED_BOARD_ID) return;
     const cloud = this.cloudId(id);

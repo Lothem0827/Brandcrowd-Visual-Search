@@ -19,6 +19,7 @@ import { toast } from "@/components/ui/toast";
 import { SAVED_BOARD_ID } from "@/lib/boards";
 import { useIsCompact } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
+import { useExplorer } from "./context";
 import { useBoards, useLastUsedBoardId } from "./use-boards";
 
 function BoardPickerList({
@@ -31,6 +32,7 @@ function BoardPickerList({
   className?: string;
 }) {
   const { boards, store } = useBoards();
+  const { page, pinBoard } = useExplorer();
   const activeId = useLastUsedBoardId();
   const active = boards.find((b) => b.id === activeId) ?? boards.find((b) => b.id === SAVED_BOARD_ID);
 
@@ -46,8 +48,9 @@ function BoardPickerList({
             role="menuitemcheckbox"
             aria-checked={on}
             onClick={() => {
-              store.toggle(b.id, templateId);
+              const nowSaved = store.toggle(b.id, templateId);
               store.setLastUsedBoard(b.id);
+              if (nowSaved && page === "explore") pinBoard(b.id);
               onPick?.();
             }}
             className={cn(
@@ -82,6 +85,7 @@ function BoardPickerList({
 /** Click = quick-save to the last-used board. Chevron or press-and-hold = board picker. */
 export function SaveButton({ templateId, className }: { templateId: string; className?: string }) {
   const { boards, store } = useBoards();
+  const { page, pinBoard } = useExplorer();
   const activeId = useLastUsedBoardId();
   const isCompact = useIsCompact();
   const [open, setOpen] = useState(false);
@@ -96,6 +100,7 @@ export function SaveButton({ templateId, className }: { templateId: string; clas
   const quickSave = () => {
     if (!active) return;
     const nowSaved = store.toggle(active.id, templateId);
+    if (nowSaved && page === "explore") pinBoard(active.id);
     toast(nowSaved ? `Saved to “${activeName}”` : `Removed from “${activeName}”`, {
       description: nowSaved
         ? "Use the ▾ button next to Save to add it to other boards."
@@ -115,6 +120,7 @@ export function SaveButton({ templateId, className }: { templateId: string; clas
         type="button"
         aria-pressed={saved}
         data-testid="save-button"
+        data-onboarding="save"
         title={
           saved
             ? `In: ${inBoards.map((b) => b.name).join(", ")}. Click to toggle “${activeName}”, hold to pick boards.`

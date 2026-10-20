@@ -309,7 +309,7 @@ export function SearchDock({
 }: {
   inputRef: RefObject<HTMLInputElement | null>;
 }) {
-  const { detailOpen, pinnedBoardId } = useExplorer();
+  const { detailOpen, pinnedBoardId, assistantOpen } = useExplorer();
   const isMobile = useIsMobile();
   // Details / board panel take the full screen on phones.
   if (isMobile && (detailOpen || pinnedBoardId)) return null;
@@ -319,8 +319,10 @@ export function SearchDock({
         // No panel compensation here: the dock lives inside the browse column, which the
         // detail/filter panels already shrink, so the pill centers itself. On compact it
         // sits at the bottom of that column, above the in-flow bottom nav.
-        "pointer-events-none absolute inset-x-0 z-30 flex justify-center px-4",
+        "pointer-events-none absolute inset-x-0 z-30 flex justify-center pl-4 pr-4",
         DOCK_ABOVE_NAV,
+        // The sparkle button occupies the lower-right while the assistant is closed.
+        !assistantOpen && "lg:pr-20",
       )}
     >
       <div

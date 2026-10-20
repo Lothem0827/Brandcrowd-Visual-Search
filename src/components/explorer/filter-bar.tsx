@@ -86,6 +86,7 @@ export const OptionList = memo(function OptionList({
               on ? "bg-foreground text-background" : "bg-panel hover:bg-muted",
               zero && "cursor-not-allowed opacity-40",
             )}
+            {...(facet === "aesthetic" && o === opts[0] ? { "data-onboarding": "filter-chip" } : {})}
           >
             {icon === "layout" && (
               <LayoutIcon value={o.value} className="size-6" />

@@ -22,6 +22,7 @@ export interface BoardStore {
   list(): Board[];
   create(name: string, description?: string): Board;
   rename(id: string, name: string): void;
+  setDescription(id: string, description: string): void;
   remove(id: string): void;
   add(boardId: string, templateId: string): void;
   removeItem(boardId: string, templateId: string): void;
@@ -137,6 +138,10 @@ export class LocalBoardStore implements BoardStore {
   rename(id: string, name: string) {
     this.patch(id, (b) => ({ ...b, name: name.trim() || b.name }));
   }
+  setDescription(id: string, description: string) {
+    const desc = description.trim() || undefined;
+    this.patch(id, (b) => ({ ...b, description: desc }));
+  }
   remove(id: string) {
     if (id === SAVED_BOARD_ID) return;
     this.commit(this.boards.filter((b) => b.id !== id));
@@ -251,6 +256,9 @@ class BoardStoreFacade implements BoardStore {
   }
   rename(id: string, name: string) {
     this.inner.rename(id, name);
+  }
+  setDescription(id: string, description: string) {
+    this.inner.setDescription(id, description);
   }
   remove(id: string) {
     this.inner.remove(id);

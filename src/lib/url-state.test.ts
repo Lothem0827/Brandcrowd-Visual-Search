@@ -6,6 +6,7 @@ import {
   fromUrl,
   historyAction,
   pageFromPath,
+  profileFromPath,
   toSearch,
   toUrl,
   type UrlState,
@@ -111,7 +112,31 @@ describe("routes", () => {
     expect(pageFromPath("/boards")).toBe("boards");
     expect(pageFromPath("/boards/saved")).toBe("boards");
     expect(pageFromPath("/brief")).toBe("brief");
+    expect(pageFromPath("/u/carolino_villarta")).toBe("profile");
+    expect(pageFromPath("/u/carolino_villarta/b/saved")).toBe("profile");
+    expect(pageFromPath("/u/carolino_villarta/m/brief")).toBe("profile");
     expect(pageFromPath("/nope")).toBe("home");
+  });
+
+  it("reads a public profile handle and optional board/moodboard slug", () => {
+    expect(profileFromPath("/u/carolino_villarta")).toEqual({
+      handle: "carolino_villarta",
+      kind: "index",
+      slug: null,
+    });
+    expect(profileFromPath("/u/carolino_villarta/b/saved")).toEqual({
+      handle: "carolino_villarta",
+      kind: "board",
+      slug: "saved",
+    });
+    expect(profileFromPath("/u/alice/m/client-pitches")).toEqual({
+      handle: "alice",
+      kind: "moodboard",
+      slug: "client-pitches",
+    });
+    expect(profileFromPath("/u/AB")).toBeNull();
+    expect(profileFromPath("/u/not valid")).toBeNull();
+    expect(profileFromPath("/users/alice")).toBeNull();
   });
 
   it("reads a board id from the path only when it is valid", () => {
@@ -129,12 +154,36 @@ describe("routes", () => {
     expect(toUrl(s({ page: "boards" }))).toBe("/boards");
     expect(toUrl(s({ page: "boards", board: "saved" }))).toBe("/boards/saved");
     expect(toUrl(s({ page: "brief", query: "ignored" }))).toBe("/brief");
+    expect(toUrl(s({ page: "profile", profileHandle: "alice" }))).toBe("/u/alice");
+    expect(toUrl(s({ page: "profile", profileHandle: "alice", profileKind: "board", profileSlug: "saved" }))).toBe(
+      "/u/alice/b/saved",
+    );
+    expect(toUrl(s({ page: "profile" }))).toBe("/explore");
   });
 
   it("round-trips a board with a design opened from it", () => {
     const state = s({ page: "boards", board: "saved", design: ["a1"], focused: true });
     expect(toUrl(state)).toBe("/boards/saved?design=a1&view=focus");
     expect(fromUrl("/boards/saved", "?design=a1&view=focus")).toEqual(state);
+  });
+
+  it("round-trips a public profile, board, and moodboard", () => {
+    const index = s({ page: "profile", profileHandle: "alice" });
+    expect(toUrl(index)).toBe("/u/alice");
+    expect(fromUrl("/u/alice")).toEqual(index);
+    const board = s({
+      page: "profile",
+      profileHandle: "alice",
+      profileKind: "board",
+      profileSlug: "saved",
+      design: ["a1"],
+      focused: true,
+    });
+    expect(toUrl(board)).toBe("/u/alice/b/saved?design=a1&view=focus");
+    expect(fromUrl("/u/alice/b/saved", "?design=a1&view=focus")).toEqual(board);
+    expect(fromUrl("/u/alice/m/brief")).toEqual(
+      s({ page: "profile", profileHandle: "alice", profileKind: "moodboard", profileSlug: "brief" }),
+    );
   });
 
   it("keeps browse search on /explore and folds old /?q= links there", () => {

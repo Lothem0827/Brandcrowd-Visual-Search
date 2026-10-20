@@ -3,6 +3,7 @@ import { PanelRightCloseIcon, RotateCcwIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsCompact, useIsMobile, useIsTablet } from "@/lib/use-media-query";
 import { useExplorer } from "./context";
+import { replayOnboarding } from "@/lib/onboarding";
 import { HEADER_CONTROL, HEADER_CONTROL_IDLE } from "./header";
 import { SidePanel } from "./side-panel";
 import { ThemeSwitch } from "./theme-switch";
@@ -61,7 +62,7 @@ function Slider({
   );
 }
 
-function Body() {
+function Body({ onReplay }: { onReplay: () => void }) {
   const stored = useGridSettings();
   const g = useEffectiveGridSettings();
   const isMobile = useIsMobile();
@@ -172,6 +173,19 @@ function Body() {
         )}
       </section>
 
+      <section className="space-y-2">
+        <div className="text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
+          Tutorial
+        </div>
+        <button
+          type="button"
+          onClick={onReplay}
+          className="text-sm text-foreground hover:underline"
+        >
+          Replay tutorial
+        </button>
+      </section>
+
       <SettingsAccount />
     </div>
   );
@@ -179,7 +193,15 @@ function Body() {
 
 /** Right-hand settings panel (theme + grid). */
 export function SettingsPanel() {
-  const { settingsOpen, setSettingsOpen } = useExplorer();
+  const { settingsOpen, setSettingsOpen, setPage, setHomePivotId, setView, clearAll } = useExplorer();
+  const replay = () => {
+    replayOnboarding();
+    clearAll();
+    setView({ kind: "search" });
+    setHomePivotId(null);
+    setSettingsOpen(false);
+    setPage("home");
+  };
   return (
     <SidePanel
       open={settingsOpen}
@@ -199,7 +221,7 @@ export function SettingsPanel() {
           <PanelRightCloseIcon className="size-4" />
         </button>
       </div>
-      {settingsOpen && <Body />}
+      {settingsOpen && <Body onReplay={replay} />}
     </SidePanel>
   );
 }
