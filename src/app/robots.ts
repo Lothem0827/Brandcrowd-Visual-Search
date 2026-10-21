@@ -1,10 +1,8 @@
 import type { MetadataRoute } from "next";
-import { SITE_URL } from "@/lib/site";
 
+// Private internal tool: block all crawlers.
 export default function robots(): MetadataRoute.Robots {
   return {
-    rules: { userAgent: "*", allow: "/", disallow: ["/data/"] },
-    sitemap: `${SITE_URL}/sitemap.xml`,
-    host: SITE_URL,
+    rules: { userAgent: "*", disallow: "/" },
   };
 }

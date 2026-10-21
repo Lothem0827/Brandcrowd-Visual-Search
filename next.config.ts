@@ -8,6 +8,11 @@ const nextConfig: NextConfig = {
     return [
       { source: "/:path*", headers: securityHeaders(dev) },
       {
+        // private internal tool: keep out of search engines
+        source: "/:path*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow, noimageindex" }],
+      },
+      {
         // content-hashed dataset written by `pnpm data`
         source: "/data/templates.:version.json",
         headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
